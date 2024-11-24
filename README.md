@@ -13,7 +13,7 @@
 
 [✨ Features](#-features) • [🚀 Installation](#-installation) • [💖 Usage](#-usage) • [🤝 Contributing](#-contributing) • [📜 License](#-license)
 
-<img width="731" alt="6977" src="https://github.com/user-attachments/assets/7e227a12-d47b-4ab3-92ed-687962eb732a">
+<img width="450" alt="300" src="https://github.com/user-attachments/assets/7e227a12-d47b-4ab3-92ed-687962eb732a">
 
 </div>
 
@@ -87,16 +87,6 @@ This project is licensed under the GNU License - see the [LICENSE](LICENSE) file
 - [Tkinter](https://docs.python.org/3/library/tkinter.html) for the GUI framework
 - [Pillow](https://python-pillow.org/) for image processing magic
 - All the wonderful contributors who have helped improve this project
-
-## 🎨 Magical Girl Color Palette
-
-| Color | Hex Code | Description
-|-----|-----|-----
-| Sakura Pink | `#FFB7C5` | For the sweetest UI elements
-| Magical Blue | `#7EC8E3` | For calm and soothing accents
-| Lemon Chiffon | `#FFFACD` | For soft, warm backgrounds
-| Lavender Dream | `#E6E6FA` | For mystical highlights
-
 
 ## 📣 Disclaimer
 
