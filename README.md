@@ -32,26 +32,26 @@
 ## 📥 Installation
 
 1. Clone the repository:
-```bash
+\`\`\`bash
    git clone https://github.com/DuckyOnQuack-999/Fetch-Me-My-Waifus.git
-```
+\`\`\`
 2. Navigate to the project directory:
-```shellscript
+\`\`\`shellscript
  cd Fetch-Me-My-Waifuscd Fetch-Me-My-Waifus
-```
+\`\`\`
 3. Install the required dependencies:
 
-```shellscript
+\`\`\`shellscript
  pip install -r requirements.txt
-```
+\`\`\`
 
 ## 💖 Usage
 
 Execute the main script to run the application:
 
-```shellscript
+\`\`\`shellscript
  python Fetch-Me-My-Waifus.py
-```
+\`\`\`
 
 ## 🛠️ Configuration
 
