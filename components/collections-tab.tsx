@@ -1,151 +1,88 @@
-import React, { useState } from 'react'
-import { Collections, WaifuImage } from '../types/waifu'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Folder, Plus, Trash2, ImageIcon } from 'lucide-react'
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import Image from 'next/image'
+"use client"
 
-interface CollectionsTabProps {
-  collections: Collections
-  onCreateCollection: (name: string) => void
-  onDeleteCollection: (id: string) => void
-  onAddToCollection: (collectionId: string, imageId: string) => void
-  onRemoveFromCollection: (collectionId: string, imageId: string) => void
-  images: WaifuImage[]
-}
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Heart, Folder, Plus, Search, Grid, List } from "lucide-react"
 
-function SortableImage({ image, index }: { image: WaifuImage; index: number }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: image.image_id })
+export function CollectionsTab() {
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [searchTerm, setSearchTerm] = useState("")
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const collections = [
+    { id: 1, name: "Favorites", count: 42, color: "bg-pink-500" },
+    { id: 2, name: "Waifus", count: 128, color: "bg-purple-500" },
+    { id: 3, name: "Nekos", count: 67, color: "bg-blue-500" },
+    { id: 4, name: "Anime Girls", count: 203, color: "bg-green-500" },
+  ]
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Image
-        src={image.preview_url}
-        alt={image.tags.map(t => t.name).join(', ')}
-        width={100}
-        height={100}
-        className="object-cover rounded-lg"
-      />
-    </div>
-  )
-}
+    <div className="space-y-6">
+      <Card className="material-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gradient">
+            <Folder className="h-5 w-5" />
+            Collections
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search collections..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button size="sm" className="glow">
+                <Plus className="h-4 w-4 mr-2" />
+                New Collection
+              </Button>
+            </div>
+          </div>
 
-export const CollectionsTab: React.FC<CollectionsTabProps> = ({
-  collections,
-  onCreateCollection,
-  onDeleteCollection,
-  onAddToCollection,
-  onRemoveFromCollection,
-  images,
-}) => {
-  const [newCollectionName, setNewCollectionName] = useState('')
-  const [activeCollection, setActiveCollection] = useState<string | null>(null)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
-
-  const handleCreateCollection = () => {
-    if (newCollectionName.trim()) {
-      onCreateCollection(newCollectionName.trim())
-      setNewCollectionName('')
-    }
-  }
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event
-
-    if (active.id !== over.id) {
-      const activeCollection = Object.values(collections).find(
-        collection => collection.imageIds.includes(active.id)
-      )
-      const overCollection = Object.values(collections).find(
-        collection => collection.id === over.id
-      )
-
-      if (activeCollection && overCollection) {
-        onRemoveFromCollection(activeCollection.id, active.id)
-        onAddToCollection(overCollection.id, active.id)
-      }
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <Input
-          placeholder="New collection name"
-          value={newCollectionName}
-          onChange={(e) => setNewCollectionName(e.target.value)}
-        />
-        <Button onClick={handleCreateCollection}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create
-        </Button>
-      </div>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Object.values(collections).map((collection) => (
-            <Card key={collection.id} className="relative">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {collection.name}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDeleteCollection(collection.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{collection.imageIds.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Images in collection
-                </p>
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <SortableContext items={collection.imageIds} strategy={verticalListSortingStrategy}>
-                    {collection.imageIds.slice(0, 9).map((imageId, index) => {
-                      const image = images.find(img => String(img.image_id) === imageId)
-                      return image ? (
-                        <SortableImage key={imageId} image={image} index={index} />
-                      ) : null
-                    })}
-                  </SortableContext>
-                </div>
-                {collection.imageIds.length > 9 && (
-                  <div className="mt-2 text-center text-sm text-muted-foreground">
-                    +{collection.imageIds.length - 9} more
+          <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-2"}>
+            {collections.map((collection) => (
+              <Card key={collection.id} className="material-card hover:scale-105 transition-transform cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${collection.color} flex items-center justify-center`}>
+                      <Heart className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{collection.name}</h3>
+                      <Badge variant="secondary" className="mt-1">
+                        {collection.count} images
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </DndContext>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

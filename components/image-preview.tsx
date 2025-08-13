@@ -1,76 +1,114 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { WaifuImage } from '../types/waifu'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
-import { ZoomIn, ZoomOut, X } from 'lucide-react'
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Heart, Download, Share, Eye } from "lucide-react"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 
 interface ImagePreviewProps {
-  image: WaifuImage
-  onClose: () => void
+  images: Array<{
+    id: string
+    url: string
+    title?: string
+    tags?: string[]
+    isFavorite?: boolean
+  }>
 }
 
-export function ImagePreview({ image, onClose }: ImagePreviewProps) {
-  const [zoomLevel, setZoomLevel] = useState(1)
+export function ImagePreview({ images }: ImagePreviewProps) {
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
-  const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev + 0.1, 3))
-  }, [])
-
-  const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev - 0.1, 0.5))
-  }, [])
-
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose()
-    } else if (e.key === '+' || e.key === '=') {
-      handleZoomIn()
-    } else if (e.key === '-') {
-      handleZoomOut()
+  const toggleFavorite = (id: string) => {
+    const newFavorites = new Set(favorites)
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id)
+    } else {
+      newFavorites.add(id)
     }
-  }, [onClose, handleZoomIn, handleZoomOut])
+    setFavorites(newFavorites)
+  }
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleKeyDown])
+  if (images.length === 0) {
+    return (
+      <Card className="material-card">
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Eye className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">No images to preview</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0">
-        <DialogHeader>
-          <DialogTitle>{image.tags[0]?.name || 'Image Preview'}</DialogTitle>
-        </DialogHeader>
-        <div className="relative overflow-hidden" style={{ height: 'calc(100vh - 2rem)' }}>
-          <Image
-            src={image.url}
-            alt={image.tags[0]?.name || 'Waifu image'}
-            layout="fill"
-            objectFit="contain"
-            className="transition-transform duration-200 ease-in-out"
-            style={{ transform: `scale(${zoomLevel})` }}
-          />
-          <div className="absolute top-2 right-2 flex gap-2">
-            <Button size="icon" variant="secondary" onClick={handleZoomIn}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button size="icon" variant="secondary" onClick={handleZoomOut}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <Button size="icon" variant="secondary" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <div className="p-4 bg-background">
-          <p>Resolution: {image.width}x{image.height}</p>
-          <p>Source: {image.source || 'Unknown'}</p>
-          <p>Tags: {image.tags.map(tag => tag.name).join(', ')}</p>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="masonry-grid">
+      {images.map((image) => (
+        <Card key={image.id} className="material-card mb-4 break-inside-avoid">
+          <CardContent className="p-0">
+            <div className="relative group">
+              <img
+                src={image.url || "/placeholder.svg"}
+                alt={image.title || "Preview"}
+                className="w-full h-auto rounded-t-lg object-cover"
+                loading="lazy"
+              />
+
+              {/* Overlay with actions */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg flex items-center justify-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="secondary">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl">
+                    <div className="relative">
+                      <img
+                        src={image.url || "/placeholder.svg"}
+                        alt={image.title || "Full size"}
+                        className="w-full h-auto max-h-[80vh] object-contain"
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Button size="sm" variant="secondary" onClick={() => toggleFavorite(image.id)}>
+                  <Heart className={`h-4 w-4 ${favorites.has(image.id) ? "fill-red-500 text-red-500" : ""}`} />
+                </Button>
+
+                <Button size="sm" variant="secondary">
+                  <Download className="h-4 w-4" />
+                </Button>
+
+                <Button size="sm" variant="secondary">
+                  <Share className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Image info */}
+            <div className="p-4 space-y-2">
+              {image.title && <h3 className="font-medium truncate">{image.title}</h3>}
+
+              {image.tags && image.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {image.tags.slice(0, 3).map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {image.tags.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{image.tags.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   )
 }

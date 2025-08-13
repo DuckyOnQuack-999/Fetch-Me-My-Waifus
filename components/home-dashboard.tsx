@@ -1,162 +1,158 @@
 "use client"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Heart, ImageIcon, Settings, Folder, Zap } from "lucide-react"
-import { useDownload } from "@/context/downloadContext"
-import { useStorage } from "@/context/storageContext"
-import { FeatureCard } from "./feature-card"
+import { Badge } from "@/components/ui/badge"
+import { Download, Heart, ImageIcon, Folder, TrendingUp, Clock, Star } from "lucide-react"
 import { AnimatedStats } from "./animated-stats"
-import { WaifuDownloaderLogo } from "./waifu-downloader-logo"
-import Link from "next/link"
+import { SumptuousHeart } from "./sumptuous-heart"
 
 export function HomeDashboard() {
-  const { totalDownloads, downloadQueue } = useDownload()
-  const { favorites, collections } = useStorage()
-
   const stats = [
-    { label: "Total Downloads", value: totalDownloads, icon: Download },
-    { label: "Favorites", value: favorites.length, icon: Heart },
-    { label: "Collections", value: Object.keys(collections).length, icon: Folder },
-    { label: "Active Downloads", value: downloadQueue.length, icon: Zap },
+    { label: "Total Downloads", value: 1247, icon: Download, color: "text-blue-500" },
+    { label: "Favorites", value: 89, icon: Heart, color: "text-pink-500" },
+    { label: "Collections", value: 12, icon: Folder, color: "text-green-500" },
+    { label: "This Week", value: 34, icon: TrendingUp, color: "text-purple-500" },
   ]
 
-  const features = [
-    {
-      icon: Download,
-      title: "Multi-Source Downloads",
-      description: "Download from multiple anime image APIs with advanced filtering and sorting options.",
-    },
-    {
-      icon: Heart,
-      title: "Favorites & Collections",
-      description: "Organize your favorite images into custom collections with drag-and-drop functionality.",
-    },
-    {
-      icon: ImageIcon,
-      title: "Gallery Management",
-      description: "Browse, preview, and manage your downloaded images with an intuitive gallery interface.",
-    },
-    {
-      icon: Settings,
-      title: "Advanced Settings",
-      description: "Customize download paths, API keys, concurrent downloads, and more.",
-    },
+  const recentDownloads = [
+    { name: "cute_neko_001.jpg", time: "2 minutes ago", source: "waifu.pics" },
+    { name: "anime_girl_042.png", time: "15 minutes ago", source: "nekos.best" },
+    { name: "kawaii_waifu_123.jpg", time: "1 hour ago", source: "waifu.im" },
+  ]
+
+  const quickActions = [
+    { label: "Quick Download", icon: Download, description: "Start downloading immediately" },
+    { label: "Browse Gallery", icon: ImageIcon, description: "View your collection" },
+    { label: "Manage Collections", icon: Folder, description: "Organize your images" },
+    { label: "View Favorites", icon: Heart, description: "See your liked images" },
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <div className="flex justify-center mb-6">
-            <WaifuDownloaderLogo size={80} className="text-primary" />
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent mb-4">
-            Waifu Downloader
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            The ultimate tool for downloading and managing your favorite anime images from multiple sources
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-              <Link href="/gallery">
-                <Download className="w-5 h-5 mr-2" />
-                Start Downloading
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/settings">
-                <Settings className="w-5 h-5 mr-2" />
-                Configure Settings
-              </Link>
-            </Button>
-          </div>
-        </motion.div>
+    <div className="space-y-6 hero-gradient min-h-screen p-6">
+      {/* Welcome Section */}
+      <div className="text-center space-y-4 py-12">
+        <div className="flex justify-center mb-6">
+          <SumptuousHeart size={80} className="animate-float" />
+        </div>
+        <h1 className="text-4xl md:text-6xl font-bold text-gradient glow-text">Waifu Fetcher</h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          Your ultimate destination for downloading and organizing beautiful anime artwork
+        </p>
+        <div className="flex justify-center gap-4 mt-8">
+          <Button size="lg" className="glow">
+            <Download className="mr-2 h-5 w-5" />
+            Start Downloading
+          </Button>
+          <Button size="lg" variant="outline" className="backdrop-blur-glass bg-transparent">
+            <ImageIcon className="mr-2 h-5 w-5" />
+            Browse Gallery
+          </Button>
+        </div>
+      </div>
 
-        {/* Stats Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-center mb-8">Your Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <AnimatedStats
-                key={stat.label}
-                icon={stat.icon}
-                label={stat.label}
-                value={stat.value}
-                delay={index * 0.1}
-              />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Features Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-center mb-8">Features</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.5 + index * 0.1 }}
-              >
-                <FeatureCard {...feature} />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <Card className="bg-card/50 backdrop-blur border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">Quick Actions</CardTitle>
-              <CardDescription className="text-center">Jump right into your favorite features</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button asChild variant="outline" className="h-16 bg-transparent">
-                  <Link href="/gallery" className="flex flex-col gap-2">
-                    <ImageIcon className="w-6 h-6" />
-                    Browse Gallery
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="h-16 bg-transparent">
-                  <Link href="/favorites" className="flex flex-col gap-2">
-                    <Heart className="w-6 h-6" />
-                    View Favorites
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="h-16 bg-transparent">
-                  <Link href="/collections" className="flex flex-col gap-2">
-                    <Folder className="w-6 h-6" />
-                    Manage Collections
-                  </Link>
-                </Button>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
+          <Card key={stat.label} className="material-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <AnimatedStats value={stat.value} className="text-2xl font-bold" />
+                </div>
+                <stat.icon className={`h-8 w-8 ${stat.color}`} />
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <Card className="material-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-gradient">
+            <Star className="h-5 w-5" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.map((action) => (
+              <Button
+                key={action.label}
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 hover:scale-105 transition-transform bg-transparent"
+              >
+                <action.icon className="h-8 w-8 text-primary" />
+                <div className="text-center">
+                  <div className="font-medium">{action.label}</div>
+                  <div className="text-xs text-muted-foreground">{action.description}</div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="material-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gradient">
+              <Clock className="h-5 w-5" />
+              Recent Downloads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentDownloads.map((download, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">{download.name}</p>
+                      <p className="text-xs text-muted-foreground">{download.time}</p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary">{download.source}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="material-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gradient">
+              <TrendingUp className="h-5 w-5" />
+              Popular Sources
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { name: "waifu.pics", count: 456, percentage: 85 },
+                { name: "nekos.best", count: 234, percentage: 65 },
+                { name: "waifu.im", count: 123, percentage: 45 },
+                { name: "wallhaven", count: 89, percentage: 30 },
+              ].map((source) => (
+                <div key={source.name} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{source.name}</span>
+                    <span className="text-muted-foreground">{source.count} downloads</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-primary to-pink-500 h-2 rounded-full transition-all duration-1000"
+                      style={{ width: `${source.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
