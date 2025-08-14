@@ -14,9 +14,18 @@ import { useSettings } from "@/context/settingsContext"
 import { useDownload } from "@/context/downloadContext"
 import { toast } from "sonner"
 import type { ImageCategory, DownloadItem } from "@/types/waifu"
-import { ClientWrapper } from "@/components/client-wrapper"
 import { SimpleDownloadTab } from "@/components/simple-download-tab"
 import { ApiStatusIndicator } from "@/components/api-status-indicator"
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 function HomeContent() {
   const searchParams = useSearchParams()
@@ -289,8 +298,30 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <ClientWrapper>
-      <HomeContent />
-    </ClientWrapper>
+    <SidebarInset>
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/">Waifu Downloader</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Home</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+        <div className="ml-auto px-4">
+          <ApiStatusIndicator />
+        </div>
+      </header>
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <HomeContent />
+      </div>
+    </SidebarInset>
   )
 }
