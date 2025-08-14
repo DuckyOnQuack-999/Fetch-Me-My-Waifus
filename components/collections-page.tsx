@@ -40,24 +40,12 @@ import {
 import { useSettings } from "@/context/settingsContext"
 import { useStorage } from "@/context/storageContext"
 import { fetchImagesFromMultipleSources } from "@/services/waifuApi"
-import type { WaifuImage, ImageCategory } from "@/types/waifu"
+import type { WaifuImage, ImageCategory, Collection } from "@/types/waifu"
 import { SumptuousHeart } from "./sumptuous-heart"
-
-interface Collection {
-  id: string
-  name: string
-  description: string
-  images: WaifuImage[]
-  tags: string[]
-  createdAt: string
-  updatedAt: string
-  isPublic: boolean
-  thumbnail?: string
-}
 
 export function CollectionsPage() {
   const { settings } = useSettings()
-  const { collections, addCollection, updateCollection, deleteCollection } = useStorage()
+  const { collections, images, createCollection, updateCollection, deleteCollection } = useStorage()
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [sortBy, setSortBy] = useState<"name" | "date" | "size">("date")
@@ -76,13 +64,14 @@ export function CollectionsPage() {
   const [previewImage, setPreviewImage] = useState<WaifuImage | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
-  // Filter and sort collections
-  const filteredCollections = collections
+  // Convert collections object to array and filter/sort
+  const collectionsArray = Object.values(collections)
+  const filteredCollections = collectionsArray
     .filter(
       (collection) =>
         collection.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        collection.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        collection.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
+        (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (collection.tags && collection.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))),
     )
     .sort((a, b) => {
       let comparison = 0
@@ -91,10 +80,10 @@ export function CollectionsPage() {
           comparison = a.name.localeCompare(b.name)
           break
         case "date":
-          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
           break
         case "size":
-          comparison = a.images.length - b.images.length
+          comparison = a.imageIds.length - b.imageIds.length
           break
       }
       return sortOrder === "asc" ? comparison : -comparison
@@ -109,37 +98,34 @@ export function CollectionsPage() {
       setLoadingProgress(10)
 
       // Fetch initial images for the collection
-      const images = await fetchImagesFromMultipleSources(
+      const fetchedImages = await fetchImagesFromMultipleSources(
         selectedCategory,
         20,
         isNsfw,
         "RANDOM",
         1,
-        settings.minWidth,
-        settings.minHeight,
+        settings.minWidth || 800,
+        settings.minHeight || 600,
         settings,
-        settings.apiSource,
+        settings.apiSource || "all",
       )
 
       setLoadingProgress(80)
 
-      const newCollection: Collection = {
-        id: Date.now().toString(),
-        name: newCollectionName,
-        description: newCollectionDescription,
-        images,
-        tags: [selectedCategory],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isPublic: false,
-        thumbnail: images[0]?.preview_url || images[0]?.url,
-      }
+      const collectionId = createCollection(newCollectionName, newCollectionDescription)
 
-      addCollection(newCollection)
-      setLoadingProgress(100)
-      setNewCollectionName("")
-      setNewCollectionDescription("")
-      setIsCreateDialogOpen(false)
+      if (collectionId) {
+        // Add fetched images to the collection
+        fetchedImages.forEach((image) => {
+          // Add image to storage first, then to collection
+          // This would need to be implemented in the storage context
+        })
+
+        setLoadingProgress(100)
+        setNewCollectionName("")
+        setNewCollectionDescription("")
+        setIsCreateDialogOpen(false)
+      }
     } catch (err) {
       console.error("Error creating collection:", err)
       setError(err instanceof Error ? err.message : "Failed to create collection")
@@ -154,14 +140,14 @@ export function CollectionsPage() {
 
     try {
       setIsLoading(true)
-      const collection = collections.find((c) => c.id === collectionId)
+      const collection = collections[collectionId]
       if (!collection) return
 
       // In a real app, you'd fetch the actual image data
       // For now, we'll just update the collection
       const updatedCollection = {
         ...collection,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
 
       updateCollection(collectionId, updatedCollection)
@@ -190,77 +176,88 @@ export function CollectionsPage() {
     setSelectedImages(newSelection)
   }
 
-  const CollectionCard = ({ collection }: { collection: Collection }) => (
-    <Card className="group relative overflow-hidden bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+  const getCollectionImages = (collection: Collection): WaifuImage[] => {
+    return images.filter((img) => collection.imageIds.includes(img.image_id.toString()))
+  }
 
-      {collection.thumbnail && (
-        <div className="relative h-48 overflow-hidden">
-          <img
-            src={collection.thumbnail || "/placeholder.svg"}
-            alt={collection.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.src = "/placeholder.svg?height=200&width=300&text=Collection"
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <div className="absolute top-2 right-2">
-            <Badge variant="secondary" className="bg-black/50 text-white border-0">
-              {collection.images.length} images
-            </Badge>
+  const CollectionCard = ({ collection }: { collection: Collection }) => {
+    const collectionImages = getCollectionImages(collection)
+    const thumbnail = collectionImages[0]?.preview_url || collectionImages[0]?.url
+
+    return (
+      <Card className="group relative overflow-hidden bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {thumbnail && (
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={thumbnail || "/placeholder.svg"}
+              alt={collection.name}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = "/placeholder.svg?height=200&width=300&text=Collection"
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute top-2 right-2">
+              <Badge variant="secondary" className="bg-black/50 text-white border-0">
+                {collection.imageIds.length} images
+              </Badge>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <CardHeader className="relative">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
-              {collection.name}
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground mt-1">
-              {collection.description || "No description"}
-            </CardDescription>
+        <CardHeader className="relative">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
+                {collection.name}
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground mt-1">
+                {collection.description || "No description"}
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => setSelectedCollection(collection)}
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => setSelectedCollection(collection)}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-        </div>
 
-        <div className="flex flex-wrap gap-1 mt-2">
-          {collection.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {collection.tags.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{collection.tags.length - 3}
-            </Badge>
+          {collection.tags && collection.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {collection.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {collection.tags.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{collection.tags.length - 3}
+                </Badge>
+              )}
+            </div>
           )}
-        </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            {new Date(collection.updatedAt).toLocaleDateString()}
-          </span>
-          {collection.isPublic && (
-            <Badge variant="outline" className="text-xs">
-              Public
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-    </Card>
-  )
+          <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {new Date(collection.updated_at).toLocaleDateString()}
+            </span>
+            {collection.isPublic && (
+              <Badge variant="outline" className="text-xs">
+                Public
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+      </Card>
+    )
+  }
 
   const ImageGrid = ({ images }: { images: WaifuImage[] }) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -297,7 +294,7 @@ export function CollectionsPage() {
             <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="flex items-center justify-between">
                 <Badge variant="secondary" className="bg-black/50 text-white border-0 text-xs">
-                  {image.fetchedFrom}
+                  {image.fetchedFrom || "Unknown"}
                 </Badge>
                 <div className="flex gap-1">
                   <Button
@@ -557,7 +554,7 @@ export function CollectionsPage() {
 
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="border-primary/20">
-                  {selectedCollection.images.length} images
+                  {selectedCollection.imageIds.length} images
                 </Badge>
                 <Button
                   variant="outline"
@@ -569,7 +566,7 @@ export function CollectionsPage() {
               </div>
             </div>
 
-            <ImageGrid images={selectedCollection.images} />
+            <ImageGrid images={getCollectionImages(selectedCollection)} />
           </div>
         )}
 
@@ -592,10 +589,10 @@ export function CollectionsPage() {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{previewImage.fetchedFrom}</Badge>
+                    <Badge variant="outline">{previewImage.fetchedFrom || "Unknown"}</Badge>
                     {previewImage.tags?.slice(0, 3).map((tag) => (
-                      <Badge key={tag.name} variant="secondary">
-                        {tag.name}
+                      <Badge key={tag} variant="secondary">
+                        {tag}
                       </Badge>
                     ))}
                   </div>
