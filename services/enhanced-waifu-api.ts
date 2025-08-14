@@ -111,7 +111,7 @@ class EnhancedWaifuApiService {
     page = 1,
     minWidth?: number,
     minHeight?: number,
-    settings: Settings,
+    settings?: Settings,
   ): Promise<WaifuImage[]> {
     const cacheKey = `waifu.im:${category}:${limit}:${isNsfw}:${sortBy}:${page}`
 
@@ -144,7 +144,7 @@ class EnhancedWaifuApiService {
       "User-Agent": "WaifuDownloader/2.0",
     }
 
-    if (settings.waifuImApiKey) {
+    if (settings?.waifuImApiKey) {
       headers["Authorization"] = `Bearer ${settings.waifuImApiKey}`
     }
 
@@ -170,6 +170,206 @@ class EnhancedWaifuApiService {
     }
   }
 
+  // Enhanced Waifu.pics API implementation
+  async fetchImagesFromWaifuPics(
+    category: ImageCategory,
+    isNsfw = false,
+    settings?: Settings,
+    limit = 30,
+  ): Promise<WaifuImage[]> {
+    const cacheKey = `waifu.pics:${category}:${isNsfw}:${limit}`
+
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)
+    }
+
+    const baseUrl = "https://api.waifu.pics"
+    const endpoint = isNsfw ? "nsfw" : "sfw"
+    const images: WaifuImage[] = []
+
+    try {
+      // Fetch multiple images since waifu.pics returns one at a time
+      const promises = Array.from({ length: limit }, async (_, index) => {
+        const url = `${baseUrl}/${endpoint}/${category}`
+
+        try {
+          const response = await this.handleApiRequest<{ url: string }>(url, {}, "waifu.pics")
+
+          return {
+            image_id: `waifu-pics-${Date.now()}-${index}`,
+            url: response.data.url,
+            width: 1920, // Default dimensions
+            height: 1080,
+            tags: [category],
+            source: "waifu.pics",
+            rating: isNsfw ? "explicit" : "safe",
+            created_at: new Date().toISOString(),
+            fetchedFrom: "waifu.pics" as ApiSource,
+            lastModified: new Date().toISOString(),
+          } as WaifuImage
+        } catch (error) {
+          console.warn(`Failed to fetch image ${index + 1} from waifu.pics:`, error)
+          return null
+        }
+      })
+
+      const results = await Promise.allSettled(promises)
+      const validImages = results
+        .filter(
+          (result): result is PromiseFulfilledResult<WaifuImage> =>
+            result.status === "fulfilled" && result.value !== null,
+        )
+        .map((result) => result.value)
+
+      this.cache.set(cacheKey, validImages)
+      return validImages
+    } catch (error) {
+      console.error("Error fetching images from Waifu.pics:", error)
+      throw error
+    }
+  }
+
+  // Enhanced Nekos.best API implementation
+  async fetchImagesFromNekosBest(category: ImageCategory, settings?: Settings, limit = 30): Promise<WaifuImage[]> {
+    const cacheKey = `nekos.best:${category}:${limit}`
+
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)
+    }
+
+    const url = `https://nekos.best/api/v2/${category}?amount=${Math.min(limit, 20)}`
+
+    try {
+      const response = await this.handleApiRequest<{ results: any[] }>(url, {}, "nekos.best")
+
+      const transformedImages = response.data.results.map((item, index) => ({
+        image_id: `nekos-best-${Date.now()}-${index}`,
+        url: item.url,
+        width: 1920,
+        height: 1080,
+        tags: [category],
+        source: "nekos.best",
+        artist: item.artist_name,
+        rating: "safe",
+        created_at: new Date().toISOString(),
+        fetchedFrom: "nekos.best" as ApiSource,
+        lastModified: new Date().toISOString(),
+      })) as WaifuImage[]
+
+      this.cache.set(cacheKey, transformedImages)
+      return transformedImages
+    } catch (error) {
+      console.error("Error fetching images from Nekos.best:", error)
+      throw error
+    }
+  }
+
+  // Enhanced Wallhaven API implementation
+  async fetchImagesFromWallhaven(
+    query: string,
+    limit = 30,
+    isNsfw = false,
+    sortBy: SortOption = "RANDOM",
+    page = 1,
+    minWidth?: number,
+    minHeight?: number,
+    settings?: Settings,
+  ): Promise<WaifuImage[]> {
+    const cacheKey = `wallhaven:${query}:${limit}:${isNsfw}:${sortBy}:${page}`
+
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)
+    }
+
+    const params = new URLSearchParams({
+      q: query,
+      categories: "111", // General, Anime, People
+      purity: isNsfw ? "111" : "100", // SFW, Sketchy, NSFW
+      sorting: sortBy === "RANDOM" ? "random" : "date_added",
+      order: "desc",
+      page: String(page),
+      atleast: minWidth && minHeight ? `${minWidth}x${minHeight}` : "1920x1080",
+    })
+
+    const headers: HeadersInit = {
+      "User-Agent": "WaifuDownloader/2.0",
+    }
+
+    if (settings?.wallhavenApiKey) {
+      headers["X-API-Key"] = settings.wallhavenApiKey
+    }
+
+    const url = `https://wallhaven.cc/api/v1/search?${params}`
+
+    try {
+      const response = await this.handleApiRequest<{ data: any[] }>(url, { headers }, "wallhaven")
+
+      const transformedImages = response.data.data.map((item) => ({
+        image_id: item.id,
+        url: item.path,
+        preview_url: item.thumbs.large,
+        width: item.resolution.split("x")[0],
+        height: item.resolution.split("x")[1],
+        file_size: item.file_size,
+        tags: item.tags?.map((tag: any) => tag.name) || [],
+        source: "wallhaven",
+        rating: item.purity === "sfw" ? "safe" : item.purity === "sketchy" ? "questionable" : "explicit",
+        created_at: item.created_at,
+        fetchedFrom: "wallhaven" as ApiSource,
+        lastModified: new Date().toISOString(),
+      })) as WaifuImage[]
+
+      this.cache.set(cacheKey, transformedImages)
+      return transformedImages
+    } catch (error) {
+      console.error("Error fetching images from Wallhaven:", error)
+      throw error
+    }
+  }
+
+  // Enhanced Femboy Finder API implementation
+  async fetchImagesFromFemboyFinder(category: string, settings?: Settings, limit = 30): Promise<WaifuImage[]> {
+    const cacheKey = `femboyfinder:${category}:${limit}`
+
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)
+    }
+
+    const url = `https://femboyfinder.firestreaker2.gq/api/${category}`
+
+    try {
+      const images: WaifuImage[] = []
+
+      // Fetch multiple images
+      for (let i = 0; i < limit; i++) {
+        try {
+          const response = await this.handleApiRequest<{ url: string }>(url, {}, "femboyfinder")
+
+          images.push({
+            image_id: `femboyfinder-${Date.now()}-${i}`,
+            url: response.data.url,
+            width: 1920,
+            height: 1080,
+            tags: [category, "femboy"],
+            source: "femboyfinder",
+            rating: "questionable",
+            created_at: new Date().toISOString(),
+            fetchedFrom: "femboyfinder" as ApiSource,
+            lastModified: new Date().toISOString(),
+          } as WaifuImage)
+        } catch (error) {
+          console.warn(`Failed to fetch image ${i + 1} from femboyfinder:`, error)
+        }
+      }
+
+      this.cache.set(cacheKey, images)
+      return images
+    } catch (error) {
+      console.error("Error fetching images from Femboy Finder:", error)
+      throw error
+    }
+  }
+
   // Enhanced multi-source fetching with parallel processing and fallbacks
   async fetchImagesFromMultipleSources(
     category: ImageCategory,
@@ -179,7 +379,7 @@ class EnhancedWaifuApiService {
     page = 1,
     minWidth?: number,
     minHeight?: number,
-    settings: Settings,
+    settings?: Settings,
     apiSource: ApiSource = "all",
   ): Promise<WaifuImage[]> {
     const sources: ApiSource[] =
@@ -235,45 +435,6 @@ class EnhancedWaifuApiService {
     }
 
     return combinedImages
-  }
-
-  // Placeholder methods for other API sources (implement similar enhancements)
-  private async fetchImagesFromWaifuPics(
-    category: string,
-    isNsfw: boolean,
-    settings: Settings,
-    limit: number,
-  ): Promise<WaifuImage[]> {
-    // Implementation similar to existing but with enhanced error handling
-    return []
-  }
-
-  private async fetchImagesFromNekosBest(category: string, settings: Settings, limit: number): Promise<WaifuImage[]> {
-    // Implementation similar to existing but with enhanced error handling
-    return []
-  }
-
-  private async fetchImagesFromWallhaven(
-    query: string,
-    limit: number,
-    isNsfw: boolean,
-    sortBy: SortOption,
-    page: number,
-    minWidth?: number,
-    minHeight?: number,
-    settings?: Settings,
-  ): Promise<WaifuImage[]> {
-    // Implementation similar to existing but with enhanced error handling
-    return []
-  }
-
-  private async fetchImagesFromFemboyFinder(
-    category: string,
-    settings: Settings,
-    limit: number,
-  ): Promise<WaifuImage[]> {
-    // Implementation similar to existing but with enhanced error handling
-    return []
   }
 
   // Performance monitoring methods

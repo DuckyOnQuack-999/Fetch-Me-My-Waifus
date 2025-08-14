@@ -1,37 +1,31 @@
-'use client'
+"use client"
 
-import { SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
-import { Button } from '@/components/ui/button'
-import { Sun, Moon } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import type React from "react"
 
-export function ClientWrapper({ children }: { children: React.ReactNode }) {
-  const { theme, setTheme } = useTheme()
+import { useEffect, useState } from "react"
+import { Loader2 } from "lucide-react"
 
-  return (
-    <SidebarInset className="flex-1">
-      <header className="flex h-16 items-center gap-4 border-b border-border/40 px-6 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
-        <SidebarTrigger />
-        <ThemeToggle />
-      </header>
-      {children}
-    </SidebarInset>
-  )
+interface ClientWrapperProps {
+  children: React.ReactNode
 }
 
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+export function ClientWrapper({ children }: ClientWrapperProps) {
+  const [isMounted, setIsMounted] = useState(false)
 
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="mr-6"
-    >
-      <Sun className="h-[1.5rem] w-[1.3rem] dark:hidden" />
-      <Moon className="hidden h-5 w-5 dark:block" />
-      <span className="sr-only">Toggle theme</span>
-    </Button>
-  )
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading Waifu Downloader...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
 }

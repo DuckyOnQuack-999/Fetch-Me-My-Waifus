@@ -14,6 +14,7 @@ import { Download, LinkIcon, CheckCircle, XCircle, Clock, Loader2, ImageIcon, Tr
 import { useSettings } from "@/context/settingsContext"
 import { useStorage } from "@/context/storageContext"
 import { toast } from "sonner"
+import type { DownloadStatus, DownloadProgress, ImageCategory, ApiSource } from "@/types/waifu"
 
 interface DownloadItem {
   id: string
@@ -26,19 +27,38 @@ interface DownloadItem {
   source: string
 }
 
-export function SimpleDownloadTab() {
+interface SimpleDownloadTabProps {
+  onStartDownload?: (category: ImageCategory, limit: number, isNsfw: boolean, downloadPath: string) => Promise<void>
+  onPauseDownload?: () => void
+  onStopDownload?: () => void
+  downloadStatus?: DownloadStatus
+  downloadProgress?: DownloadProgress
+  settings?: any
+}
+
+export function SimpleDownloadTab({
+  onStartDownload,
+  onPauseDownload,
+  onStopDownload,
+  downloadStatus = "idle",
+  downloadProgress = { downloaded: 0, total: 0, speed: 0, eta: 0 },
+  settings: propSettings,
+}: SimpleDownloadTabProps) {
   const { settings } = useSettings()
   const { addDownloadRecord } = useStorage()
   const [url, setUrl] = useState("")
-  const [selectedSource, setSelectedSource] = useState(settings?.apiSource || "waifu-im")
+  const [selectedSource, setSelectedSource] = useState<ApiSource>(settings?.apiSource || "waifu.im")
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
 
+  // Use settings from context or props
+  const activeSettings = propSettings || settings
+
   useEffect(() => {
-    if (settings?.apiSource) {
-      setSelectedSource(settings.apiSource)
+    if (activeSettings?.apiSource) {
+      setSelectedSource(activeSettings.apiSource)
     }
-  }, [settings])
+  }, [activeSettings])
 
   const generateFilename = (url: string, source: string) => {
     const timestamp = Date.now()
@@ -93,7 +113,7 @@ export function SimpleDownloadTab() {
       return
     }
 
-    if (!settings) {
+    if (!activeSettings) {
       toast.error("Settings not loaded")
       return
     }
@@ -198,16 +218,16 @@ export function SimpleDownloadTab() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="source">API Source</Label>
-              <Select value={selectedSource} onValueChange={setSelectedSource}>
+              <Select value={selectedSource} onValueChange={(value: ApiSource) => setSelectedSource(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="waifu-im">Waifu.im</SelectItem>
-                  <SelectItem value="waifu-pics">Waifu Pics</SelectItem>
-                  <SelectItem value="nekos-best">Nekos.best</SelectItem>
+                  <SelectItem value="waifu.im">Waifu.im</SelectItem>
+                  <SelectItem value="waifu.pics">Waifu Pics</SelectItem>
+                  <SelectItem value="nekos.best">Nekos.best</SelectItem>
                   <SelectItem value="wallhaven">Wallhaven</SelectItem>
-                  <SelectItem value="femboy-finder">Femboy Finder</SelectItem>
+                  <SelectItem value="femboyfinder">Femboy Finder</SelectItem>
                 </SelectContent>
               </Select>
             </div>

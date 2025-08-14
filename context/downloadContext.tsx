@@ -16,6 +16,7 @@ interface DownloadContextType {
   isDownloading: boolean
 
   // Actions
+  addToQueue: (item: DownloadItem) => void
   startDownload: (url: string, options?: Partial<DownloadItem>) => Promise<string>
   pauseDownload: (downloadId: string) => Promise<boolean>
   resumeDownload: (downloadId: string) => Promise<boolean>
@@ -41,7 +42,7 @@ const DownloadContext = createContext<DownloadContextType | undefined>(undefined
 
 export function DownloadProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings()
-  const { addToDownloadHistory } = useStorage()
+  const { addDownloadRecord } = useStorage()
 
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
@@ -121,7 +122,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
             })
 
             // Add to download history
-            addToDownloadHistory({
+            addDownloadRecord({
               id: downloadId,
               url: download.url,
               filename: download.filename,
@@ -164,6 +165,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  // Add to queue
+  const addToQueue = (item: DownloadItem) => {
+    setDownloads((prev) => [...prev, item])
+  }
+
   // Start download
   const startDownload = async (url: string, options: Partial<DownloadItem> = {}): Promise<string> => {
     const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -175,8 +181,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       status: "pending",
       progress: 0,
       timestamp: new Date(),
+      addedAt: new Date(),
       source: options.source || settings?.apiSource || "waifu.im",
       category: options.category,
+      tags: options.tags || [],
       metadata: options.metadata,
       ...options,
     }
@@ -329,6 +337,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     isDownloading,
 
     // Actions
+    addToQueue,
     startDownload,
     pauseDownload,
     resumeDownload,

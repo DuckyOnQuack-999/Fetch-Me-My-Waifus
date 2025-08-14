@@ -4,27 +4,18 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import type { Settings } from "@/types/waifu"
 import { storage } from "@/utils/localStorage"
 
-interface SettingsContextType {
-  settings: Settings
-  updateSettings: (newSettings: Partial<Settings>) => void
-  resetSettings: () => void
-  exportSettings: () => string
-  importSettings: (settingsJson: string) => boolean
-  isLoading: boolean
-  error: string | null
-}
-
-const defaultSettings: Settings = {
+// Default settings with comprehensive configuration
+const DEFAULT_SETTINGS: Settings = {
   // API Configuration
   concurrentDownloads: 3,
   retryAttempts: 3,
-  autoStartDownloads: false,
+  autoStartDownloads: true,
   defaultSortOption: "RANDOM",
-  apiSource: "waifu.im",
+  apiSource: "all",
   waifuImApiKey: "",
   waifuPicsApiKey: "",
   nekosBestApiKey: "",
-  wallhavenApiKey: process.env.WALLHAVEN_API_KEY || "RhVlota4CWLtHGJ0yX5vQMHqmJ3SZQFk",
+  wallhavenApiKey: process.env.NEXT_PUBLIC_WALLHAVEN_API_KEY || "",
   femboyFinderApiKey: "",
   requestTimeout: 30000,
   rateLimitDelay: 1000,
@@ -32,15 +23,15 @@ const defaultSettings: Settings = {
   // Image Quality & Resolution
   minWidth: 800,
   minHeight: 600,
-  maxWidth: 7680,
-  maxHeight: 4320,
+  maxWidth: 4096,
+  maxHeight: 4096,
   useCustomResolution: false,
-  selectedPreset: "HD (720p)",
-  minFileSize: 50,
-  maxFileSize: 50000,
-  allowedFormats: ["jpg", "jpeg", "png", "webp", "gif"],
+  selectedPreset: "Full HD (1080p)",
+  minFileSize: 50, // KB
+  maxFileSize: 10, // MB
+  allowedFormats: ["jpg", "jpeg", "png", "webp"],
   preferredFormat: "original",
-  compressionLevel: "medium",
+  compressionLevel: "none",
 
   // Download Behavior
   imagesPerPage: 30,
@@ -49,16 +40,16 @@ const defaultSettings: Settings = {
   createSubfolders: true,
   organizeByDate: false,
   organizeBySource: true,
-  organizeByCategory: false,
+  organizeByCategory: true,
   downloadLocation: "./downloads",
   tempDownloadLocation: "./temp",
-  maxConcurrentDownloads: 3,
+  maxConcurrentDownloads: 5,
   defaultCategory: "waifu",
   autoDownload: false,
 
   // File Management
   fileNamingPattern: "original",
-  customNamingTemplate: "{source}_{id}_{timestamp}",
+  customNamingTemplate: "{source}_{id}_{timestamp}.{ext}",
   preserveOriginalNames: true,
   addMetadataToFilename: false,
   createThumbnails: true,
@@ -73,7 +64,6 @@ const defaultSettings: Settings = {
   showImageDetails: true,
   showDownloadProgress: true,
   compactMode: false,
-  theme: "system",
 
   // Notifications & Sounds
   enableNotifications: true,
@@ -82,23 +72,23 @@ const defaultSettings: Settings = {
   notifyOnNewImages: false,
   notificationSound: "default",
   customSoundPath: "",
-  showSystemTrayIcon: true,
+  showSystemTrayIcon: false,
   minimizeToTray: false,
 
   // Performance & Caching
   enableImageCache: true,
-  maxCacheSize: 1024,
-  cacheExpiryDays: 30,
+  maxCacheSize: 500, // MB
+  cacheExpiryDays: 7,
   preloadImages: true,
   enableLazyLoading: true,
-  maxMemoryUsage: 2048,
+  maxMemoryUsage: 2048, // MB
   enableHardwareAcceleration: true,
 
   // Privacy & Security
   enableAnalytics: false,
   shareUsageData: false,
-  enableContentFiltering: false,
-  blockedTags: [],
+  enableContentFiltering: true,
+  blockedTags: ["gore", "violence", "explicit"],
   allowedDomains: [],
   enableProxySupport: false,
   proxyUrl: "",
@@ -109,7 +99,7 @@ const defaultSettings: Settings = {
   enableAutoBackup: false,
   backupFrequency: "weekly",
   backupLocation: "./backups",
-  maxBackupFiles: 5,
+  maxBackupFiles: 10,
   enableCloudSync: false,
   cloudSyncProvider: "none",
 
@@ -121,7 +111,7 @@ const defaultSettings: Settings = {
   checkForUpdatesOnStartup: true,
   enableDebugMode: false,
   logLevel: "info",
-  maxLogFileSize: 10,
+  maxLogFileSize: 10, // MB
 
   // Experimental Features
   enableExperimentalFeatures: false,
@@ -132,38 +122,31 @@ const defaultSettings: Settings = {
   duplicateThreshold: 0.95,
 }
 
+interface SettingsContextType {
+  settings: Settings
+  updateSettings: (updates: Partial<Settings>) => void
+  resetSettings: () => void
+  exportSettings: () => string
+  importSettings: (settingsJson: string) => boolean
+  isLoading: boolean
+}
+
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(defaultSettings)
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  // Load settings on mount
+  // Load settings from localStorage on mount
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        setIsLoading(true)
-        setError(null)
-
-        // Try to migrate from old version first
-        storage.migrateFromOldVersion()
-
-        // Load current settings
         const savedSettings = storage.getSettings()
-
-        if (savedSettings && Object.keys(savedSettings).length > 0) {
-          const mergedSettings = { ...defaultSettings, ...savedSettings }
-          setSettings(mergedSettings)
-        } else {
-          // First time setup - save defaults
-          storage.saveSettings(defaultSettings)
-          setSettings(defaultSettings)
-        }
-      } catch (err) {
-        console.error("Failed to load settings:", err)
-        setError(err instanceof Error ? err.message : "Failed to load settings")
-        setSettings(defaultSettings)
+        const mergedSettings = { ...DEFAULT_SETTINGS, ...savedSettings }
+        setSettings(mergedSettings)
+      } catch (error) {
+        console.error("Failed to load settings:", error)
+        setSettings(DEFAULT_SETTINGS)
       } finally {
         setIsLoading(false)
       }
@@ -172,68 +155,58 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     loadSettings()
   }, [])
 
-  const updateSettings = (newSettings: Partial<Settings>) => {
+  // Update settings
+  const updateSettings = (updates: Partial<Settings>) => {
+    const newSettings = { ...settings, ...updates }
+    setSettings(newSettings)
+
+    // Save to localStorage
     try {
-      const updatedSettings = { ...settings, ...newSettings }
-      setSettings(updatedSettings)
-
-      if (!storage.saveSettings(updatedSettings)) {
-        throw new Error("Failed to save settings to localStorage")
-      }
-
-      setError(null)
-    } catch (err) {
-      console.error("Failed to update settings:", err)
-      setError(err instanceof Error ? err.message : "Failed to update settings")
+      storage.saveSettings(newSettings)
+    } catch (error) {
+      console.error("Failed to save settings:", error)
     }
   }
 
+  // Reset to defaults
   const resetSettings = () => {
+    setSettings(DEFAULT_SETTINGS)
     try {
-      setSettings(defaultSettings)
-
-      if (!storage.saveSettings(defaultSettings)) {
-        throw new Error("Failed to reset settings in localStorage")
-      }
-
-      setError(null)
-    } catch (err) {
-      console.error("Failed to reset settings:", err)
-      setError(err instanceof Error ? err.message : "Failed to reset settings")
+      storage.saveSettings(DEFAULT_SETTINGS)
+    } catch (error) {
+      console.error("Failed to reset settings:", error)
     }
   }
 
+  // Export settings as JSON string
   const exportSettings = (): string => {
     try {
       return JSON.stringify(settings, null, 2)
-    } catch (err) {
-      console.error("Failed to export settings:", err)
+    } catch (error) {
+      console.error("Failed to export settings:", error)
       return "{}"
     }
   }
 
+  // Import settings from JSON string
   const importSettings = (settingsJson: string): boolean => {
     try {
       const importedSettings = JSON.parse(settingsJson)
 
+      // Validate imported settings
       if (typeof importedSettings !== "object" || importedSettings === null) {
-        throw new Error("Invalid settings format")
+        return false
       }
 
-      // Validate and merge with defaults
-      const validatedSettings = { ...defaultSettings, ...importedSettings }
+      // Merge with defaults to ensure all required fields exist
+      const validatedSettings = { ...DEFAULT_SETTINGS, ...importedSettings }
 
       setSettings(validatedSettings)
+      storage.saveSettings(validatedSettings)
 
-      if (!storage.saveSettings(validatedSettings)) {
-        throw new Error("Failed to save imported settings")
-      }
-
-      setError(null)
       return true
-    } catch (err) {
-      console.error("Failed to import settings:", err)
-      setError(err instanceof Error ? err.message : "Failed to import settings")
+    } catch (error) {
+      console.error("Failed to import settings:", error)
       return false
     }
   }
@@ -245,7 +218,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     exportSettings,
     importSettings,
     isLoading,
-    error,
   }
 
   return <SettingsContext.Provider value={contextValue}>{children}</SettingsContext.Provider>

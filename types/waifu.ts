@@ -17,6 +17,8 @@ export interface WaifuImage {
   isFavorite?: boolean
   isDownloaded?: boolean
   downloadPath?: string
+  fetchedFrom?: ApiSource
+  lastModified?: string
   metadata?: {
     dominantColor?: string
     aspectRatio?: number
@@ -102,7 +104,7 @@ export type ImageCategory =
   | "saika"
   | "venti"
 
-export type ApiSource = "waifu.im" | "waifu.pics" | "nekos.best" | "wallhaven" | "femboy-finder" | "all"
+export type ApiSource = "waifu.im" | "waifu.pics" | "nekos.best" | "wallhaven" | "femboyfinder" | "all"
 
 export type SortOption = "RANDOM" | "NEWEST" | "OLDEST" | "MOST_LIKED" | "HIGHEST_RATED"
 
@@ -132,7 +134,7 @@ export interface Settings {
   maxFileSize: number
   allowedFormats: string[]
   preferredFormat: string
-  compressionLevel: "low" | "medium" | "high"
+  compressionLevel: "none" | "low" | "medium" | "high"
 
   // Download Behavior
   imagesPerPage: number
@@ -165,7 +167,6 @@ export interface Settings {
   showImageDetails: boolean
   showDownloadProgress: boolean
   compactMode: boolean
-  theme: "light" | "dark" | "system"
 
   // Notifications & Sounds
   enableNotifications: boolean
@@ -199,11 +200,11 @@ export interface Settings {
 
   // Backup & Sync
   enableAutoBackup: boolean
-  backupFrequency: "daily" | "weekly" | "monthly"
+  backupFrequency: "never" | "daily" | "weekly" | "monthly"
   backupLocation: string
   maxBackupFiles: number
   enableCloudSync: boolean
-  cloudSyncProvider: "none" | "google-drive" | "dropbox" | "onedrive"
+  cloudSyncProvider: "none" | "google" | "dropbox" | "onedrive"
 
   // Advanced Features
   enableBatchDownload: boolean
@@ -236,7 +237,32 @@ export interface DownloadItem {
   timestamp: Date
   source: ApiSource
   category?: ImageCategory
+  tags?: string[]
+  addedAt: Date
   metadata?: WaifuImage
+}
+
+export interface ApiResponse<T> {
+  data: T
+  success: boolean
+  timestamp: string
+  source: ApiSource
+}
+
+export interface WaifuError {
+  code: string
+  message: string
+  source: ApiSource
+  timestamp: Date
+  context?: Record<string, any>
+}
+
+export interface PerformanceMetrics {
+  apiResponseTimes: Record<ApiSource | "all", number[]>
+  downloadSpeeds: number[]
+  cacheHitRate: number
+  errorRate: number
+  memoryUsage: number
 }
 
 export interface ApiStatusData {

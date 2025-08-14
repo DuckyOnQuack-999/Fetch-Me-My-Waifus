@@ -396,6 +396,10 @@ class LocalStorageManager {
     return this.saveDownloadHistory(history)
   }
 
+  addDownloadRecord(record: any): boolean {
+    return this.addToDownloadHistory(record)
+  }
+
   clearDownloadHistory(): boolean {
     return this.safeSetItem(STORAGE_KEYS.DOWNLOAD_HISTORY, "[]")
   }

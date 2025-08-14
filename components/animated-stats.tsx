@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 
 interface AnimatedStatsProps {
@@ -18,11 +18,12 @@ export function AnimatedStats({ value, duration = 2000, className = "" }: Animat
 
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime
-      const progress = Math.min((currentTime - startTime) / duration, 1)
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
 
       // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
-      const currentValue = Math.floor(easeOutQuart * value)
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3)
+      const currentValue = Math.floor(easeOutCubic * value)
 
       setDisplayValue(currentValue)
 
@@ -43,8 +44,8 @@ export function AnimatedStats({ value, duration = 2000, className = "" }: Animat
   return (
     <motion.span
       className={className}
-      initial={{ scale: 0.5, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
       {displayValue.toLocaleString()}

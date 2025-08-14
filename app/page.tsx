@@ -15,7 +15,8 @@ import { useDownload } from "@/context/downloadContext"
 import { toast } from "sonner"
 import type { ImageCategory, DownloadItem } from "@/types/waifu"
 import { ClientWrapper } from "@/components/client-wrapper"
-import { HomeDashboard } from "@/components/home-dashboard"
+import { SimpleDownloadTab } from "@/components/simple-download-tab"
+import { ApiStatusIndicator } from "@/components/api-status-indicator"
 
 function HomeContent() {
   const searchParams = useSearchParams()
@@ -46,6 +47,8 @@ function HomeContent() {
           category: downloadCategory,
           tags: [downloadCategory],
           addedAt: new Date(),
+          timestamp: new Date(),
+          source: settings?.apiSource || "waifu.im",
         }
         addToQueue(downloadItem)
 
@@ -72,64 +75,14 @@ function HomeContent() {
           </motion.div>
         </div>
 
+        <ApiStatusIndicator />
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5" />
-                Quick Download
-              </CardTitle>
-              <CardDescription>Select category and number of images to download</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
-                  <select
-                    value={downloadCategory}
-                    onChange={(e) => setDownloadCategory(e.target.value as ImageCategory)}
-                    className="w-full p-2 border rounded-md bg-background"
-                  >
-                    <option value="waifu">Waifu</option>
-                    <option value="neko">Neko</option>
-                    <option value="maid">Maid</option>
-                    <option value="uniform">Uniform</option>
-                    <option value="anime">Anime</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Count</label>
-                  <input
-                    type="number"
-                    value={downloadCount}
-                    onChange={(e) => setDownloadCount(Number(e.target.value))}
-                    min={1}
-                    max={100}
-                    className="w-full p-2 border rounded-md bg-background"
-                  />
-                </div>
-              </div>
-
-              <Button onClick={handleStartDownload} disabled={isDownloading} className="w-full" size="lg">
-                {isDownloading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Start Download
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <SimpleDownloadTab />
         </motion.div>
       </div>
     )
@@ -137,6 +90,9 @@ function HomeContent() {
 
   return (
     <div className="container mx-auto p-6 space-y-8">
+      {/* API Status Bar */}
+      <ApiStatusIndicator />
+
       {/* Hero Section */}
       <div className="text-center space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
@@ -334,7 +290,7 @@ function HomeContent() {
 export default function HomePage() {
   return (
     <ClientWrapper>
-      <HomeDashboard />
+      <HomeContent />
     </ClientWrapper>
   )
 }
