@@ -35,8 +35,10 @@ export default function RootLayout({
                   <div className="flex min-h-screen">
                     <AppSidebar />
                     <div className="flex-1 flex flex-col">
-                      <div className="sticky top-0 z-50 p-4">
-                        <ApiStatusIndicator />
+                      <div className="sticky top-0 z-50 p-4 backdrop-blur-md bg-background/80 border-b border-primary/10 shadow-lg shadow-primary/5">
+                        <div className="animate-in slide-in-from-top-2 duration-500">
+                          <ApiStatusIndicator />
+                        </div>
                       </div>
                       <main className="flex-1 p-4">{children}</main>
                     </div>

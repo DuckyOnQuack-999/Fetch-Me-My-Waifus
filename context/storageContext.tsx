@@ -1,31 +1,38 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import {
-  getImages,
-  saveImages,
-  getFavorites,
-  getCollections,
-  saveCollections,
-  addToFavorites,
-  removeFromFavorites,
-  addToDownloadHistory,
-  getDownloadHistory,
-} from "@/utils/localStorage"
+import { storage } from "@/utils/localStorage"
 
 interface StorageContextType {
   images: any[]
   favorites: any[]
   collections: any[]
   downloadHistory: any[]
-  addImage: (image: any) => Promise<void>
-  removeImage: (imageId: string) => Promise<void>
-  toggleFavorite: (image: any) => Promise<void>
-  isFavorite: (imageId: string) => boolean
-  addCollection: (collection: any) => Promise<void>
-  removeCollection: (collectionId: string) => Promise<void>
-  addToHistory: (item: any) => Promise<void>
   isLoading: boolean
+
+  // Image operations
+  addImage: (image: any) => void
+  removeImage: (imageId: string) => void
+
+  // Favorite operations
+  addFavorite: (image: any) => void
+  removeFavorite: (imageId: string) => void
+  isFavorite: (imageId: string) => boolean
+
+  // Collection operations
+  addCollection: (collection: any) => void
+  removeCollection: (collectionId: string) => void
+  addImageToCollection: (collectionId: string, image: any) => void
+  removeImageFromCollection: (collectionId: string, imageId: string) => void
+
+  // Download history operations
+  addDownloadRecord: (record: any) => void
+  clearDownloadHistory: () => void
+
+  // Utility operations
+  refreshData: () => void
+  exportData: () => any
+  importData: (data: any) => boolean
 }
 
 const StorageContext = createContext<StorageContextType | undefined>(undefined)
@@ -37,100 +44,101 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const [downloadHistory, setDownloadHistory] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [loadedImages, loadedFavorites, loadedCollections, loadedHistory] = await Promise.all([
-          getImages(),
-          getFavorites(),
-          getCollections(),
-          getDownloadHistory(),
-        ])
-
-        setImages(loadedImages || [])
-        setFavorites(loadedFavorites || [])
-        setCollections(loadedCollections || [])
-        setDownloadHistory(loadedHistory || [])
-      } catch (error) {
-        console.error("Failed to load storage data:", error)
-      } finally {
-        setIsLoading(false)
-      }
+  const refreshData = () => {
+    try {
+      setImages(storage.getImages())
+      setFavorites(storage.getFavorites())
+      setCollections(storage.getCollections())
+      setDownloadHistory(storage.getDownloadHistory())
+    } catch (error) {
+      console.error("Failed to refresh data:", error)
     }
+  }
 
-    loadData()
+  useEffect(() => {
+    refreshData()
+    setIsLoading(false)
   }, [])
 
-  const addImage = async (image: any) => {
-    try {
-      const newImages = [image, ...images]
-      setImages(newImages)
-      await saveImages(newImages)
-    } catch (error) {
-      console.error("Failed to add image:", error)
+  // Image operations
+  const addImage = (image: any) => {
+    if (storage.addImage(image)) {
+      setImages(storage.getImages())
     }
   }
 
-  const removeImage = async (imageId: string) => {
-    try {
-      const newImages = images.filter((img) => img.id !== imageId)
-      setImages(newImages)
-      await saveImages(newImages)
-    } catch (error) {
-      console.error("Failed to remove image:", error)
+  const removeImage = (imageId: string) => {
+    if (storage.removeImage(imageId)) {
+      setImages(storage.getImages())
     }
   }
 
-  const toggleFavorite = async (image: any) => {
-    try {
-      const isFav = favorites.some((fav) => fav.id === image.id)
-      if (isFav) {
-        await removeFromFavorites(image.id)
-        setFavorites((prev) => prev.filter((fav) => fav.id !== image.id))
-      } else {
-        await addToFavorites(image)
-        setFavorites((prev) => [...prev, { ...image, addedAt: new Date().toISOString() }])
-      }
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error)
+  // Favorite operations
+  const addFavorite = (image: any) => {
+    if (storage.addFavorite(image)) {
+      setFavorites(storage.getFavorites())
+    }
+  }
+
+  const removeFavorite = (imageId: string) => {
+    if (storage.removeFavorite(imageId)) {
+      setFavorites(storage.getFavorites())
     }
   }
 
   const isFavorite = (imageId: string) => {
-    return favorites.some((fav) => fav.id === imageId)
+    return storage.isFavorite(imageId)
   }
 
-  const addCollection = async (collection: any) => {
-    try {
-      const newCollections = [collection, ...collections]
-      setCollections(newCollections)
-      await saveCollections(newCollections)
-    } catch (error) {
-      console.error("Failed to add collection:", error)
+  // Collection operations
+  const addCollection = (collection: any) => {
+    if (storage.addCollection(collection)) {
+      setCollections(storage.getCollections())
     }
   }
 
-  const removeCollection = async (collectionId: string) => {
-    try {
-      const newCollections = collections.filter((col) => col.id !== collectionId)
-      setCollections(newCollections)
-      await saveCollections(newCollections)
-    } catch (error) {
-      console.error("Failed to remove collection:", error)
+  const removeCollection = (collectionId: string) => {
+    if (storage.removeCollection(collectionId)) {
+      setCollections(storage.getCollections())
     }
   }
 
-  const addToHistory = async (item: any) => {
-    try {
-      await addToDownloadHistory(item)
-      const newHistory = [{ ...item, timestamp: new Date().toISOString() }, ...downloadHistory]
-      if (newHistory.length > 100) {
-        newHistory.splice(100)
-      }
-      setDownloadHistory(newHistory)
-    } catch (error) {
-      console.error("Failed to add to history:", error)
+  const addImageToCollection = (collectionId: string, image: any) => {
+    if (storage.addImageToCollection(collectionId, image)) {
+      setCollections(storage.getCollections())
     }
+  }
+
+  const removeImageFromCollection = (collectionId: string, imageId: string) => {
+    if (storage.removeImageFromCollection(collectionId, imageId)) {
+      setCollections(storage.getCollections())
+    }
+  }
+
+  // Download history operations
+  const addDownloadRecord = (record: any) => {
+    if (storage.addDownloadRecord(record)) {
+      setDownloadHistory(storage.getDownloadHistory())
+    }
+  }
+
+  const clearDownloadHistory = () => {
+    if (storage.clearDownloadHistory()) {
+      setDownloadHistory([])
+    }
+  }
+
+  // Utility operations
+  const exportData = () => {
+    return storage.exportData()
+  }
+
+  const importData = (data: any) => {
+    const success = storage.importData(data)
+    if (success) {
+      refreshData()
+    }
+    return success
   }
 
   return (
@@ -140,14 +148,21 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         favorites,
         collections,
         downloadHistory,
+        isLoading,
         addImage,
         removeImage,
-        toggleFavorite,
+        addFavorite,
+        removeFavorite,
         isFavorite,
         addCollection,
         removeCollection,
-        addToHistory,
-        isLoading,
+        addImageToCollection,
+        removeImageFromCollection,
+        addDownloadRecord,
+        clearDownloadHistory,
+        refreshData,
+        exportData,
+        importData,
       }}
     >
       {children}

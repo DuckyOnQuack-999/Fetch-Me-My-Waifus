@@ -1,40 +1,30 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getSettings, saveSettings } from "@/utils/localStorage"
 
-export interface Settings {
-  apiSource: "waifu.im" | "waifu.pics" | "nekos.best" | "wallhaven" | "femboy-finder"
+interface Settings {
+  waifuImApiKey: string
+  waifuPicsApiKey: string
+  nekosBestApiKey: string
+  wallhavenApiKey: string
+  femboyFinderApiKey: string
   downloadPath: string
   maxConcurrentDownloads: number
-  autoDownload: boolean
-  imageQuality: "low" | "medium" | "high"
   enableNotifications: boolean
+  autoRetry: boolean
+  retryAttempts: number
+  defaultImageFormat: string
+  compressionQuality: number
+  enableMetadata: boolean
   darkMode: boolean
-  apiKeys: {
-    wallhaven: string
-    waifuIm: string
-    waifuPics: string
-    nekosBest: string
-    femboyFinder: string
-  }
-}
-
-const defaultSettings: Settings = {
-  apiSource: "waifu.im",
-  downloadPath: "./downloads",
-  maxConcurrentDownloads: 3,
-  autoDownload: false,
-  imageQuality: "high",
-  enableNotifications: true,
-  darkMode: false,
-  apiKeys: {
-    wallhaven: "RhVlota4CWLtHGJ0yX5vQMHqmJ3SZQFk",
-    waifuIm: "",
-    waifuPics: "",
-    nekosBest: "",
-    femboyFinder: "",
-  },
+  language: string
+  apiSource: string
+  enableNSFW: boolean
+  enableSFW: boolean
+  defaultCategory: string
+  imageSize: string
+  sortBy: string
+  sortOrder: string
 }
 
 interface SettingsContextType {
@@ -44,6 +34,31 @@ interface SettingsContextType {
   isLoading: boolean
 }
 
+const defaultSettings: Settings = {
+  waifuImApiKey: "",
+  waifuPicsApiKey: "",
+  nekosBestApiKey: "",
+  wallhavenApiKey: process.env.WALLHAVEN_API_KEY || "RhVlota4CWLtHGJ0yX5vQMHqmJ3SZQFk",
+  femboyFinderApiKey: "",
+  downloadPath: "./downloads",
+  maxConcurrentDownloads: 3,
+  enableNotifications: true,
+  autoRetry: true,
+  retryAttempts: 3,
+  defaultImageFormat: "jpg",
+  compressionQuality: 90,
+  enableMetadata: true,
+  darkMode: false,
+  language: "en",
+  apiSource: "waifu-im",
+  enableNSFW: false,
+  enableSFW: true,
+  defaultCategory: "waifu",
+  imageSize: "large",
+  sortBy: "random",
+  sortOrder: "desc",
+}
+
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -51,14 +66,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadSettings = () => {
       try {
-        const savedSettings = await getSettings()
+        const savedSettings = localStorage.getItem("waifu-downloader-settings")
         if (savedSettings) {
-          setSettings({ ...defaultSettings, ...savedSettings })
+          const parsed = JSON.parse(savedSettings)
+          setSettings({ ...defaultSettings, ...parsed })
         }
       } catch (error) {
         console.error("Failed to load settings:", error)
+        setSettings(defaultSettings)
       } finally {
         setIsLoading(false)
       }
@@ -67,20 +84,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     loadSettings()
   }, [])
 
-  const updateSettings = async (newSettings: Partial<Settings>) => {
+  const updateSettings = (newSettings: Partial<Settings>) => {
     try {
       const updatedSettings = { ...settings, ...newSettings }
       setSettings(updatedSettings)
-      await saveSettings(updatedSettings)
+      localStorage.setItem("waifu-downloader-settings", JSON.stringify(updatedSettings))
     } catch (error) {
       console.error("Failed to save settings:", error)
     }
   }
 
-  const resetSettings = async () => {
+  const resetSettings = () => {
     try {
       setSettings(defaultSettings)
-      await saveSettings(defaultSettings)
+      localStorage.setItem("waifu-downloader-settings", JSON.stringify(defaultSettings))
     } catch (error) {
       console.error("Failed to reset settings:", error)
     }

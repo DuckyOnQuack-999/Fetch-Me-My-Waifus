@@ -1,183 +1,246 @@
-import type { Settings } from "@/context/settingsContext"
-
-// Storage keys
-const STORAGE_KEYS = {
-  SETTINGS: "waifu-downloader-settings",
-  IMAGES: "waifu-downloader-images",
-  FAVORITES: "waifu-downloader-favorites",
-  COLLECTIONS: "waifu-downloader-collections",
-  DOWNLOAD_HISTORY: "waifu-downloader-download-history",
-} as const
-
-// Safe JSON parsing with fallback
-function safeJsonParse<T>(json: string | null, fallback: T): T {
-  if (!json) return fallback
-  try {
-    return JSON.parse(json) || fallback
-  } catch {
-    return fallback
-  }
+interface StorageData {
+  images: any[]
+  favorites: any[]
+  collections: any[]
+  downloadHistory: any[]
+  settings: any
 }
 
-// Safe JSON stringify
-function safeJsonStringify(data: any): string {
-  try {
-    return JSON.stringify(data)
-  } catch {
-    return "{}"
+class LocalStorageManager {
+  private getStorageKey(key: string): string {
+    return `waifu-downloader-${key}`
   }
-}
 
-// Settings operations
-export async function getSettings(): Promise<Settings | null> {
-  try {
-    if (typeof window === "undefined") return null
-    const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS)
-    return safeJsonParse(settings, null)
-  } catch (error) {
-    console.error("Error getting settings:", error)
-    return null
+  private safeGet<T>(key: string, defaultValue: T): T {
+    try {
+      if (typeof window === "undefined") return defaultValue
+      const item = localStorage.getItem(this.getStorageKey(key))
+      return item ? JSON.parse(item) : defaultValue
+    } catch (error) {
+      console.error(`Error reading from localStorage (${key}):`, error)
+      return defaultValue
+    }
   }
-}
 
-export async function saveSettings(settings: Settings): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, safeJsonStringify(settings))
-  } catch (error) {
-    console.error("Error saving settings:", error)
+  private safeSet(key: string, value: any): boolean {
+    try {
+      if (typeof window === "undefined") return false
+      localStorage.setItem(this.getStorageKey(key), JSON.stringify(value))
+      return true
+    } catch (error) {
+      console.error(`Error writing to localStorage (${key}):`, error)
+      return false
+    }
   }
-}
 
-// Images operations
-export async function getImages(): Promise<any[]> {
-  try {
-    if (typeof window === "undefined") return []
-    const images = localStorage.getItem(STORAGE_KEYS.IMAGES)
-    return safeJsonParse(images, [])
-  } catch (error) {
-    console.error("Error getting images:", error)
-    return []
+  // Images
+  getImages(): any[] {
+    return this.safeGet("images", [])
   }
-}
 
-export async function saveImages(images: any[]): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.IMAGES, safeJsonStringify(images))
-  } catch (error) {
-    console.error("Error saving images:", error)
+  saveImages(images: any[]): boolean {
+    return this.safeSet("images", images)
   }
-}
 
-// Favorites operations
-export async function getFavorites(): Promise<any[]> {
-  try {
-    if (typeof window === "undefined") return []
-    const favorites = localStorage.getItem(STORAGE_KEYS.FAVORITES)
-    return safeJsonParse(favorites, [])
-  } catch (error) {
-    console.error("Error getting favorites:", error)
-    return []
+  addImage(image: any): boolean {
+    const images = this.getImages()
+    const updatedImages = [...images, { ...image, id: Date.now().toString() }]
+    return this.saveImages(updatedImages)
   }
-}
 
-export async function saveFavorites(favorites: any[]): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, safeJsonStringify(favorites))
-  } catch (error) {
-    console.error("Error saving favorites:", error)
+  removeImage(imageId: string): boolean {
+    const images = this.getImages()
+    const updatedImages = images.filter((img) => img.id !== imageId)
+    return this.saveImages(updatedImages)
   }
-}
 
-export async function addToFavorites(image: any): Promise<void> {
-  try {
-    const favorites = await getFavorites()
+  // Favorites
+  getFavorites(): any[] {
+    return this.safeGet("favorites", [])
+  }
+
+  saveFavorites(favorites: any[]): boolean {
+    return this.safeSet("favorites", favorites)
+  }
+
+  addFavorite(image: any): boolean {
+    const favorites = this.getFavorites()
     const exists = favorites.some((fav) => fav.id === image.id)
     if (!exists) {
-      favorites.push({ ...image, addedAt: new Date().toISOString() })
-      await saveFavorites(favorites)
+      const updatedFavorites = [...favorites, { ...image, favoriteDate: new Date().toISOString() }]
+      return this.saveFavorites(updatedFavorites)
     }
-  } catch (error) {
-    console.error("Error adding to favorites:", error)
+    return true
   }
-}
 
-export async function removeFromFavorites(imageId: string): Promise<void> {
-  try {
-    const favorites = await getFavorites()
-    const filtered = favorites.filter((fav) => fav.id !== imageId)
-    await saveFavorites(filtered)
-  } catch (error) {
-    console.error("Error removing from favorites:", error)
+  removeFavorite(imageId: string): boolean {
+    const favorites = this.getFavorites()
+    const updatedFavorites = favorites.filter((fav) => fav.id !== imageId)
+    return this.saveFavorites(updatedFavorites)
   }
-}
 
-// Collections operations
-export async function getCollections(): Promise<any[]> {
-  try {
-    if (typeof window === "undefined") return []
-    const collections = localStorage.getItem(STORAGE_KEYS.COLLECTIONS)
-    return safeJsonParse(collections, [])
-  } catch (error) {
-    console.error("Error getting collections:", error)
-    return []
+  isFavorite(imageId: string): boolean {
+    const favorites = this.getFavorites()
+    return favorites.some((fav) => fav.id === imageId)
   }
-}
 
-export async function saveCollections(collections: any[]): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.COLLECTIONS, safeJsonStringify(collections))
-  } catch (error) {
-    console.error("Error saving collections:", error)
+  // Collections
+  getCollections(): any[] {
+    return this.safeGet("collections", [])
   }
-}
 
-// Download history operations
-export async function getDownloadHistory(): Promise<any[]> {
-  try {
-    if (typeof window === "undefined") return []
-    const history = localStorage.getItem(STORAGE_KEYS.DOWNLOAD_HISTORY)
-    return safeJsonParse(history, [])
-  } catch (error) {
-    console.error("Error getting download history:", error)
-    return []
+  saveCollections(collections: any[]): boolean {
+    return this.safeSet("collections", collections)
   }
-}
 
-export async function saveDownloadHistory(history: any[]): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.DOWNLOAD_HISTORY, safeJsonStringify(history))
-  } catch (error) {
-    console.error("Error saving download history:", error)
-  }
-}
-
-export async function addToDownloadHistory(item: any): Promise<void> {
-  try {
-    const history = await getDownloadHistory()
-    history.unshift({ ...item, timestamp: new Date().toISOString() })
-    // Keep only last 100 items
-    if (history.length > 100) {
-      history.splice(100)
+  addCollection(collection: any): boolean {
+    const collections = this.getCollections()
+    const newCollection = {
+      ...collection,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      images: [],
     }
-    await saveDownloadHistory(history)
-  } catch (error) {
-    console.error("Error adding to download history:", error)
+    const updatedCollections = [...collections, newCollection]
+    return this.saveCollections(updatedCollections)
   }
-}
 
-// Clear all data
-export async function clearAllData(): Promise<void> {
-  try {
-    if (typeof window === "undefined") return
-    Object.values(STORAGE_KEYS).forEach((key) => {
-      localStorage.removeItem(key)
+  removeCollection(collectionId: string): boolean {
+    const collections = this.getCollections()
+    const updatedCollections = collections.filter((col) => col.id !== collectionId)
+    return this.saveCollections(updatedCollections)
+  }
+
+  addImageToCollection(collectionId: string, image: any): boolean {
+    const collections = this.getCollections()
+    const updatedCollections = collections.map((col) => {
+      if (col.id === collectionId) {
+        const imageExists = col.images.some((img: any) => img.id === image.id)
+        if (!imageExists) {
+          return { ...col, images: [...col.images, image] }
+        }
+      }
+      return col
     })
-  } catch (error) {
-    console.error("Error clearing all data:", error)
+    return this.saveCollections(updatedCollections)
+  }
+
+  removeImageFromCollection(collectionId: string, imageId: string): boolean {
+    const collections = this.getCollections()
+    const updatedCollections = collections.map((col) => {
+      if (col.id === collectionId) {
+        return { ...col, images: col.images.filter((img: any) => img.id !== imageId) }
+      }
+      return col
+    })
+    return this.saveCollections(updatedCollections)
+  }
+
+  // Download History
+  getDownloadHistory(): any[] {
+    return this.safeGet("downloadHistory", [])
+  }
+
+  saveDownloadHistory(history: any[]): boolean {
+    return this.safeSet("downloadHistory", history)
+  }
+
+  addDownloadRecord(record: any): boolean {
+    const history = this.getDownloadHistory()
+    const newRecord = {
+      ...record,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+    }
+    const updatedHistory = [newRecord, ...history].slice(0, 1000) // Keep last 1000 records
+    return this.saveDownloadHistory(updatedHistory)
+  }
+
+  clearDownloadHistory(): boolean {
+    return this.saveDownloadHistory([])
+  }
+
+  // Settings
+  getSettings(): any {
+    return this.safeGet("settings", {})
+  }
+
+  saveSettings(settings: any): boolean {
+    return this.safeSet("settings", settings)
+  }
+
+  updateSettings(updates: any): boolean {
+    const currentSettings = this.getSettings()
+    const updatedSettings = { ...currentSettings, ...updates }
+    return this.saveSettings(updatedSettings)
+  }
+
+  // Utility methods
+  clearAll(): boolean {
+    try {
+      if (typeof window === "undefined") return false
+      const keys = ["images", "favorites", "collections", "downloadHistory", "settings"]
+      keys.forEach((key) => {
+        localStorage.removeItem(this.getStorageKey(key))
+      })
+      return true
+    } catch (error) {
+      console.error("Error clearing localStorage:", error)
+      return false
+    }
+  }
+
+  exportData(): StorageData | null {
+    try {
+      return {
+        images: this.getImages(),
+        favorites: this.getFavorites(),
+        collections: this.getCollections(),
+        downloadHistory: this.getDownloadHistory(),
+        settings: this.getSettings(),
+      }
+    } catch (error) {
+      console.error("Error exporting data:", error)
+      return null
+    }
+  }
+
+  importData(data: StorageData): boolean {
+    try {
+      let success = true
+      success = success && this.saveImages(data.images || [])
+      success = success && this.saveFavorites(data.favorites || [])
+      success = success && this.saveCollections(data.collections || [])
+      success = success && this.saveDownloadHistory(data.downloadHistory || [])
+      success = success && this.saveSettings(data.settings || {})
+      return success
+    } catch (error) {
+      console.error("Error importing data:", error)
+      return false
+    }
+  }
+
+  getStorageSize(): { used: number; available: number } {
+    try {
+      if (typeof window === "undefined") return { used: 0, available: 0 }
+
+      let used = 0
+      for (const key in localStorage) {
+        if (localStorage.hasOwnProperty(key) && key.startsWith("waifu-downloader-")) {
+          used += localStorage[key].length
+        }
+      }
+
+      // Estimate available space (5MB typical limit)
+      const available = 5 * 1024 * 1024 - used
+
+      return { used, available }
+    } catch (error) {
+      console.error("Error calculating storage size:", error)
+      return { used: 0, available: 0 }
+    }
   }
 }
+
+export const storage = new LocalStorageManager()
+export default storage
