@@ -9,6 +9,7 @@ import { DownloadProvider } from "@/context/downloadContext"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/sonner"
+import { ApiStatusIndicator } from "@/components/api-status-indicator"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,7 +34,12 @@ export default function RootLayout({
                 <SidebarProvider>
                   <div className="flex min-h-screen">
                     <AppSidebar />
-                    <main className="flex-1">{children}</main>
+                    <div className="flex-1 flex flex-col">
+                      <div className="sticky top-0 z-50 p-4">
+                        <ApiStatusIndicator />
+                      </div>
+                      <main className="flex-1 p-4">{children}</main>
+                    </div>
                   </div>
                   <Toaster />
                 </SidebarProvider>

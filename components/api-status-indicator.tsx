@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Settings, Home, Key } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSettings } from "@/context/settingsContext"
+import type { settings } from "@/context/settingsContext" // Declare the settings variable
 
 type ApiStatus = "online" | "offline" | "degraded" | "checking"
 
@@ -38,6 +39,18 @@ export function ApiStatusIndicator() {
       keyName: "waifuPicsApiKey",
     },
     { name: "Nekos.best", status: "checking", endpoint: "https://nekos.best/api/v2/neko", keyName: "nekosBestApiKey" },
+    {
+      name: "Wallhaven",
+      status: "checking",
+      endpoint: "https://wallhaven.cc/api/v1/search",
+      keyName: "wallhavenApiKey",
+    },
+    {
+      name: "Femboy Finder",
+      status: "checking",
+      endpoint: "https://femboyfinder.firestreaker2.gq/api",
+      keyName: "femboyFinderApiKey",
+    },
   ])
   const [selectedApi, setSelectedApi] = useState<ApiSource | null>(null)
   const [apiKey, setApiKey] = useState("")
@@ -48,12 +61,19 @@ export function ApiStatusIndicator() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
 
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+      }
+
+      // Add API key for Wallhaven if available
+      if (source.name === "Wallhaven" && settings.wallhavenApiKey) {
+        headers["X-API-Key"] = settings.wallhavenApiKey
+      }
+
       const response = await fetch(source.endpoint, {
         method: "GET",
         signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-        },
+        headers,
       })
 
       clearTimeout(timeoutId)
