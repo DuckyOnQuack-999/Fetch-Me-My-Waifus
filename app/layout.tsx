@@ -14,8 +14,13 @@ import { ApiStatusIndicator } from "@/components/api-status-indicator"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Waifu Downloader",
-  description: "Download and manage your favorite anime images",
+  title: "Waifu Downloader - Premium Anime Image Collection",
+  description:
+    "Download and manage your favorite anime images from multiple premium sources with advanced filtering and organization tools",
+  keywords: ["anime", "waifu", "images", "downloader", "collection", "gallery"],
+  authors: [{ name: "DuckyCoder v6" }],
+  viewport: "width=device-width, initial-scale=1",
+  themeColor: "#ec4899",
     generator: 'v0.app'
 }
 
@@ -32,7 +37,7 @@ export default function RootLayout({
             <StorageProvider>
               <DownloadProvider>
                 <SidebarProvider>
-                  <div className="flex min-h-screen">
+                  <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
                     <AppSidebar />
                     <div className="flex-1 flex flex-col">
                       <div className="sticky top-0 z-50 p-4 backdrop-blur-md bg-background/80 border-b border-primary/10 shadow-lg shadow-primary/5">
@@ -40,10 +45,21 @@ export default function RootLayout({
                           <ApiStatusIndicator />
                         </div>
                       </div>
-                      <main className="flex-1 p-4">{children}</main>
+                      <main className="flex-1 p-4 overflow-auto">
+                        <div className="animate-in fade-in-0 duration-700">{children}</div>
+                      </main>
                     </div>
                   </div>
-                  <Toaster />
+                  <Toaster
+                    position="bottom-right"
+                    toastOptions={{
+                      style: {
+                        background: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--primary) / 0.2)",
+                        color: "hsl(var(--foreground))",
+                      },
+                    }}
+                  />
                 </SidebarProvider>
               </DownloadProvider>
             </StorageProvider>
