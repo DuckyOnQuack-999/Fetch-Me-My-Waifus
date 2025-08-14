@@ -1,17 +1,18 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import type { DownloadStatus, DownloadProgress, Settings, ImageCategory } from "../types/waifu"
+import type { DownloadStatus, DownloadProgress, ImageCategory } from "../types/waifu"
 import { formatBytes, formatTime } from "../utils/waifuUtils"
 import { Play, Pause, CircleStopIcon as Stop, SettingsIcon } from "lucide-react"
 import Link from "next/link"
+import { useSettings } from "@/context/settingsContext"
 
 const API_CATEGORIES = {
   "waifu.im": ["waifu", "maid", "marin-kitagawa", "mori-calliope", "raiden-shogun", "oppai", "selfies", "uniform"],
@@ -109,7 +110,6 @@ type SimpleDownloadTabProps = {
   onStopDownload: () => void
   downloadStatus: DownloadStatus
   downloadProgress: DownloadProgress
-  settings: Settings
 }
 
 export const SimpleDownloadTab: React.FC<SimpleDownloadTabProps> = ({
@@ -118,13 +118,31 @@ export const SimpleDownloadTab: React.FC<SimpleDownloadTabProps> = ({
   onStopDownload,
   downloadStatus,
   downloadProgress,
-  settings,
 }) => {
+  const { settings } = useSettings()
   const [category, setCategory] = useState<ImageCategory>("waifu")
   const [downloadLimit, setDownloadLimit] = useState(10)
+  const [apiSource, setApiSource] = useState("all")
+  const [categories, setCategories] = useState<string[]>(API_CATEGORIES.all)
+
+  // Set default categories based on settings.apiSource or fallback to "all"
+  useEffect(() => {
+    if (settings && settings.apiSource) {
+      setApiSource(settings.apiSource)
+      setCategories(API_CATEGORIES[settings.apiSource] || API_CATEGORIES.all)
+    } else {
+      setApiSource("all")
+      setCategories(API_CATEGORIES.all)
+    }
+  }, [settings])
 
   const handleStartDownload = () => {
-    onStartDownload(category, downloadLimit, settings.allowNsfw, "/downloads")
+    onStartDownload(
+      category as ImageCategory,
+      downloadLimit,
+      settings?.enableNsfw || false,
+      settings?.downloadLocation || "/downloads",
+    )
   }
 
   return (
@@ -156,7 +174,7 @@ export const SimpleDownloadTab: React.FC<SimpleDownloadTabProps> = ({
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {API_CATEGORIES[settings.apiSource].map((cat) => (
+                  {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
@@ -250,10 +268,10 @@ export const SimpleDownloadTab: React.FC<SimpleDownloadTabProps> = ({
 
             <div className="pt-4 border-t">
               <p className="text-sm text-muted-foreground">
-                Current API Source: <span className="font-medium">{settings.apiSource}</span>
+                Current API Source: <span className="font-medium">{apiSource}</span>
               </p>
               <p className="text-sm text-muted-foreground">
-                NSFW Content: <span className="font-medium">{settings.allowNsfw ? "Allowed" : "Blocked"}</span>
+                NSFW Content: <span className="font-medium">{settings?.enableNsfw ? "Allowed" : "Blocked"}</span>
               </p>
             </div>
           </CardContent>

@@ -1,272 +1,175 @@
-interface StorageData {
-  images: any[]
-  favorites: string[]
-  collections: any[]
-  downloadHistory: any[]
-  settings: any
+// Helper function to safely parse JSON with a fallback
+const safeParseJSON = <T>(json: string | null, fallback: T): T => {\
+  if (!json) return fallback
+  try {\
+    return JSON.parse(json) as T
+  } catch (e) {
+    console.error("Error parsing JSON:", e)\
+    return fallback
+  }
 }
 
-class LocalStorage {
-  private isClient = typeof window !== "undefined"
-
-  private getStorageKey(key: string): string {
-    return `waifu-downloader-${key}`
+// Helper function to safely stringify and save JSON
+const safeStringifyAndSave = (key: string, data: any): void => {\
+  try {
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch (e) {
+    console.error(`Error saving ${key} to localStorage:`, e)
   }
+}
 
-  private safeGetItem(key: string): string | null {
-    if (!this.isClient) return null
-    try {
-      return localStorage.getItem(this.getStorageKey(key))
-    } catch (error) {
-      console.error(`Error getting item ${key}:`, error)
-      return null
+// Storage keys
+const KEYS = {\
+  FAVORITES: "waifu-favorites",
+  COLLECTIONS: "waifu-collections",
+  SETTINGS: "waifu-settings",
+  DOWNLOAD_HISTORY: "waifu-download-history",
+  CACHE: "waifu-cache",
+}
+
+// Storage utility
+export const storage = {
+  // Favorites\
+  getFavorites: (): WaifuImage[] => {\
+    return safeParseJSON<WaifuImage[]>(localStorage.getItem(KEYS.FAVORITES), [])
+  },
+  
+  saveFavorites: (favorites: WaifuImage[]): void => {
+    safeStringifyAndSave(KEYS.FAVORITES, favorites)
+  },
+  
+  addFavorite: (image: WaifuImage): void => {\
+    const favorites = storage.getFavorites()
+    // Check if image already exists in favorites
+    if (!favorites.some(fav => fav.image_id === image.image_id)) {
+      favorites.push({ ...image, isFavorite: true })\
+      storage.saveFavorites(favorites)
     }
-  }
-
-  private safeSetItem(key: string, value: string): boolean {
-    if (!this.isClient) return false
-    try {
-      localStorage.setItem(this.getStorageKey(key), value)
-      return true
-    } catch (error) {
-      console.error(`Error setting item ${key}:`, error)
-      return false
-    }
-  }
-
-  private safeRemoveItem(key: string): boolean {
-    if (!this.isClient) return false
-    try {
-      localStorage.removeItem(this.getStorageKey(key))
-      return true
-    } catch (error) {
-      console.error(`Error removing item ${key}:`, error)
-      return false
-    }
-  }
-
-  // Images
-  getImages(): any[] {
-    const data = this.safeGetItem("images")
-    if (!data) return []
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing images:", error)
-      return []
-    }
-  }
-
-  saveImages(images: any[]): boolean {
-    return this.safeSetItem("images", JSON.stringify(images || []))
-  }
-
-  addImage(image: any): boolean {
-    const images = this.getImages()
-    const exists = images.some((img) => img.id === image.id)
-    if (!exists) {
-      images.push(image)
-      return this.saveImages(images)
-    }
-    return true
-  }
-
-  removeImage(imageId: string): boolean {
-    const images = this.getImages()
-    const filtered = images.filter((img) => img.id !== imageId)
-    return this.saveImages(filtered)
-  }
-
-  // Favorites
-  getFavorites(): string[] {
-    const data = this.safeGetItem("favorites")
-    if (!data) return []
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing favorites:", error)
-      return []
-    }
-  }
-
-  saveFavorites(favorites: string[]): boolean {
-    return this.safeSetItem("favorites", JSON.stringify(favorites || []))
-  }
-
-  addFavorite(imageId: string): boolean {
-    const favorites = this.getFavorites()
-    if (!favorites.includes(imageId)) {
-      favorites.push(imageId)
-      return this.saveFavorites(favorites)
-    }
-    return true
-  }
-
-  removeFavorite(imageId: string): boolean {
-    const favorites = this.getFavorites()
-    const filtered = favorites.filter((id) => id !== imageId)
-    return this.saveFavorites(filtered)
-  }
-
-  isFavorite(imageId: string): boolean {
-    const favorites = this.getFavorites()
-    return favorites.includes(imageId)
-  }
-
+  },
+  
+  removeFavorite: (imageId: number): void => {\
+    const favorites = storage.getFavorites()
+    const updatedFavorites = favorites.filter(img => img.image_id !== imageId)
+    storage.saveFavorites(updatedFavorites)
+  },
+  
   // Collections
-  getCollections(): any[] {
-    const data = this.safeGetItem("collections")
-    if (!data) return []
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing collections:", error)
-      return []
+  getCollections: (): Collections => {\
+    return safeParseJSON<Collections>(localStorage.getItem(KEYS.COLLECTIONS), {})
+  },
+  
+  saveCollections: (collections: Collections): void => {
+    safeStringifyAndSave(KEYS.COLLECTIONS, collections)
+  },
+  
+  addCollection: (name: string): string => {\
+    const collections = storage.getCollections()
+    const id = `collection-${Date.now()}`
+    collections[id] = {
+      id,
+      name,\
+      imageIds: []
     }
-  }
-
-  saveCollections(collections: any[]): boolean {
-    return this.safeSetItem("collections", JSON.stringify(collections || []))
-  }
-
-  addCollection(collection: any): boolean {
-    const collections = this.getCollections()
-    const exists = collections.some((col) => col.id === collection.id)
-    if (!exists) {
-      collections.push(collection)
-      return this.saveCollections(collections)
+    storage.saveCollections(collections)
+    return id
+  },
+  
+  removeCollection: (id: string): void => {\
+    const collections = storage.getCollections()
+    if (collections[id]) {
+      delete collections[id]\
+      storage.saveCollections(collections)
     }
-    return true
-  }
-
-  removeCollection(collectionId: string): boolean {
-    const collections = this.getCollections()
-    const filtered = collections.filter((col) => col.id !== collectionId)
-    return this.saveCollections(filtered)
-  }
-
-  updateCollection(collectionId: string, updates: any): boolean {
-    const collections = this.getCollections()
-    const index = collections.findIndex((col) => col.id === collectionId)
-    if (index !== -1) {
-      collections[index] = { ...collections[index], ...updates }
-      return this.saveCollections(collections)
+  },
+  
+  addImageToCollection: (collectionId: string, imageId: string): void => {\
+    const collections = storage.getCollections()
+    if (collections[collectionId]) {\
+      if (!collections[collectionId].imageIds.includes(imageId)) {
+        collections[collectionId].imageIds.push(imageId)\
+        storage.saveCollections(collections)
+      }
     }
-    return false
-  }
-
-  // Download History
-  getDownloadHistory(): any[] {
-    const data = this.safeGetItem("downloadHistory")
-    if (!data) return []
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing download history:", error)
-      return []
+  },
+  
+  removeImageFromCollection: (collectionId: string, imageId: string): void => {\
+    const collections = storage.getCollections()
+    if (collections[collectionId]) {
+      collections[collectionId].imageIds = collections[collectionId].imageIds.filter(id => id !== imageId)\
+      storage.saveCollections(collections)
     }
-  }
-
-  saveDownloadHistory(history: any[]): boolean {
-    return this.safeSetItem("downloadHistory", JSON.stringify(history || []))
-  }
-
-  addDownloadRecord(record: any): boolean {
-    const history = this.getDownloadHistory()
-    history.unshift(record) // Add to beginning
-    // Keep only last 1000 records
-    if (history.length > 1000) {
-      history.splice(1000)
-    }
-    return this.saveDownloadHistory(history)
-  }
-
-  clearDownloadHistory(): boolean {
-    return this.safeSetItem("downloadHistory", JSON.stringify([]))
-  }
-
+  },
+  
   // Settings
-  getSettings(): any {
-    const data = this.safeGetItem("settings")
-    if (!data) return null
-    try {
-      return JSON.parse(data)
-    } catch (error) {
-      console.error("Error parsing settings:", error)
-      return null
+  getSettings: (): Settings | undefined => {\
+    return safeParseJSON<Settings | undefined>(localStorage.getItem(KEYS.SETTINGS), undefined)
+  },
+  
+  saveSettings: (settings: Settings): void => {
+    safeStringifyAndSave(KEYS.SETTINGS, settings)
+  },
+  
+  // Download History
+  getDownloadHistory: (): WaifuImage[] => {\
+    return safeParseJSON<WaifuImage[]>(localStorage.getItem(KEYS.DOWNLOAD_HISTORY), [])
+  },
+  
+  addToDownloadHistory: (image: WaifuImage): void => {\
+    const history = storage.getDownloadHistory()
+    if (!history.some(img => img.image_id === image.image_id)) {
+      history.push({
+        ...image,
+        lastModified: new Date().toISOString()
+      })\
+      safeStringifyAndSave(KEYS.DOWNLOAD_HISTORY, history)
     }
-  }
-
-  saveSettings(settings: any): boolean {
-    return this.safeSetItem("settings", JSON.stringify(settings || {}))
-  }
-
-  // Bulk operations
-  clearAll(): boolean {
-    if (!this.isClient) return false
-    try {
-      const keys = ["images", "favorites", "collections", "downloadHistory", "settings"]
-      keys.forEach((key) => this.safeRemoveItem(key))
-      return true
-    } catch (error) {
-      console.error("Error clearing all data:", error)
-      return false
+  },
+  
+  clearDownloadHistory: (): void => {
+    localStorage.removeItem(KEYS.DOWNLOAD_HISTORY)
+  },
+  
+  // Cache
+  getCachedImage: (url: string): string | null => {\
+    const cache = safeParseJSON<Record<string, string>>(localStorage.getItem(KEYS.CACHE), {})
+    return cache[url] || null
+  },
+  
+  cacheImage: (url: string, dataUrl: string): void => {\
+    try {\
+      const cache = safeParseJSON<Record<string, string>>(localStorage.getItem(KEYS.CACHE), {})
+      cache[url] = dataUrl
+      safeStringifyAndSave(KEYS.CACHE, cache)
+    } catch (e) {
+      console.error("Error caching image:", e)
+      // If we hit storage limits, clear the cache and try again\
+      localStorage.removeItem(KEYS.CACHE)
+      const cache = {}
+      cache[url] = dataUrl
+      safeStringifyAndSave(KEYS.CACHE, cache)
     }
-  }
-
-  exportData(): string {
-    const data: StorageData = {
-      images: this.getImages(),
-      favorites: this.getFavorites(),
-      collections: this.getCollections(),
-      downloadHistory: this.getDownloadHistory(),
-      settings: this.getSettings(),
-    }
-    return JSON.stringify(data, null, 2)
-  }
-
-  importData(jsonData: string): boolean {
-    try {
-      const data: StorageData = JSON.parse(jsonData)
-
-      if (data.images) this.saveImages(data.images)
-      if (data.favorites) this.saveFavorites(data.favorites)
-      if (data.collections) this.saveCollections(data.collections)
-      if (data.downloadHistory) this.saveDownloadHistory(data.downloadHistory)
-      if (data.settings) this.saveSettings(data.settings)
-
-      return true
-    } catch (error) {
-      console.error("Error importing data:", error)
-      return false
-    }
-  }
-
-  // Storage info
-  getStorageInfo(): { used: number; available: number; total: number } {
-    if (!this.isClient) return { used: 0, available: 0, total: 0 }
-
-    try {
-      let used = 0
-      const keys = ["images", "favorites", "collections", "downloadHistory", "settings"]
-
-      keys.forEach((key) => {
-        const data = this.safeGetItem(key)
-        if (data) {
-          used += new Blob([data]).size
+  },
+  
+  clearCache: (): void => {
+    localStorage.removeItem(KEYS.CACHE)
+  },
+  
+  // Utility functions
+  clear: (): void => {
+    Object.values(KEYS).forEach(key => localStorage.removeItem(key))
+  },
+  
+  getStorageUsage: (): number => {\
+    let total = 0\
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key) {
+        const value = localStorage.getItem(key)
+        if (value) {
+          total += key.length + value.length
         }
-      })
-
-      // Estimate available storage (5MB typical localStorage limit)
-      const total = 5 * 1024 * 1024 // 5MB
-      const available = total - used
-
-      return { used, available, total }
-    } catch (error) {
-      console.error("Error getting storage info:", error)
-      return { used: 0, available: 0, total: 0 }
+      }
     }
+    return total
   }
 }
-
-export const storage = new LocalStorage()
