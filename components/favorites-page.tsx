@@ -1,362 +1,257 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card } from "@/components/ui/card"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useStorage } from "@/context/storageContext"
-import { useSettings } from "@/context/settingsContext"
-import { Search, Grid3X3, List, Heart, Download, Eye, Trash2, HeartOff } from "lucide-react"
-import Image from "next/image"
-import { motion, AnimatePresence } from "framer-motion"
-import type { WaifuImage } from "@/types/waifu"
+import { GalleryTab } from "./gallery-tab"
+import { SumptuousHeart } from "./sumptuous-heart"
+import { Heart, Search, Trash2, Star } from "lucide-react"
+import { toast } from "sonner"
 
 export function FavoritesPage() {
-  const { images, favorites, toggleFavorite, removeImage } = useStorage()
-  const { settings } = useSettings()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"date" | "name" | "size">("date")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
-  const [favoriteImages, setFavoriteImages] = useState<WaifuImage[]>([])
-  const [filteredImages, setFilteredImages] = useState<WaifuImage[]>([])
-
-  // Ensure arrays are always defined
-  const safeImages = Array.isArray(images) ? images : []
-  const safeFavorites = Array.isArray(favorites) ? favorites : []
+  const { images, favorites, removeFavorite, clearAllData } = useStorage()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedImages, setSelectedImages] = useState<string[]>([])
 
   // Get favorite images
-  useEffect(() => {
-    const favImages = safeImages.filter((image) => safeFavorites.includes(image.image_id.toString()))
-    setFavoriteImages(favImages)
-  }, [safeImages, safeFavorites])
+  const favoriteImages = images.filter((image) => favorites.includes(image.id))
 
-  useEffect(() => {
-    let filtered = [...favoriteImages]
+  // Filter favorite images based on search
+  const filteredFavorites = favoriteImages.filter(
+    (image) =>
+      image.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      image.source?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      image.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      image.filename?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (image) =>
-          image.tags?.some((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          image.source?.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "date":
-          return new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime()
-        case "name":
-          return (a.tags?.[0]?.name || "").localeCompare(b.tags?.[0]?.name || "")
-        case "size":
-          return (b.fileSize || 0) - (a.fileSize || 0)
-        default:
-          return 0
-      }
-    })
-
-    setFilteredImages(filtered)
-  }, [favoriteImages, searchQuery, sortBy])
-
-  const handleImageSelect = (imageId: string) => {
-    const newSelected = new Set(selectedImages)
-    if (newSelected.has(imageId)) {
-      newSelected.delete(imageId)
-    } else {
-      newSelected.add(imageId)
-    }
-    setSelectedImages(newSelected)
+  const handleRemoveFromFavorites = (imageId: string) => {
+    removeFavorite(imageId)
+    toast.success("Removed from favorites")
   }
 
-  const handleBulkAction = (action: "unfavorite" | "delete" | "download") => {
-    selectedImages.forEach((imageId) => {
-      switch (action) {
-        case "unfavorite":
-          toggleFavorite(imageId)
-          break
-        case "delete":
-          removeImage(imageId)
-          break
-        case "download":
-          // Implement bulk download
-          break
-      }
-    })
-    setSelectedImages(new Set())
+  const handleBulkRemove = () => {
+    if (selectedImages.length === 0) {
+      toast.error("No images selected")
+      return
+    }
+
+    selectedImages.forEach((imageId) => removeFavorite(imageId))
+    setSelectedImages([])
+    toast.success(`Removed ${selectedImages.length} images from favorites`)
   }
 
-  if (favoriteImages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-center">
-        <HeartOff className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2 gradient-text">No Favorites Yet</h3>
-        <p className="text-muted-foreground mb-4">Start favoriting some images to see them here!</p>
-        <Button onClick={() => (window.location.href = "/?tab=download")} className="glow-button">
-          <Download className="mr-2 h-4 w-4" />
-          Browse Images
-        </Button>
-      </div>
-    )
+  const handleClearAllFavorites = () => {
+    if (favorites.length === 0) {
+      toast.error("No favorites to clear")
+      return
+    }
+
+    favorites.forEach((imageId) => removeFavorite(imageId))
+    toast.success("Cleared all favorites")
+  }
+
+  const handleImageDownload = (image: any) => {
+    // Simulate download
+    toast.success(`Downloading ${image.filename || "image"}...`)
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent">
-            Favorites
-          </h2>
-          <p className="text-muted-foreground">
-            {filteredImages.length} of {favoriteImages.length} favorite images
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className="glow-button"
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            className="glow-button"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 dark:from-pink-950/20 dark:via-rose-950/20 dark:to-red-950/20">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-pink-200/30 rounded-full blur-xl animate-float"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-rose-200/30 rounded-full blur-xl animate-float-delayed"></div>
+        <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-red-200/30 rounded-full blur-xl animate-float"></div>
+        <div className="absolute bottom-40 right-1/3 w-28 h-28 bg-pink-300/30 rounded-full blur-xl animate-float-delayed"></div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search favorites..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 glass-card"
-          />
-        </div>
-
-        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-          <SelectTrigger className="w-[180px] glass-card">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date">Date Added</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="size">File Size</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Bulk Actions */}
-      {selectedImages.size > 0 && (
-        <div className="flex items-center gap-2 p-4 glass-card rounded-lg">
-          <span className="text-sm font-medium">{selectedImages.size} selected</span>
-          <Button size="sm" onClick={() => handleBulkAction("unfavorite")} className="glow-button">
-            <HeartOff className="mr-2 h-4 w-4" />
-            Unfavorite
-          </Button>
-          <Button size="sm" onClick={() => handleBulkAction("download")} className="glow-button">
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => handleBulkAction("delete")}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setSelectedImages(new Set())}>
-            Clear Selection
-          </Button>
-        </div>
-      )}
-
-      {/* Image Grid/List */}
-      <AnimatePresence>
-        {viewMode === "grid" ? (
-          <div
-            className={`grid gap-4 ${
-              settings.gridColumns === 3
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : settings.gridColumns === 4
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                  : settings.gridColumns === 5
-                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6"
-            }`}
-          >
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.image_id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="group relative overflow-hidden glass-card hover:glow-border transition-all duration-300">
-                  <div className="aspect-[3/4] relative">
-                    <Image
-                      src={image.preview_url || image.url}
-                      alt={image.tags?.[0]?.name || "Image"}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute top-2 right-2 flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => toggleFavorite(image.image_id.toString())}
-                          className="glow-button bg-red-500 hover:bg-red-600"
-                        >
-                          <Heart className="h-4 w-4 fill-current" />
-                        </Button>
-                        <Button size="sm" variant="secondary" className="glow-button">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="secondary" className="glow-button">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {image.tags?.slice(0, 3).map((tag) => (
-                            <Badge key={tag.name} variant="secondary" className="text-xs glass-card">
-                              {tag.name}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="text-xs text-white/80">
-                          {image.width}x{image.height} • {image.extension?.toUpperCase()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Selection checkbox */}
-                    <div className="absolute top-2 left-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedImages.has(image.image_id.toString())}
-                        onChange={() => handleImageSelect(image.image_id.toString())}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                    </div>
-
-                    {/* Favorite indicator */}
-                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
-                      <Heart className="h-5 w-5 fill-current text-red-500" />
-                    </div>
-
-                    {/* NSFW indicator */}
-                    {image.is_nsfw && (
-                      <Badge className="absolute bottom-2 right-2" variant="destructive">
-                        NSFW
-                      </Badge>
-                    )}
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+      <div className="relative z-10 container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <SumptuousHeart />
           </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient mb-2">My Favorites</h1>
+            <p className="text-muted-foreground">Your curated collection of favorite images</p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="glass-card border-pink-200/50 hover:shadow-glow transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Favorites</CardTitle>
+              <Heart className="h-4 w-4 text-pink-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gradient">{favorites.length}</div>
+              <p className="text-xs text-muted-foreground">{favorites.length === 1 ? "image" : "images"} saved</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-rose-200/50 hover:shadow-glow transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Filtered Results</CardTitle>
+              <Search className="h-4 w-4 text-rose-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gradient">{filteredFavorites.length}</div>
+              <p className="text-xs text-muted-foreground">matching your search</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-red-200/50 hover:shadow-glow transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Selected</CardTitle>
+              <Star className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gradient">{selectedImages.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {selectedImages.length === 1 ? "image" : "images"} selected
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search and Actions */}
+        <Card className="glass-card border-pink-200/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-pink-500" />
+              Search & Actions
+            </CardTitle>
+            <CardDescription>Search through your favorites and perform bulk actions</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search favorites by tags, source, filename..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 glass-input"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleBulkRemove}
+                  disabled={selectedImages.length === 0}
+                  className="glow-button bg-transparent"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remove Selected ({selectedImages.length})
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleClearAllFavorites}
+                  disabled={favorites.length === 0}
+                  className="glow-button-danger bg-transparent"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
+              </div>
+            </div>
+
+            {searchTerm && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="glass-badge">
+                  Searching: "{searchTerm}"
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={() => setSearchTerm("")} className="text-xs">
+                  Clear
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Favorites Gallery */}
+        {favorites.length === 0 ? (
+          <Card className="glass-card border-pink-200/50">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="text-8xl mb-6 opacity-50">💖</div>
+              <h3 className="text-2xl font-bold text-gradient mb-4">No Favorites Yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Start exploring and click the heart icon on images you love to add them to your favorites collection.
+              </p>
+              <Button className="glow-button">
+                <Heart className="w-4 h-4 mr-2" />
+                Start Exploring
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="space-y-2">
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.image_id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ delay: index * 0.02 }}
-              >
-                <Card className="p-4 glass-card">
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedImages.has(image.image_id.toString())}
-                      onChange={() => handleImageSelect(image.image_id.toString())}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-
-                    <div className="w-16 h-16 relative rounded overflow-hidden">
-                      <Image
-                        src={image.preview_url || image.url}
-                        alt={image.tags?.[0]?.name || "Image"}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate gradient-text">{image.tags?.[0]?.name || "Untitled"}</h3>
-                        {image.is_nsfw && (
-                          <Badge variant="destructive" className="text-xs">
-                            NSFW
-                          </Badge>
-                        )}
-                        <Heart className="h-4 w-4 fill-current text-red-500" />
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {image.width}x{image.height} • {image.extension?.toUpperCase()} • {image.source}
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {image.tags?.slice(0, 5).map((tag) => (
-                          <Badge key={tag.name} variant="outline" className="text-xs">
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => toggleFavorite(image.image_id.toString())}
-                        className="glow-button bg-red-500 hover:bg-red-600"
-                      >
-                        <Heart className="h-4 w-4 fill-current" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="glow-button bg-transparent">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="glow-button bg-transparent">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => removeImage(image.image_id.toString())}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+          <Card className="glass-card border-pink-200/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
+                Favorite Images
+                <Badge variant="secondary" className="ml-auto glass-badge">
+                  {filteredFavorites.length} of {favorites.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription>Your personally curated collection of beautiful images</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GalleryTab
+                images={favoriteImages}
+                showFavoritesOnly={false}
+                onImageDownload={handleImageDownload}
+                onImageSelect={(image) => {
+                  // Handle image selection for preview
+                  console.log("Selected image:", image)
+                }}
+              />
+            </CardContent>
+          </Card>
         )}
-      </AnimatePresence>
 
-      {filteredImages.length === 0 && favoriteImages.length > 0 && (
-        <div className="text-center py-12">
-          <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No favorites found</h3>
-          <p className="text-muted-foreground">Try adjusting your search</p>
-        </div>
-      )}
+        {/* Quick Stats */}
+        {favorites.length > 0 && (
+          <Card className="glass-card border-rose-200/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Collection Insights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-gradient">{favorites.length}</div>
+                  <div className="text-sm text-muted-foreground">Total Favorites</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-gradient">
+                    {new Set(favoriteImages.map((img) => img.source)).size}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Sources</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-gradient">
+                    {new Set(favoriteImages.map((img) => img.category)).size}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Categories</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-gradient">
+                    {favoriteImages.reduce((acc, img) => acc + (img.tags?.length || 0), 0)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Total Tags</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

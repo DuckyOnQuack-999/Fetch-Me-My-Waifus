@@ -1,377 +1,470 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card } from "@/components/ui/card"
+import type React from "react"
+
+import { useState, useMemo } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useStorage } from "@/context/storageContext"
 import { useSettings } from "@/context/settingsContext"
-import { Search, Filter, Grid3X3, List, Heart, Download, Eye, Trash2, ImageIcon } from "lucide-react"
-import Image from "next/image"
-import { motion, AnimatePresence } from "framer-motion"
-import type { WaifuImage } from "@/types/waifu"
+import { Heart, Download, Search, Filter, Grid, List, SortAsc, SortDesc, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
-export function GalleryTab() {
-  const { images, toggleFavorite, removeImage } = useStorage()
+interface GalleryTabProps {
+  images?: any[]
+  showFavoritesOnly?: boolean
+  onImageSelect?: (image: any) => void
+  onImageDownload?: (image: any) => void
+}
+
+export function GalleryTab({
+  images: propImages,
+  showFavoritesOnly = false,
+  onImageSelect,
+  onImageDownload,
+}: GalleryTabProps) {
+  const { images: storageImages, favorites, isFavorite, toggleFavorite, removeImage } = useStorage()
   const { settings } = useSettings()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"date" | "name" | "size" | "favorites">("date")
-  const [filterBy, setFilterBy] = useState<"all" | "favorites" | "nsfw" | "sfw">("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState("newest")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
-  const [filteredImages, setFilteredImages] = useState<WaifuImage[]>([])
+  const [selectedImages, setSelectedImages] = useState<string[]>([])
+  const [showFilters, setShowFilters] = useState(false)
 
-  // Ensure images is always an array
-  const safeImages = Array.isArray(images) ? images : []
+  // Use prop images or storage images, with safe fallback
+  const allImages = propImages || storageImages || []
 
-  useEffect(() => {
-    let filtered = [...safeImages]
+  // Filter images based on showFavoritesOnly
+  const baseImages = useMemo(() => {
+    if (showFavoritesOnly) {
+      return allImages.filter((image) => isFavorite(image.id))
+    }
+    return allImages
+  }, [allImages, showFavoritesOnly, favorites])
 
-    // Apply search filter
-    if (searchQuery) {
+  // Apply search and sort filters
+  const filteredImages = useMemo(() => {
+    let filtered = [...baseImages]
+
+    // Search filter
+    if (searchTerm) {
       filtered = filtered.filter(
         (image) =>
-          image.tags?.some((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          image.source?.toLowerCase().includes(searchQuery.toLowerCase()),
+          image.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          image.source?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          image.category?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
-    // Apply category filter
-    switch (filterBy) {
-      case "favorites":
-        filtered = filtered.filter((image) => image.isFavorite)
-        break
-      case "nsfw":
-        filtered = filtered.filter((image) => image.is_nsfw)
-        break
-      case "sfw":
-        filtered = filtered.filter((image) => !image.is_nsfw)
-        break
-    }
-
-    // Apply sorting
+    // Sort
     filtered.sort((a, b) => {
+      let comparison = 0
+
       switch (sortBy) {
-        case "date":
-          return new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime()
-        case "name":
-          return (a.tags?.[0]?.name || "").localeCompare(b.tags?.[0]?.name || "")
+        case "newest":
+          comparison = new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          break
+        case "oldest":
+          comparison = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+          break
         case "size":
-          return (b.fileSize || 0) - (a.fileSize || 0)
-        case "favorites":
-          return (b.favorites || 0) - (a.favorites || 0)
+          comparison = (b.fileSize || 0) - (a.fileSize || 0)
+          break
+        case "resolution":
+          comparison = (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0)
+          break
+        case "source":
+          comparison = (a.source || "").localeCompare(b.source || "")
+          break
+        case "category":
+          comparison = (a.category || "").localeCompare(b.category || "")
+          break
         default:
-          return 0
+          comparison = 0
       }
+
+      return sortOrder === "asc" ? comparison : -comparison
     })
 
-    setFilteredImages(filtered)
-  }, [safeImages, searchQuery, sortBy, filterBy])
+    return filtered
+  }, [baseImages, searchTerm, sortBy, sortOrder])
 
-  const handleImageSelect = (imageId: string) => {
-    const newSelected = new Set(selectedImages)
-    if (newSelected.has(imageId)) {
-      newSelected.delete(imageId)
-    } else {
-      newSelected.add(imageId)
+  const handleImageClick = (image: any) => {
+    if (onImageSelect) {
+      onImageSelect(image)
     }
-    setSelectedImages(newSelected)
   }
 
-  const handleBulkAction = (action: "favorite" | "delete" | "download") => {
-    selectedImages.forEach((imageId) => {
-      switch (action) {
-        case "favorite":
-          toggleFavorite(imageId)
-          break
-        case "delete":
-          removeImage(imageId)
-          break
-        case "download":
-          // Implement bulk download
-          break
-      }
-    })
-    setSelectedImages(new Set())
+  const handleDownload = (image: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onImageDownload) {
+      onImageDownload(image)
+    }
+    toast.success(`Downloading ${image.filename || "image"}...`)
   }
 
-  if (!safeImages || safeImages.length === 0) {
+  const handleFavoriteToggle = (image: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    toggleFavorite(image.id)
+    toast.success(isFavorite(image.id) ? "Removed from favorites" : "Added to favorites")
+  }
+
+  const handleDelete = (image: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    removeImage(image.id)
+    toast.success("Image removed from gallery")
+  }
+
+  const handleBulkAction = (action: string) => {
+    if (selectedImages.length === 0) {
+      toast.error("No images selected")
+      return
+    }
+
+    switch (action) {
+      case "favorite":
+        selectedImages.forEach((id) => {
+          if (!isFavorite(id)) toggleFavorite(id)
+        })
+        toast.success(`Added ${selectedImages.length} images to favorites`)
+        break
+      case "unfavorite":
+        selectedImages.forEach((id) => {
+          if (isFavorite(id)) toggleFavorite(id)
+        })
+        toast.success(`Removed ${selectedImages.length} images from favorites`)
+        break
+      case "download":
+        selectedImages.forEach((id) => {
+          const image = allImages.find((img) => img.id === id)
+          if (image && onImageDownload) onImageDownload(image)
+        })
+        toast.success(`Downloading ${selectedImages.length} images...`)
+        break
+      case "delete":
+        selectedImages.forEach((id) => removeImage(id))
+        toast.success(`Deleted ${selectedImages.length} images`)
+        break
+    }
+    setSelectedImages([])
+  }
+
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages((prev) => (prev.includes(imageId) ? prev.filter((id) => id !== imageId) : [...prev, imageId]))
+  }
+
+  const selectAllImages = () => {
+    if (selectedImages.length === filteredImages.length) {
+      setSelectedImages([])
+    } else {
+      setSelectedImages(filteredImages.map((img) => img.id))
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return "Unknown"
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i]
+  }
+
+  const formatResolution = (width: number, height: number) => {
+    if (!width || !height) return "Unknown"
+    return `${width} × ${height}`
+  }
+
+  if (!allImages || allImages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 text-center">
-        <ImageIcon className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No Images Yet</h3>
-        <p className="text-muted-foreground mb-4">Start downloading some images to see them here!</p>
-        <Button onClick={() => (window.location.href = "/?tab=download")}>
-          <Download className="mr-2 h-4 w-4" />
-          Start Downloading
-        </Button>
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-6xl mb-4 opacity-50">🖼️</div>
+        <h3 className="text-lg font-semibold mb-2">No Images Found</h3>
+        <p className="text-muted-foreground">
+          {showFavoritesOnly
+            ? "You haven't favorited any images yet."
+            : "Start by downloading some images to see them here."}
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent">
-            Gallery
-          </h2>
-          <p className="text-muted-foreground">
-            {filteredImages.length} of {safeImages.length} images
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className="glow-button"
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            className="glow-button"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
+    <div className="space-y-4">
+      {/* Search and Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
-            placeholder="Search images..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 glass-card"
+            placeholder="Search by tags, source, or category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
           />
         </div>
 
-        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-          <SelectTrigger className="w-[180px] glass-card">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date">Date Added</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="size">File Size</SelectItem>
-            <SelectItem value="favorites">Favorites</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="size">File Size</SelectItem>
+              <SelectItem value="resolution">Resolution</SelectItem>
+              <SelectItem value="source">Source</SelectItem>
+              <SelectItem value="category">Category</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={filterBy} onValueChange={(value: any) => setFilterBy(value)}>
-          <SelectTrigger className="w-[180px] glass-card">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Images</SelectItem>
-            <SelectItem value="favorites">Favorites</SelectItem>
-            <SelectItem value="sfw">SFW Only</SelectItem>
-            <SelectItem value="nsfw">NSFW Only</SelectItem>
-          </SelectContent>
-        </Select>
+          <Button variant="outline" size="icon" onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}>
+            {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+          </Button>
+
+          <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
+            {viewMode === "grid" ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
+          </Button>
+
+          <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)}>
+            <Filter className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Bulk Actions */}
-      {selectedImages.size > 0 && (
-        <div className="flex items-center gap-2 p-4 glass-card rounded-lg">
-          <span className="text-sm font-medium">{selectedImages.size} selected</span>
-          <Button size="sm" onClick={() => handleBulkAction("favorite")} className="glow-button">
-            <Heart className="mr-2 h-4 w-4" />
-            Favorite
-          </Button>
-          <Button size="sm" onClick={() => handleBulkAction("download")} className="glow-button">
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => handleBulkAction("delete")}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setSelectedImages(new Set())}>
-            Clear Selection
-          </Button>
+      {selectedImages.length > 0 && (
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+          <span className="text-sm font-medium">{selectedImages.length} selected</span>
+          <div className="flex gap-1 ml-auto">
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("favorite")}>
+              <Heart className="w-3 h-3 mr-1" />
+              Favorite
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("download")}>
+              <Download className="w-3 h-3 mr-1" />
+              Download
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("delete")}>
+              <Trash2 className="w-3 h-3 mr-1" />
+              Delete
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setSelectedImages([])}>
+              Clear
+            </Button>
+          </div>
         </div>
       )}
 
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {filteredImages.length} of {allImages.length} images
+          </span>
+          {showFavoritesOnly && <Badge variant="secondary">Favorites Only</Badge>}
+        </div>
+
+        <Button variant="outline" size="sm" onClick={selectAllImages}>
+          {selectedImages.length === filteredImages.length ? "Deselect All" : "Select All"}
+        </Button>
+      </div>
+
       {/* Image Grid/List */}
-      <AnimatePresence>
-        {viewMode === "grid" ? (
-          <div
-            className={`grid gap-4 ${
-              settings.gridColumns === 3
-                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                : settings.gridColumns === 4
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                  : settings.gridColumns === 5
-                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6"
-            }`}
-          >
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.image_id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="group relative overflow-hidden glass-card hover:glow-border transition-all duration-300">
-                  <div className="aspect-[3/4] relative">
-                    <Image
-                      src={image.preview_url || image.url}
-                      alt={image.tags?.[0]?.name || "Image"}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
+      {viewMode === "grid" ? (
+        <div
+          className="grid gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${settings.gridColumns || 4}, minmax(0, 1fr))`,
+          }}
+        >
+          {filteredImages.map((image) => (
+            <Card
+              key={image.id}
+              className={`group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                selectedImages.includes(image.id) ? "ring-2 ring-primary" : ""
+              }`}
+              onClick={() => handleImageClick(image)}
+            >
+              <CardContent className="p-0">
+                <div className="relative">
+                  <img
+                    src={image.preview || image.url || `/placeholder.svg?height=200&width=300`}
+                    alt={image.filename || "Image"}
+                    className="w-full h-48 object-cover rounded-t-lg"
+                    loading="lazy"
+                  />
 
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute top-2 right-2 flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={image.isFavorite ? "default" : "secondary"}
-                          onClick={() => toggleFavorite(image.image_id.toString())}
-                          className="glow-button"
-                        >
-                          <Heart className={`h-4 w-4 ${image.isFavorite ? "fill-current" : ""}`} />
-                        </Button>
-                        <Button size="sm" variant="secondary" className="glow-button">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="secondary" className="glow-button">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {image.tags?.slice(0, 3).map((tag) => (
-                            <Badge key={tag.name} variant="secondary" className="text-xs glass-card">
-                              {tag.name}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="text-xs text-white/80">
-                          {image.width}x{image.height} • {image.extension?.toUpperCase()}
-                        </div>
-                      </div>
+                  {/* Overlay Controls */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-lg">
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="w-8 h-8"
+                        onClick={(e) => handleFavoriteToggle(image, e)}
+                      >
+                        <Heart className={`w-4 h-4 ${isFavorite(image.id) ? "fill-red-500 text-red-500" : ""}`} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="w-8 h-8"
+                        onClick={(e) => handleDownload(image, e)}
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="w-8 h-8"
+                        onClick={(e) => handleDelete(image, e)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
-                    {/* Selection checkbox */}
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute bottom-2 left-2">
                       <input
                         type="checkbox"
-                        checked={selectedImages.has(image.image_id.toString())}
-                        onChange={() => handleImageSelect(image.image_id.toString())}
-                        className="w-4 h-4 rounded border-gray-300"
+                        checked={selectedImages.includes(image.id)}
+                        onChange={() => toggleImageSelection(image.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4"
                       />
                     </div>
-
-                    {/* NSFW indicator */}
-                    {image.is_nsfw && (
-                      <Badge className="absolute top-2 left-1/2 transform -translate-x-1/2" variant="destructive">
-                        NSFW
-                      </Badge>
-                    )}
                   </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.image_id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ delay: index * 0.02 }}
-              >
-                <Card className="p-4 glass-card">
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedImages.has(image.image_id.toString())}
-                      onChange={() => handleImageSelect(image.image_id.toString())}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
+                </div>
 
-                    <div className="w-16 h-16 relative rounded overflow-hidden">
-                      <Image
-                        src={image.preview_url || image.url}
-                        alt={image.tags?.[0]?.name || "Image"}
-                        fill
-                        className="object-cover"
-                      />
+                {/* Image Info */}
+                {settings.showImageDetails && (
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium truncate">{image.filename || `Image ${image.id}`}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {image.source || "Unknown"}
+                      </Badge>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate gradient-text">{image.tags?.[0]?.name || "Untitled"}</h3>
-                        {image.is_nsfw && (
-                          <Badge variant="destructive" className="text-xs">
-                            NSFW
-                          </Badge>
-                        )}
-                        {image.isFavorite && <Heart className="h-4 w-4 fill-current text-red-500" />}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {image.width}x{image.height} • {image.extension?.toUpperCase()} • {image.source}
-                      </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatResolution(image.width, image.height)}</span>
+                      <span>{formatFileSize(image.fileSize)}</span>
+                    </div>
+
+                    {image.tags && image.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {image.tags?.slice(0, 5).map((tag) => (
-                          <Badge key={tag.name} variant="outline" className="text-xs">
-                            {tag.name}
+                        {image.tags.slice(0, 3).map((tag: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tag}
                           </Badge>
                         ))}
+                        {image.tags.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{image.tags.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredImages.map((image) => (
+            <Card
+              key={image.id}
+              className={`group cursor-pointer transition-all duration-300 hover:shadow-md ${
+                selectedImages.includes(image.id) ? "ring-2 ring-primary" : ""
+              }`}
+              onClick={() => handleImageClick(image)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedImages.includes(image.id)}
+                    onChange={() => toggleImageSelection(image.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4"
+                  />
+
+                  <img
+                    src={image.preview || image.url || `/placeholder.svg?height=60&width=80`}
+                    alt={image.filename || "Image"}
+                    className="w-16 h-12 object-cover rounded"
+                    loading="lazy"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium truncate">{image.filename || `Image ${image.id}`}</span>
+                      <div className="flex gap-1">
+                        <Badge variant="outline" className="text-xs">
+                          {image.source || "Unknown"}
+                        </Badge>
+                        {image.category && (
+                          <Badge variant="secondary" className="text-xs">
+                            {image.category}
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant={image.isFavorite ? "default" : "outline"}
-                        onClick={() => toggleFavorite(image.image_id.toString())}
-                        className="glow-button"
-                      >
-                        <Heart className={`h-4 w-4 ${image.isFavorite ? "fill-current" : ""}`} />
-                      </Button>
-                      <Button size="sm" variant="outline" className="glow-button bg-transparent">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="glow-button bg-transparent">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => removeImage(image.image_id.toString())}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{formatResolution(image.width, image.height)}</span>
+                      <span>{formatFileSize(image.fileSize)}</span>
+                      <span>{new Date(image.createdAt || Date.now()).toLocaleDateString()}</span>
                     </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </AnimatePresence>
 
-      {filteredImages.length === 0 && safeImages.length > 0 && (
-        <div className="text-center py-12">
-          <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No images found</h3>
-          <p className="text-muted-foreground">Try adjusting your search or filters</p>
+                    {image.tags && image.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {image.tags.slice(0, 5).map((tag: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {image.tags.length > 5 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{image.tags.length - 5}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="w-8 h-8"
+                      onClick={(e) => handleFavoriteToggle(image, e)}
+                    >
+                      <Heart className={`w-4 h-4 ${isFavorite(image.id) ? "fill-red-500 text-red-500" : ""}`} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDownload(image, e)}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDelete(image, e)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {filteredImages.length === 0 && searchTerm && (
+        <div className="flex flex-col items-center justify-center h-32 text-center">
+          <div className="text-4xl mb-2 opacity-50">🔍</div>
+          <h3 className="text-lg font-semibold mb-1">No Results Found</h3>
+          <p className="text-muted-foreground">Try adjusting your search terms or filters.</p>
         </div>
       )}
     </div>

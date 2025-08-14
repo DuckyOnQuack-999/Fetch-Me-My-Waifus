@@ -1,235 +1,224 @@
 "use client"
 
+import type React from "react"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { WaifuImage, Collections } from "../types/waifu"
-import { storage } from "../utils/localStorage"
+import { storage } from "@/utils/localStorage"
 
 interface StorageContextType {
-  images: WaifuImage[]
+  images: any[]
   favorites: string[]
-  collections: Collections
-  addImage: (image: WaifuImage) => void
+  collections: any[]
+  downloadHistory: any[]
+  isLoading: boolean
+
+  // Image operations
+  addImage: (image: any) => void
   removeImage: (imageId: string) => void
+  updateImage: (imageId: string, updates: any) => void
+
+  // Favorite operations
   addFavorite: (imageId: string) => void
   removeFavorite: (imageId: string) => void
+  isFavorite: (imageId: string) => boolean
   toggleFavorite: (imageId: string) => void
-  createCollection: (name: string) => string | undefined
-  deleteCollection: (id: string) => void
-  addToCollection: (collectionId: string, imageId: string) => void
-  removeFromCollection: (collectionId: string, imageId: string) => void
-  getFavorites: () => string[]
-  getCollections: () => Collections
-  getImages: () => WaifuImage[]
-  refreshData: () => void
+
+  // Collection operations
+  addCollection: (collection: any) => void
+  removeCollection: (collectionId: string) => void
+  updateCollection: (collectionId: string, updates: any) => void
+
+  // Download history operations
+  addDownloadRecord: (record: any) => void
+  clearDownloadHistory: () => void
+
+  // Bulk operations
+  clearAllData: () => void
+  exportData: () => string
+  importData: (jsonData: string) => boolean
+
+  // Storage info
+  getStorageInfo: () => { used: number; available: number; total: number }
 }
 
 const StorageContext = createContext<StorageContextType | undefined>(undefined)
 
-export function StorageProvider({ children }: { children: ReactNode }) {
-  const [images, setImages] = useState<WaifuImage[]>([])
+export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [images, setImages] = useState<any[]>([])
   const [favorites, setFavorites] = useState<string[]>([])
-  const [collections, setCollections] = useState<Collections>({})
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [collections, setCollections] = useState<any[]>([])
+  const [downloadHistory, setDownloadHistory] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Initialize data from localStorage
+  // Load data from localStorage on mount
   useEffect(() => {
-    try {
-      const storedImages = storage.getImages()
-      const storedFavorites = storage.getFavorites()
-      const storedCollections = storage.getCollections()
-
-      console.log("Loading from storage:", {
-        images: storedImages.length,
-        favorites: storedFavorites.length,
-        collections: Object.keys(storedCollections).length,
-      })
-
-      setImages(Array.isArray(storedImages) ? storedImages : [])
-      setFavorites(Array.isArray(storedFavorites) ? storedFavorites : [])
-      setCollections(typeof storedCollections === "object" && storedCollections !== null ? storedCollections : {})
-      setIsInitialized(true)
-    } catch (error) {
-      console.error("Error initializing storage context:", error)
-      // Set safe defaults
-      setImages([])
-      setFavorites([])
-      setCollections({})
-      setIsInitialized(true)
+    const loadData = () => {
+      try {
+        setImages(storage.getImages() || [])
+        setFavorites(storage.getFavorites() || [])
+        setCollections(storage.getCollections() || [])
+        setDownloadHistory(storage.getDownloadHistory() || [])
+      } catch (error) {
+        console.error("Error loading storage data:", error)
+        // Set default empty arrays on error
+        setImages([])
+        setFavorites([])
+        setCollections([])
+        setDownloadHistory([])
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    loadData()
   }, [])
 
-  const refreshData = () => {
-    try {
-      const storedImages = storage.getImages()
-      const storedFavorites = storage.getFavorites()
-      const storedCollections = storage.getCollections()
-
-      setImages(Array.isArray(storedImages) ? storedImages : [])
-      setFavorites(Array.isArray(storedFavorites) ? storedFavorites : [])
-      setCollections(typeof storedCollections === "object" && storedCollections !== null ? storedCollections : {})
-    } catch (error) {
-      console.error("Error refreshing data:", error)
-    }
-  }
-
-  const addImage = (image: WaifuImage) => {
-    try {
-      if (storage.addImage(image)) {
-        setImages((prev) => {
-          const exists = prev.some((img) => img.image_id === image.image_id)
-          return exists ? prev : [...prev, image]
-        })
-      }
-    } catch (error) {
-      console.error("Error adding image:", error)
+  // Image operations
+  const addImage = (image: any) => {
+    const newImages = [...images]
+    const exists = newImages.some((img) => img.id === image.id)
+    if (!exists) {
+      newImages.push(image)
+      setImages(newImages)
+      storage.saveImages(newImages)
     }
   }
 
   const removeImage = (imageId: string) => {
-    try {
-      if (storage.removeImage(imageId)) {
-        setImages((prev) => prev.filter((img) => img.image_id.toString() !== imageId))
-      }
-    } catch (error) {
-      console.error("Error removing image:", error)
+    const newImages = images.filter((img) => img.id !== imageId)
+    setImages(newImages)
+    storage.saveImages(newImages)
+
+    // Also remove from favorites if it exists
+    if (favorites.includes(imageId)) {
+      removeFavorite(imageId)
     }
   }
 
+  const updateImage = (imageId: string, updates: any) => {
+    const newImages = images.map((img) => (img.id === imageId ? { ...img, ...updates } : img))
+    setImages(newImages)
+    storage.saveImages(newImages)
+  }
+
+  // Favorite operations
   const addFavorite = (imageId: string) => {
-    try {
-      if (storage.addFavorite(imageId)) {
-        setFavorites((prev) => (prev.includes(imageId) ? prev : [...prev, imageId]))
-        // Update the image's favorite status
-        setImages((prev) =>
-          prev.map((img) => (img.image_id.toString() === imageId ? { ...img, isFavorite: true } : img)),
-        )
-      }
-    } catch (error) {
-      console.error("Error adding favorite:", error)
+    if (!favorites.includes(imageId)) {
+      const newFavorites = [...favorites, imageId]
+      setFavorites(newFavorites)
+      storage.saveFavorites(newFavorites)
     }
   }
 
   const removeFavorite = (imageId: string) => {
-    try {
-      if (storage.removeFavorite(imageId)) {
-        setFavorites((prev) => prev.filter((id) => id !== imageId))
-        // Update the image's favorite status
-        setImages((prev) =>
-          prev.map((img) => (img.image_id.toString() === imageId ? { ...img, isFavorite: false } : img)),
-        )
-      }
-    } catch (error) {
-      console.error("Error removing favorite:", error)
-    }
+    const newFavorites = favorites.filter((id) => id !== imageId)
+    setFavorites(newFavorites)
+    storage.saveFavorites(newFavorites)
+  }
+
+  const isFavorite = (imageId: string) => {
+    return favorites.includes(imageId)
   }
 
   const toggleFavorite = (imageId: string) => {
-    try {
-      const isFavorite = favorites.includes(imageId)
-      if (isFavorite) {
-        removeFavorite(imageId)
-      } else {
-        addFavorite(imageId)
-      }
-    } catch (error) {
-      console.error("Error toggling favorite:", error)
+    if (isFavorite(imageId)) {
+      removeFavorite(imageId)
+    } else {
+      addFavorite(imageId)
     }
   }
 
-  const createCollection = (name: string) => {
-    try {
-      const id = storage.createCollection(name)
-      if (id) {
-        setCollections(storage.getCollections())
-      }
-      return id
-    } catch (error) {
-      console.error("Error creating collection:", error)
-      return undefined
+  // Collection operations
+  const addCollection = (collection: any) => {
+    const newCollections = [...collections]
+    const exists = newCollections.some((col) => col.id === collection.id)
+    if (!exists) {
+      newCollections.push(collection)
+      setCollections(newCollections)
+      storage.saveCollections(newCollections)
     }
   }
 
-  const deleteCollection = (id: string) => {
-    try {
-      if (storage.deleteCollection(id)) {
-        setCollections(storage.getCollections())
-      }
-    } catch (error) {
-      console.error("Error deleting collection:", error)
-    }
+  const removeCollection = (collectionId: string) => {
+    const newCollections = collections.filter((col) => col.id !== collectionId)
+    setCollections(newCollections)
+    storage.saveCollections(newCollections)
   }
 
-  const addToCollection = (collectionId: string, imageId: string) => {
-    try {
-      if (storage.addToCollection(collectionId, imageId)) {
-        setCollections(storage.getCollections())
-      }
-    } catch (error) {
-      console.error("Error adding to collection:", error)
-    }
+  const updateCollection = (collectionId: string, updates: any) => {
+    const newCollections = collections.map((col) => (col.id === collectionId ? { ...col, ...updates } : col))
+    setCollections(newCollections)
+    storage.saveCollections(newCollections)
   }
 
-  const removeFromCollection = (collectionId: string, imageId: string) => {
-    try {
-      if (storage.removeFromCollection(collectionId, imageId)) {
-        setCollections(storage.getCollections())
-      }
-    } catch (error) {
-      console.error("Error removing from collection:", error)
+  // Download history operations
+  const addDownloadRecord = (record: any) => {
+    const newHistory = [record, ...downloadHistory]
+    // Keep only last 1000 records
+    if (newHistory.length > 1000) {
+      newHistory.splice(1000)
     }
+    setDownloadHistory(newHistory)
+    storage.saveDownloadHistory(newHistory)
   }
 
-  const getFavorites = () => {
-    try {
-      return storage.getFavorites()
-    } catch (error) {
-      console.error("Error getting favorites:", error)
-      return []
-    }
+  const clearDownloadHistory = () => {
+    setDownloadHistory([])
+    storage.clearDownloadHistory()
   }
 
-  const getCollections = () => {
-    try {
-      return storage.getCollections()
-    } catch (error) {
-      console.error("Error getting collections:", error)
-      return {}
-    }
+  // Bulk operations
+  const clearAllData = () => {
+    setImages([])
+    setFavorites([])
+    setCollections([])
+    setDownloadHistory([])
+    storage.clearAll()
   }
 
-  const getImages = () => {
-    try {
-      return storage.getImages()
-    } catch (error) {
-      console.error("Error getting images:", error)
-      return []
-    }
+  const exportData = () => {
+    return storage.exportData()
   }
 
-  // Don't render children until initialized to prevent hydration issues
-  if (!isInitialized) {
-    return null
+  const importData = (jsonData: string) => {
+    const success = storage.importData(jsonData)
+    if (success) {
+      // Reload data from storage
+      setImages(storage.getImages() || [])
+      setFavorites(storage.getFavorites() || [])
+      setCollections(storage.getCollections() || [])
+      setDownloadHistory(storage.getDownloadHistory() || [])
+    }
+    return success
+  }
+
+  const getStorageInfo = () => {
+    return storage.getStorageInfo()
   }
 
   return (
     <StorageContext.Provider
       value={{
-        images: Array.isArray(images) ? images : [],
-        favorites: Array.isArray(favorites) ? favorites : [],
-        collections: typeof collections === "object" && collections !== null ? collections : {},
+        images,
+        favorites,
+        collections,
+        downloadHistory,
+        isLoading,
         addImage,
         removeImage,
+        updateImage,
         addFavorite,
         removeFavorite,
+        isFavorite,
         toggleFavorite,
-        createCollection,
-        deleteCollection,
-        addToCollection,
-        removeFromCollection,
-        getFavorites,
-        getCollections,
-        getImages,
-        refreshData,
+        addCollection,
+        removeCollection,
+        updateCollection,
+        addDownloadRecord,
+        clearDownloadHistory,
+        clearAllData,
+        exportData,
+        importData,
+        getStorageInfo,
       }}
     >
       {children}
@@ -237,7 +226,7 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useStorage() {
+export const useStorage = () => {
   const context = useContext(StorageContext)
   if (context === undefined) {
     throw new Error("useStorage must be used within a StorageProvider")

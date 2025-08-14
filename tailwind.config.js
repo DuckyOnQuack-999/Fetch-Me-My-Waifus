@@ -71,25 +71,68 @@ module.exports = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-20px)" },
         },
-        "pulse-glow": {
+        "float-delayed": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-15px)" },
+        },
+        "float-particle": {
+          "0%, 100%": {
+            transform: "translateY(0px) scale(1)",
+            opacity: "0.6",
+          },
+          "50%": {
+            transform: "translateY(-10px) scale(1.2)",
+            opacity: "1",
+          },
+        },
+        heartbeat: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.1)" },
+        },
+        sparkle: {
+          "0%, 100%": {
+            opacity: "0.8",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "1",
+            transform: "scale(1.5)",
+          },
+        },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "glow-pulse": {
           "0%, 100%": { boxShadow: "0 0 20px rgba(236, 72, 153, 0.3)" },
-          "50%": { boxShadow: "0 0 40px rgba(236, 72, 153, 0.6)" },
+          "50%": { boxShadow: "0 0 30px rgba(236, 72, 153, 0.6)" },
         },
         shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(100%)" },
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         float: "float 6s ease-in-out infinite",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite alternate",
-        shimmer: "shimmer 2s linear infinite",
+        "float-delayed": "float-delayed 8s ease-in-out infinite",
+        "float-particle": "float-particle 4s ease-in-out infinite",
+        heartbeat: "heartbeat 2s ease-in-out infinite",
+        sparkle: "sparkle 1.5s ease-in-out infinite",
+        "spin-slow": "spin-slow 20s linear infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        shimmer: "shimmer 2s infinite",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+      },
+      blur: {
+        xs: "2px",
+      },
+      spacing: {
+        18: "4.5rem",
       },
     },
   },

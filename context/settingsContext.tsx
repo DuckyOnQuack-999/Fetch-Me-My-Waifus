@@ -136,25 +136,43 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [settings, setSettings] = useState<Settings>(defaultSettings)
 
   useEffect(() => {
-    const savedSettings = storage.getSettings()
-    if (savedSettings) {
-      setSettings({ ...defaultSettings, ...savedSettings })
+    try {
+      const savedSettings = storage.getSettings()
+      if (savedSettings) {
+        setSettings({ ...defaultSettings, ...savedSettings })
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error)
+      setSettings(defaultSettings)
     }
   }, [])
 
   const updateSettings = (newSettings: Partial<Settings>) => {
-    const updatedSettings = { ...settings, ...newSettings }
-    setSettings(updatedSettings)
-    storage.saveSettings(updatedSettings)
+    try {
+      const updatedSettings = { ...settings, ...newSettings }
+      setSettings(updatedSettings)
+      storage.saveSettings(updatedSettings)
+    } catch (error) {
+      console.error("Error updating settings:", error)
+    }
   }
 
   const resetSettings = () => {
-    setSettings(defaultSettings)
-    storage.saveSettings(defaultSettings)
+    try {
+      setSettings(defaultSettings)
+      storage.saveSettings(defaultSettings)
+    } catch (error) {
+      console.error("Error resetting settings:", error)
+    }
   }
 
   const exportSettings = () => {
-    return JSON.stringify(settings, null, 2)
+    try {
+      return JSON.stringify(settings, null, 2)
+    } catch (error) {
+      console.error("Error exporting settings:", error)
+      return "{}"
+    }
   }
 
   const importSettings = (settingsJson: string) => {
