@@ -28,4 +28,4 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
 CardDescription.displayName = "CardDescription"
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => ader, CardFooter, CardTitle, CardDescription, CardContent }
+  ({ className, ...props }, ref) =>
