@@ -1,304 +1,396 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { AlertCircle, CheckCircle, XCircle, Loader2, RefreshCw, ExternalLink } from "lucide-react"
+import { useSettings } from "@/context/settingsContext"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { WifiOff, Zap, Activity, AlertTriangle, CheckCircle, Clock, Sparkles } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface ApiEndpoint {
+interface ApiStatus {
   name: string
+  displayName: string
   url: string
-  status: "online" | "offline" | "degraded" | "maintenance"
-  responseTime: number
+  endpoint: string
+  status: "online" | "offline" | "degraded" | "checking"
+  latency?: number
   lastChecked: Date
-  quantumOptimized: boolean
+  description: string
+  features: string[]
+  keyRequired: boolean
+  keyName: keyof ReturnType<typeof useSettings>["settings"]
 }
 
-interface ApiStatusIndicatorProps {
-  quantumMode?: boolean
-  showMetrics?: boolean
-  className?: string
-}
+export function ApiStatusIndicator() {
+  const { settings, updateSettings } = useSettings()
+  const [selectedApi, setSelectedApi] = useState<ApiStatus | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [apiKey, setApiKey] = useState("")
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-export function ApiStatusIndicator({ quantumMode = false, showMetrics = false, className }: ApiStatusIndicatorProps) {
-  const [endpoints, setEndpoints] = useState<ApiEndpoint[]>([
+  const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([
     {
-      name: "Waifu.pics",
-      url: "https://api.waifu.pics",
-      status: "online",
-      responseTime: 120,
+      name: "waifu-im",
+      displayName: "Waifu.im",
+      url: "https://waifu.im",
+      endpoint: "https://api.waifu.im/search",
+      status: "checking",
       lastChecked: new Date(),
-      quantumOptimized: quantumMode,
+      description: "High-quality anime images with advanced filtering and tagging system",
+      features: ["SFW/NSFW Content", "Advanced Tags", "High Resolution", "Multiple Formats"],
+      keyRequired: false,
+      keyName: "waifuImApiKey",
     },
     {
-      name: "Waifu.im",
-      url: "https://api.waifu.im",
-      status: "online",
-      responseTime: 85,
+      name: "waifu-pics",
+      displayName: "Waifu Pics",
+      url: "https://waifu.pics",
+      endpoint: "https://api.waifu.pics/sfw/waifu",
+      status: "checking",
       lastChecked: new Date(),
-      quantumOptimized: quantumMode,
+      description: "Simple and fast anime image API with categorized content",
+      features: ["SFW/NSFW Categories", "Fast Response", "No Rate Limits", "JSON API"],
+      keyRequired: false,
+      keyName: "waifuPicsApiKey",
     },
     {
-      name: "Nekos.best",
-      url: "https://nekos.best/api/v2",
-      status: "degraded",
-      responseTime: 340,
+      name: "nekos-best",
+      displayName: "Nekos.best",
+      url: "https://nekos.best",
+      endpoint: "https://nekos.best/api/v2/neko",
+      status: "checking",
       lastChecked: new Date(),
-      quantumOptimized: false,
+      description: "Curated collection of high-quality anime images and GIFs",
+      features: ["High Quality", "Multiple Categories", "GIF Support", "Artist Credits"],
+      keyRequired: false,
+      keyName: "nekosBestApiKey",
     },
     {
-      name: "Wallhaven",
-      url: "https://wallhaven.cc/api/v1",
-      status: "online",
-      responseTime: 95,
+      name: "wallhaven",
+      displayName: "Wallhaven",
+      url: "https://wallhaven.cc",
+      endpoint: "https://wallhaven.cc/api/v1/search",
+      status: "checking",
       lastChecked: new Date(),
-      quantumOptimized: quantumMode,
+      description: "Premium wallpaper collection with advanced search capabilities",
+      features: ["4K+ Resolution", "Advanced Search", "Collections", "User Uploads"],
+      keyRequired: true,
+      keyName: "wallhavenApiKey",
+    },
+    {
+      name: "femboy-finder",
+      displayName: "Femboy Finder",
+      url: "https://femboyfinder.firestreaker2.gq",
+      endpoint: "https://femboyfinder.firestreaker2.gq/api",
+      status: "checking",
+      lastChecked: new Date(),
+      description: "Specialized API for femboy-themed anime content",
+      features: ["Specialized Content", "Custom Categories", "Community Driven", "Regular Updates"],
+      keyRequired: false,
+      keyName: "femboyFinderApiKey",
     },
   ])
 
-  const [isChecking, setIsChecking] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState(new Date())
-  const [quantumMetrics, setQuantumMetrics] = useState({
-    coherenceTime: 0,
-    entanglementStrength: 0,
-    quantumAdvantage: 0,
-  })
-
-  // 🔮 Quantum-Enhanced API Status Checking
-  const checkApiStatus = async () => {
-    setIsChecking(true)
-
+  const checkApiStatus = async (api: ApiStatus): Promise<ApiStatus> => {
+    const startTime = Date.now()
     try {
-      const updatedEndpoints = await Promise.all(
-        endpoints.map(async (endpoint) => {
-          const startTime = performance.now()
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
 
-          try {
-            // Simulate quantum-enhanced network request
-            if (quantumMode) {
-              // Quantum tunneling for faster response times
-              const quantumBoost = Math.random() * 0.3 + 0.7 // 70-100% efficiency
-              const response = await fetch(`${endpoint.url}/health`, {
-                signal: AbortSignal.timeout(5000),
-                headers: {
-                  "X-Quantum-Enhanced": "true",
-                },
-              })
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+        "User-Agent": "WaifuDownloader/1.0",
+      }
 
-              const responseTime = (performance.now() - startTime) * quantumBoost
+      // Add API key if required and available
+      if (api.keyRequired && settings?.[api.keyName]) {
+        if (api.name === "wallhaven") {
+          headers["X-API-Key"] = settings[api.keyName] as string
+        } else {
+          headers["Authorization"] = `Bearer ${settings[api.keyName]}`
+        }
+      }
 
-              return {
-                ...endpoint,
-                status: response.ok ? ("online" as const) : ("degraded" as const),
-                responseTime: Math.round(responseTime),
-                lastChecked: new Date(),
-                quantumOptimized: true,
-              }
-            } else {
-              // Standard network request
-              const response = await fetch(`${endpoint.url}/health`, {
-                signal: AbortSignal.timeout(5000),
-              })
+      const response = await fetch(api.endpoint, {
+        method: "HEAD",
+        signal: controller.signal,
+        headers,
+        mode: "cors",
+        cache: "no-cache",
+      })
 
-              const responseTime = performance.now() - startTime
+      clearTimeout(timeoutId)
+      const latency = Date.now() - startTime
 
-              return {
-                ...endpoint,
-                status: response.ok ? ("online" as const) : ("degraded" as const),
-                responseTime: Math.round(responseTime),
-                lastChecked: new Date(),
-                quantumOptimized: false,
-              }
-            }
-          } catch (error) {
-            return {
-              ...endpoint,
-              status: "offline" as const,
-              responseTime: 0,
-              lastChecked: new Date(),
-              quantumOptimized: false,
-            }
-          }
-        }),
-      )
+      let status: ApiStatus["status"] = "offline"
+      if (response.ok) {
+        status = latency > 3000 ? "degraded" : "online"
+      } else if (response.status >= 500) {
+        status = "degraded"
+      }
 
-      setEndpoints(updatedEndpoints)
-      setLastUpdate(new Date())
-
-      // Update quantum metrics
-      if (quantumMode) {
-        setQuantumMetrics({
-          coherenceTime: Math.random() * 1000 + 500,
-          entanglementStrength: Math.random() * 0.8 + 0.2,
-          quantumAdvantage: updatedEndpoints.filter((e) => e.quantumOptimized).length / updatedEndpoints.length,
-        })
+      return {
+        ...api,
+        status,
+        latency,
+        lastChecked: new Date(),
       }
     } catch (error) {
-      console.error("Failed to check API status:", error)
+      return {
+        ...api,
+        status: "offline",
+        latency: Date.now() - startTime,
+        lastChecked: new Date(),
+      }
+    }
+  }
+
+  const checkAllApis = async () => {
+    setIsRefreshing(true)
+    try {
+      const promises = apiStatuses.map((api) => checkApiStatus(api))
+      const results = await Promise.all(promises)
+      setApiStatuses(results)
+      toast.success("API status updated successfully")
+    } catch (error) {
+      toast.error("Failed to update API status")
     } finally {
-      setIsChecking(false)
+      setIsRefreshing(false)
     }
   }
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
-    const interval = setInterval(checkApiStatus, 30000)
+    checkAllApis()
+    const interval = setInterval(checkAllApis, 45000) // Check every 45 seconds
     return () => clearInterval(interval)
-  }, [quantumMode])
+  }, [settings])
 
-  // Initial check
-  useEffect(() => {
-    checkApiStatus()
-  }, [])
-
-  const getStatusIcon = (status: ApiEndpoint["status"]) => {
+  const getStatusIcon = (status: ApiStatus["status"]) => {
     switch (status) {
       case "online":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-500" />
       case "degraded":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />
       case "offline":
-        return <WifiOff className="h-4 w-4 text-red-500" />
-      case "maintenance":
-        return <Clock className="h-4 w-4 text-blue-500" />
-      default:
-        return <Activity className="h-4 w-4 text-gray-500" />
+        return <XCircle className="w-4 h-4 text-red-500" />
+      case "checking":
+        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
     }
   }
 
-  const getStatusColor = (status: ApiEndpoint["status"]) => {
+  const getStatusColor = (status: ApiStatus["status"]) => {
     switch (status) {
       case "online":
-        return "bg-green-500"
+        return "border-green-500/50 bg-green-500/10 hover:bg-green-500/20"
       case "degraded":
-        return "bg-yellow-500"
+        return "border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20"
       case "offline":
-        return "bg-red-500"
-      case "maintenance":
-        return "bg-blue-500"
-      default:
-        return "bg-gray-500"
+        return "border-red-500/50 bg-red-500/10 hover:bg-red-500/20"
+      case "checking":
+        return "border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20"
     }
   }
 
-  const overallStatus = endpoints.every((e) => e.status === "online")
-    ? "All Systems Operational"
-    : endpoints.some((e) => e.status === "offline")
-      ? "Service Disruption"
-      : "Partial Degradation"
+  const getStatusText = (status: ApiStatus["status"]) => {
+    switch (status) {
+      case "online":
+        return "Online"
+      case "degraded":
+        return "Degraded"
+      case "offline":
+        return "Offline"
+      case "checking":
+        return "Checking..."
+    }
+  }
 
-  const averageResponseTime = Math.round(endpoints.reduce((sum, e) => sum + e.responseTime, 0) / endpoints.length)
+  const handleApiClick = (api: ApiStatus) => {
+    setSelectedApi(api)
+    setApiKey((settings?.[api.keyName] as string) || "")
+    setIsDialogOpen(true)
+  }
 
-  const onlineCount = endpoints.filter((e) => e.status === "online").length
-  const totalCount = endpoints.length
+  const handleSaveApiKey = () => {
+    if (selectedApi && apiKey.trim()) {
+      updateSettings({
+        [selectedApi.keyName]: apiKey.trim(),
+      })
+      toast.success(`${selectedApi.displayName} API key saved successfully`)
+      setIsDialogOpen(false)
+      // Recheck status after saving
+      setTimeout(
+        () =>
+          checkApiStatus(selectedApi).then((updated) => {
+            setApiStatuses((prev) => prev.map((api) => (api.name === updated.name ? updated : api)))
+          }),
+        1000,
+      )
+    }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast.success("Copied to clipboard")
+  }
+
+  const formatLatency = (latency?: number) => {
+    if (!latency) return "N/A"
+    if (latency < 1000) return `${latency}ms`
+    return `${(latency / 1000).toFixed(1)}s`
+  }
+
+  const onlineCount = apiStatuses.filter((api) => api.status === "online").length
+  const totalCount = apiStatuses.length
 
   return (
-    <Card className={cn("w-full", className)}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            API Status Monitor
-            {quantumMode && (
-              <Badge variant="outline" className="text-purple-600 border-purple-300">
-                <Zap className="h-3 w-3 mr-1" />
-                Quantum
+    <TooltipProvider>
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">API Status Dashboard</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {onlineCount}/{totalCount} Online
               </Badge>
-            )}
-          </CardTitle>
-          <Button variant="outline" size="sm" onClick={checkApiStatus} disabled={isChecking}>
-            {isChecking ? <Activity className="h-4 w-4 animate-spin mr-2" /> : <Activity className="h-4 w-4 mr-2" />}
-            Refresh
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
-          <Badge variant={overallStatus === "All Systems Operational" ? "default" : "destructive"}>
-            {overallStatus}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Overall Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {onlineCount}/{totalCount}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={checkAllApis}
+                    disabled={isRefreshing}
+                    className="h-8 w-8 p-0 bg-transparent"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh API Status</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
-            <div className="text-xs text-muted-foreground">Services Online</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold">{averageResponseTime}ms</div>
-            <div className="text-xs text-muted-foreground">Avg Response</div>
-          </div>
-          {quantumMode && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {Math.round(quantumMetrics.quantumAdvantage * 100)}%
-              </div>
-              <div className="text-xs text-muted-foreground">Quantum Boost</div>
-            </div>
-          )}
-        </div>
-
-        {/* Individual API Status */}
-        <div className="space-y-3">
-          {endpoints.map((endpoint) => (
-            <div key={endpoint.name} className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                {getStatusIcon(endpoint.status)}
-                <div>
-                  <div className="font-medium">{endpoint.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {endpoint.responseTime > 0 ? `${endpoint.responseTime}ms` : "No response"}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {apiStatuses.map((api) => (
+            <div
+              key={api.name}
+              className={`p-3 rounded-lg border transition-all duration-200 cursor-pointer ${getStatusColor(api.status)}`}
+              onClick={() => handleApiClick(api)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(api.status)}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{api.displayName}</span>
+                      {api.keyRequired && (
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                          Key Required
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{api.description}</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {endpoint.quantumOptimized && (
-                  <Badge variant="outline" className="text-purple-600 border-purple-300">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    Quantum
-                  </Badge>
-                )}
-                <div className={cn("w-3 h-3 rounded-full", getStatusColor(endpoint.status))} />
+                <div className="text-right">
+                  <div className="text-xs font-medium">{getStatusText(api.status)}</div>
+                  <div className="text-xs text-muted-foreground">{formatLatency(api.latency)}</div>
+                </div>
               </div>
             </div>
           ))}
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Quantum Metrics (if enabled) */}
-        {quantumMode && showMetrics && (
-          <Alert>
-            <Zap className="h-4 w-4" />
-            <AlertDescription>
-              <div className="grid grid-cols-3 gap-4 mt-2">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedApi && getStatusIcon(selectedApi.status)}
+              {selectedApi?.displayName} Configuration
+            </DialogTitle>
+          </DialogHeader>
+          {selectedApi && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <div className="font-medium">Coherence Time</div>
-                  <div className="text-sm text-muted-foreground">{Math.round(quantumMetrics.coherenceTime)}μs</div>
-                </div>
-                <div>
-                  <div className="font-medium">Entanglement</div>
-                  <div className="text-sm text-muted-foreground">
-                    {Math.round(quantumMetrics.entanglementStrength * 100)}%
+                  <span className="font-medium">Status:</span>
+                  <div className="flex items-center gap-1 mt-1">
+                    {getStatusIcon(selectedApi.status)}
+                    <span>{getStatusText(selectedApi.status)}</span>
                   </div>
                 </div>
                 <div>
-                  <div className="font-medium">Quantum Advantage</div>
-                  <Progress value={quantumMetrics.quantumAdvantage * 100} className="mt-1" />
+                  <span className="font-medium">Latency:</span>
+                  <div className="mt-1">{formatLatency(selectedApi.latency)}</div>
+                </div>
+                <div>
+                  <span className="font-medium">Last Checked:</span>
+                  <div className="mt-1">{selectedApi.lastChecked.toLocaleTimeString()}</div>
+                </div>
+                <div>
+                  <span className="font-medium">Website:</span>
+                  <div className="mt-1">
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 text-xs"
+                      onClick={() => window.open(selectedApi.url, "_blank")}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Visit Site
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+
+              <Separator />
+
+              <div>
+                <h4 className="font-medium mb-2">Features</h4>
+                <div className="flex flex-wrap gap-1">
+                  {selectedApi.features.map((feature) => (
+                    <Badge key={feature} variant="secondary" className="text-xs">
+                      {feature}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {selectedApi.keyRequired && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label htmlFor="api-key">API Key</Label>
+                    <Input
+                      id="api-key"
+                      type="password"
+                      placeholder="Enter your API key..."
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Your API key is stored locally and never shared.</p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveApiKey} disabled={!apiKey.trim()}>
+                      Save Key
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   )
 }

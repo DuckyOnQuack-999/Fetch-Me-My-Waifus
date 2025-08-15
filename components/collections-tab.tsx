@@ -1,59 +1,22 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useStorage } from "@/context/storageContext"
-import { Heart, Folder, Plus, Search, Grid, List, Sparkles, Zap } from "lucide-react"
+import { Heart, Folder, Plus, Search, Grid, List } from "lucide-react"
 
-interface CollectionsTabProps {
-  quantumMode?: boolean
-}
-
-export function CollectionsTab({ quantumMode = false }: CollectionsTabProps) {
-  const { collections, createCollection } = useStorage()
+export function CollectionsTab() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchTerm, setSearchTerm] = useState("")
 
-  // Convert collections object to array safely
-  const collectionsArray = useMemo(() => {
-    if (!collections || typeof collections !== "object") {
-      return []
-    }
-
-    return Object.entries(collections).map(([id, collection]) => ({
-      id,
-      name: collection?.name || "Unnamed Collection",
-      count: collection?.imageIds?.length || 0,
-      color: `bg-${["pink", "purple", "blue", "green", "yellow", "red"][Math.floor(Math.random() * 6)]}-500`,
-      created_at: collection?.created_at || new Date().toISOString(),
-      description: collection?.description || "",
-      tags: collection?.tags || [],
-      quantumOptimized: quantumMode,
-    }))
-  }, [collections, quantumMode])
-
-  // Filter collections based on search
-  const filteredCollections = useMemo(() => {
-    if (!searchTerm.trim()) return collectionsArray
-
-    return collectionsArray.filter(
-      (collection) =>
-        collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        collection.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        collection.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase())),
-    )
-  }, [collectionsArray, searchTerm])
-
-  const handleCreateCollection = () => {
-    const name = prompt("Enter collection name:")
-    if (name?.trim()) {
-      const description = prompt("Enter collection description (optional):")
-      createCollection(name.trim(), description?.trim())
-    }
-  }
+  const collections = [
+    { id: 1, name: "Favorites", count: 42, color: "bg-pink-500" },
+    { id: 2, name: "Waifus", count: 128, color: "bg-purple-500" },
+    { id: 3, name: "Nekos", count: 67, color: "bg-blue-500" },
+    { id: 4, name: "Anime Girls", count: 203, color: "bg-green-500" },
+  ]
 
   return (
     <div className="space-y-6">
@@ -62,12 +25,6 @@ export function CollectionsTab({ quantumMode = false }: CollectionsTabProps) {
           <CardTitle className="flex items-center gap-2 text-gradient">
             <Folder className="h-5 w-5" />
             Collections
-            {quantumMode && (
-              <Badge variant="outline" className="text-purple-600 border-purple-300">
-                <Zap className="h-3 w-3 mr-1" />
-                Quantum
-              </Badge>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -98,65 +55,32 @@ export function CollectionsTab({ quantumMode = false }: CollectionsTabProps) {
               >
                 <List className="h-4 w-4" />
               </Button>
-              <Button size="sm" className="glow" onClick={handleCreateCollection}>
+              <Button size="sm" className="glow">
                 <Plus className="h-4 w-4 mr-2" />
                 New Collection
               </Button>
             </div>
           </div>
 
-          {filteredCollections.length === 0 ? (
-            <div className="text-center py-12">
-              <Folder className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-semibold mb-2">
-                {searchTerm ? "No collections found" : "No collections yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchTerm
-                  ? "Try adjusting your search terms"
-                  : "Create your first collection to organize your images"}
-              </p>
-              {!searchTerm && (
-                <Button onClick={handleCreateCollection} className="glow">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Collection
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-2"}>
-              {filteredCollections.map((collection) => (
-                <Card key={collection.id} className="material-card hover:scale-105 transition-transform cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-lg ${collection.color} flex items-center justify-center relative`}
-                      >
-                        <Heart className="h-5 w-5 text-white" />
-                        {collection.quantumOptimized && (
-                          <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-purple-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{collection.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary">{collection.count} images</Badge>
-                          {collection.quantumOptimized && (
-                            <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
-                              <Zap className="h-2 w-2 mr-1" />Q
-                            </Badge>
-                          )}
-                        </div>
-                        {collection.description && (
-                          <p className="text-sm text-muted-foreground mt-1 truncate">{collection.description}</p>
-                        )}
-                      </div>
+          <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-2"}>
+            {collections.map((collection) => (
+              <Card key={collection.id} className="material-card hover:scale-105 transition-transform cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg ${collection.color} flex items-center justify-center`}>
+                      <Heart className="h-5 w-5 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{collection.name}</h3>
+                      <Badge variant="secondary" className="mt-1">
+                        {collection.count} images
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
