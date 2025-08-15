@@ -1,54 +1,53 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { useEffect, useState } from "react"
+import { motion, useSpring, useTransform } from "framer-motion"
 
 interface AnimatedStatsProps {
   value: number
   duration?: number
   className?: string
+  suffix?: string
+  prefix?: string
 }
 
-export function AnimatedStats({ value, duration = 2000, className = "" }: AnimatedStatsProps) {
+export function AnimatedStats({
+  value,
+  duration = 2000,
+  className = "",
+  suffix = "",
+  prefix = "",
+}: AnimatedStatsProps) {
   const [displayValue, setDisplayValue] = useState(0)
 
+  const spring = useSpring(0, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
+  })
+
+  const display = useTransform(spring, (latest) => Math.round(latest))
+
   useEffect(() => {
-    let startTime: number
-    let animationFrame: number
+    spring.set(value)
 
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
+    const unsubscribe = display.on("change", (latest) => {
+      setDisplayValue(latest)
+    })
 
-      // Easing function for smooth animation
-      const easeOutCubic = 1 - Math.pow(1 - progress, 3)
-      const currentValue = Math.floor(easeOutCubic * value)
-
-      setDisplayValue(currentValue)
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate)
-      }
-    }
-
-    animationFrame = requestAnimationFrame(animate)
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-      }
-    }
-  }, [value, duration])
+    return () => unsubscribe()
+  }, [value, spring, display])
 
   return (
     <motion.span
       className={className}
       initial={{ opacity: 0, scale: 0.5 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
+      transition={{ duration: 0.5 }}
     >
+      {prefix}
       {displayValue.toLocaleString()}
+      {suffix}
     </motion.span>
   )
 }
