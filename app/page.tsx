@@ -315,13 +315,3 @@ export default function HomePage() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="ml-auto px-4">
-          <ApiStatusIndicator />
-        </div>
-      </header>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <HomeContent />
-      </div>
-    </SidebarInset>
-  )
-}
