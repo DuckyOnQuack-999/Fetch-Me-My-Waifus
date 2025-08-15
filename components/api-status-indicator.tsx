@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { WifiOff, Zap, Leaf, Shield, Activity, AlertTriangle, CheckCircle, Clock, Sparkles } from "lucide-react"
+import { WifiOff, Zap, Activity, AlertTriangle, CheckCircle, Clock, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ApiEndpoint {
@@ -16,23 +16,15 @@ interface ApiEndpoint {
   responseTime: number
   lastChecked: Date
   quantumOptimized: boolean
-  carbonNeutral: boolean
-  ethicsScore: number
 }
 
 interface ApiStatusIndicatorProps {
   quantumMode?: boolean
-  sustainabilityMode?: boolean
   showMetrics?: boolean
   className?: string
 }
 
-export function ApiStatusIndicator({
-  quantumMode = false,
-  sustainabilityMode = false,
-  showMetrics = false,
-  className,
-}: ApiStatusIndicatorProps) {
+export function ApiStatusIndicator({ quantumMode = false, showMetrics = false, className }: ApiStatusIndicatorProps) {
   const [endpoints, setEndpoints] = useState<ApiEndpoint[]>([
     {
       name: "Waifu.pics",
@@ -41,8 +33,6 @@ export function ApiStatusIndicator({
       responseTime: 120,
       lastChecked: new Date(),
       quantumOptimized: quantumMode,
-      carbonNeutral: sustainabilityMode,
-      ethicsScore: 95,
     },
     {
       name: "Waifu.im",
@@ -51,8 +41,6 @@ export function ApiStatusIndicator({
       responseTime: 85,
       lastChecked: new Date(),
       quantumOptimized: quantumMode,
-      carbonNeutral: sustainabilityMode,
-      ethicsScore: 92,
     },
     {
       name: "Nekos.best",
@@ -61,8 +49,6 @@ export function ApiStatusIndicator({
       responseTime: 340,
       lastChecked: new Date(),
       quantumOptimized: false,
-      carbonNeutral: sustainabilityMode,
-      ethicsScore: 88,
     },
     {
       name: "Wallhaven",
@@ -71,8 +57,6 @@ export function ApiStatusIndicator({
       responseTime: 95,
       lastChecked: new Date(),
       quantumOptimized: quantumMode,
-      carbonNeutral: sustainabilityMode,
-      ethicsScore: 97,
     },
   ])
 
@@ -102,7 +86,6 @@ export function ApiStatusIndicator({
                 signal: AbortSignal.timeout(5000),
                 headers: {
                   "X-Quantum-Enhanced": "true",
-                  "X-Carbon-Neutral": sustainabilityMode.toString(),
                 },
               })
 
@@ -165,7 +148,7 @@ export function ApiStatusIndicator({
   useEffect(() => {
     const interval = setInterval(checkApiStatus, 30000)
     return () => clearInterval(interval)
-  }, [quantumMode, sustainabilityMode])
+  }, [quantumMode])
 
   // Initial check
   useEffect(() => {
@@ -226,12 +209,6 @@ export function ApiStatusIndicator({
                 Quantum
               </Badge>
             )}
-            {sustainabilityMode && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                <Leaf className="h-3 w-3 mr-1" />
-                Carbon Neutral
-              </Badge>
-            )}
           </CardTitle>
           <Button variant="outline" size="sm" onClick={checkApiStatus} disabled={isChecking}>
             {isChecking ? <Activity className="h-4 w-4 animate-spin mr-2" /> : <Activity className="h-4 w-4 mr-2" />}
@@ -249,7 +226,7 @@ export function ApiStatusIndicator({
 
       <CardContent className="space-y-4">
         {/* Overall Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600">
               {onlineCount}/{totalCount}
@@ -266,12 +243,6 @@ export function ApiStatusIndicator({
                 {Math.round(quantumMetrics.quantumAdvantage * 100)}%
               </div>
               <div className="text-xs text-muted-foreground">Quantum Boost</div>
-            </div>
-          )}
-          {sustainabilityMode && (
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{endpoints.filter((e) => e.carbonNeutral).length}</div>
-              <div className="text-xs text-muted-foreground">Carbon Neutral</div>
             </div>
           )}
         </div>
@@ -295,18 +266,6 @@ export function ApiStatusIndicator({
                   <Badge variant="outline" className="text-purple-600 border-purple-300">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Quantum
-                  </Badge>
-                )}
-                {endpoint.carbonNeutral && (
-                  <Badge variant="outline" className="text-green-600 border-green-300">
-                    <Leaf className="h-3 w-3 mr-1" />
-                    Green
-                  </Badge>
-                )}
-                {showMetrics && (
-                  <Badge variant="outline" className="text-blue-600 border-blue-300">
-                    <Shield className="h-3 w-3 mr-1" />
-                    {endpoint.ethicsScore}%
                   </Badge>
                 )}
                 <div className={cn("w-3 h-3 rounded-full", getStatusColor(endpoint.status))} />
@@ -335,21 +294,6 @@ export function ApiStatusIndicator({
                   <div className="font-medium">Quantum Advantage</div>
                   <Progress value={quantumMetrics.quantumAdvantage * 100} className="mt-1" />
                 </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Sustainability Metrics (if enabled) */}
-        {sustainabilityMode && showMetrics && (
-          <Alert>
-            <Leaf className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between">
-                <span>Carbon footprint reduced by quantum optimization</span>
-                <Badge variant="outline" className="text-green-600">
-                  -23% CO₂
-                </Badge>
               </div>
             </AlertDescription>
           </Alert>

@@ -12,8 +12,7 @@ export interface QuantumOptimizationResult {
   originalTime: number
   optimizedTime: number
   speedupFactor: number
-  energySaved: number
-  carbonReduced: number
+  performanceGain: number
 }
 
 export class QuantumOptimizer {
@@ -206,19 +205,14 @@ export class QuantumOptimizer {
   }
 
   // 🔮 Quantum Performance Metrics
-  getQuantumMetrics(): QuantumState & { performanceBoost: number; energyEfficiency: number } {
+  getQuantumMetrics(): QuantumState & { performanceBoost: number } {
     const performanceBoost = this.isInitialized
       ? this.quantumState.entanglementStrength * 2 + 1 // 1-2.6x boost
       : 1
 
-    const energyEfficiency = this.isInitialized
-      ? 90 + (this.quantumState.coherenceTime / 1000) * 10 // 90-100% efficiency
-      : 70
-
     return {
       ...this.quantumState,
       performanceBoost,
-      energyEfficiency,
     }
   }
 

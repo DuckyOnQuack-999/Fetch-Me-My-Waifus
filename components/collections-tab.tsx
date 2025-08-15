@@ -6,19 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useStorage } from "@/context/storageContext"
-import { Heart, Folder, Plus, Search, Grid, List, Sparkles, Zap, Leaf } from "lucide-react"
+import { Heart, Folder, Plus, Search, Grid, List, Sparkles, Zap } from "lucide-react"
 
 interface CollectionsTabProps {
   quantumMode?: boolean
-  sustainabilityMode?: boolean
-  ethicalMode?: boolean
 }
 
-export function CollectionsTab({
-  quantumMode = false,
-  sustainabilityMode = false,
-  ethicalMode = false,
-}: CollectionsTabProps) {
+export function CollectionsTab({ quantumMode = false }: CollectionsTabProps) {
   const { collections, createCollection } = useStorage()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchTerm, setSearchTerm] = useState("")
@@ -38,10 +32,8 @@ export function CollectionsTab({
       description: collection?.description || "",
       tags: collection?.tags || [],
       quantumOptimized: quantumMode,
-      carbonNeutral: sustainabilityMode,
-      ethicsScore: ethicalMode ? Math.floor(Math.random() * 20) + 80 : 0,
     }))
-  }, [collections, quantumMode, sustainabilityMode, ethicalMode])
+  }, [collections, quantumMode])
 
   // Filter collections based on search
   const filteredCollections = useMemo(() => {
@@ -74,12 +66,6 @@ export function CollectionsTab({
               <Badge variant="outline" className="text-purple-600 border-purple-300">
                 <Zap className="h-3 w-3 mr-1" />
                 Quantum
-              </Badge>
-            )}
-            {sustainabilityMode && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                <Leaf className="h-3 w-3 mr-1" />
-                Eco
               </Badge>
             )}
           </CardTitle>
@@ -158,17 +144,6 @@ export function CollectionsTab({
                           {collection.quantumOptimized && (
                             <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
                               <Zap className="h-2 w-2 mr-1" />Q
-                            </Badge>
-                          )}
-                          {collection.carbonNeutral && (
-                            <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
-                              <Leaf className="h-2 w-2 mr-1" />
-                              Eco
-                            </Badge>
-                          )}
-                          {collection.ethicsScore > 0 && (
-                            <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">
-                              {collection.ethicsScore}%
                             </Badge>
                           )}
                         </div>

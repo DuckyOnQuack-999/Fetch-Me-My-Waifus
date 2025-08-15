@@ -5,14 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, RefreshCw, Bug, Zap, Leaf, Shield } from "lucide-react"
+import { AlertTriangle, RefreshCw, Bug, Zap } from "lucide-react"
 
 interface Props {
   children: ReactNode
   fallback?: ReactNode
   quantumMode?: boolean
-  sustainabilityMode?: boolean
-  ethicalMode?: boolean
 }
 
 interface State {
@@ -54,16 +52,6 @@ export class ErrorBoundary extends Component<Props, State> {
       this.quantumErrorAnalysis(error, errorInfo)
     }
 
-    // 🌱 Sustainable Error Logging
-    if (this.props.sustainabilityMode) {
-      this.sustainableErrorLogging(error, errorInfo)
-    }
-
-    // 🎯 Ethical Error Handling
-    if (this.props.ethicalMode) {
-      this.ethicalErrorProcessing(error, errorInfo)
-    }
-
     // Standard error logging
     console.error("Error Boundary caught an error:", error, errorInfo)
   }
@@ -91,75 +79,6 @@ export class ErrorBoundary extends Component<Props, State> {
       this.attemptQuantumRecovery()
     } catch (quantumError) {
       console.error("🚨 Quantum error analysis failed:", quantumError)
-    }
-  }
-
-  // 🌱 Carbon-Neutral Error Logging
-  private sustainableErrorLogging = (error: Error, errorInfo: ErrorInfo) => {
-    try {
-      // Minimize carbon footprint by efficient logging
-      const sustainableLog = {
-        errorId: this.state.errorId,
-        timestamp: new Date().toISOString(),
-        errorType: error.name,
-        message: error.message.substring(0, 200), // Limit message size
-        carbonFootprint: 0.001, // Estimated grams of CO2
-        energyEfficient: true,
-      }
-
-      // Use efficient storage (localStorage with compression simulation)
-      const compressedLog = JSON.stringify(sustainableLog)
-      localStorage.setItem(`error-${this.state.errorId}`, compressedLog)
-
-      console.info("🌱 Sustainable Error Logged:", sustainableLog)
-    } catch (sustainableError) {
-      console.error("🚨 Sustainable error logging failed:", sustainableError)
-    }
-  }
-
-  // 🎯 Ethical Error Processing
-  private ethicalErrorProcessing = (error: Error, errorInfo: ErrorInfo) => {
-    try {
-      // Ensure user privacy and data protection
-      const ethicalLog = {
-        errorId: this.state.errorId,
-        errorType: error.name,
-        timestamp: new Date().toISOString(),
-        userDataExposed: false,
-        privacyCompliant: true,
-        biasDetected: false,
-        fairnessScore: 95,
-        transparencyLevel: 100,
-      }
-
-      // Check for potential bias in error patterns
-      const biasCheck = this.detectErrorBias(error, errorInfo)
-      ethicalLog.biasDetected = biasCheck.hasBias
-      ethicalLog.fairnessScore = biasCheck.fairnessScore
-
-      console.info("🎯 Ethical Error Processing:", ethicalLog)
-    } catch (ethicalError) {
-      console.error("🚨 Ethical error processing failed:", ethicalError)
-    }
-  }
-
-  // Detect potential bias in error patterns
-  private detectErrorBias = (error: Error, errorInfo: ErrorInfo) => {
-    // Simulate bias detection algorithm
-    const errorPatterns = ["TypeError", "ReferenceError", "SyntaxError", "RangeError"]
-
-    const biasIndicators = {
-      hasSystematicBias: false,
-      affectsSpecificGroups: false,
-      discriminatoryPattern: false,
-    }
-
-    const fairnessScore = Object.values(biasIndicators).every((indicator) => !indicator) ? 95 : 70
-
-    return {
-      hasBias: Object.values(biasIndicators).some((indicator) => indicator),
-      fairnessScore,
-      biasIndicators,
     }
   }
 
@@ -247,18 +166,6 @@ export class ErrorBoundary extends Component<Props, State> {
                     Quantum Recovery
                   </Badge>
                 )}
-                {this.props.sustainabilityMode && (
-                  <Badge variant="outline" className="text-green-600 border-green-300">
-                    <Leaf className="h-3 w-3 mr-1" />
-                    Eco-Friendly
-                  </Badge>
-                )}
-                {this.props.ethicalMode && (
-                  <Badge variant="outline" className="text-blue-600 border-blue-300">
-                    <Shield className="h-3 w-3 mr-1" />
-                    Privacy Protected
-                  </Badge>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -336,27 +243,6 @@ export class ErrorBoundary extends Component<Props, State> {
                   </AlertDescription>
                 </Alert>
               )}
-
-              {/* Sustainability Notice */}
-              {this.props.sustainabilityMode && (
-                <Alert>
-                  <Leaf className="h-4 w-4" />
-                  <AlertDescription>
-                    This error was logged using carbon-neutral processes. Estimated carbon footprint: 0.001g CO₂
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Privacy Notice */}
-              {this.props.ethicalMode && (
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    Your privacy is protected. No personal data was exposed in this error report. Bias detection: ✅
-                    Passed | Fairness score: 95%
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
         </div>
@@ -371,17 +257,9 @@ export class ErrorBoundary extends Component<Props, State> {
 export function ErrorBoundaryWrapper({
   children,
   quantumMode = false,
-  sustainabilityMode = false,
-  ethicalMode = false,
 }: {
   children: ReactNode
   quantumMode?: boolean
-  sustainabilityMode?: boolean
-  ethicalMode?: boolean
 }) {
-  return (
-    <ErrorBoundary quantumMode={quantumMode} sustainabilityMode={sustainabilityMode} ethicalMode={ethicalMode}>
-      {children}
-    </ErrorBoundary>
-  )
+  return <ErrorBoundary quantumMode={quantumMode}>{children}</ErrorBoundary>
 }

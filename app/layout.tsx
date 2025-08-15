@@ -15,9 +15,8 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Waifu Downloader v7 - Quantum-Enhanced Image Fetcher",
-  description:
-    "Revolutionary AI-powered image downloading with quantum computing, ethical AI, and sustainable technology",
-  keywords: ["waifu", "anime", "images", "downloader", "quantum", "AI", "sustainable", "ethical"],
+  description: "Revolutionary AI-powered image downloading with quantum computing enhancements",
+  keywords: ["waifu", "anime", "images", "downloader", "quantum", "AI"],
   authors: [{ name: "DuckyCoder v7" }],
   creator: "DuckyCoder v7",
   publisher: "Waifu Downloader",
@@ -50,13 +49,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="quantum-enhanced" content="true" />
-        <meta name="carbon-neutral" content="true" />
-        <meta name="ethical-ai" content="true" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={inter.className}>
-        <ErrorBoundaryWrapper quantumMode={true} sustainabilityMode={true} ethicalMode={true}>
+        <ErrorBoundaryWrapper quantumMode={true}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <SettingsProvider>
               <StorageProvider>
