@@ -4,13 +4,15 @@ import type * as React from "react"
 import {
   AudioWaveform,
   Command,
+  Frame,
   GalleryVerticalEnd,
-  Settings2,
+  Map,
+  PieChart,
   Download,
-  Heart,
   ImageIcon,
-  Folder,
-  BarChart3,
+  Settings,
+  Home,
+  FolderOpen,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -29,15 +31,15 @@ const data = {
     {
       name: "Waifu Downloader",
       logo: GalleryVerticalEnd,
-      plan: "Enterprise",
+      plan: "Pro",
     },
     {
       name: "Anime Collection",
       logo: AudioWaveform,
-      plan: "Startup",
+      plan: "Free",
     },
     {
-      name: "Manga Archive",
+      name: "Image Gallery",
       logo: Command,
       plan: "Free",
     },
@@ -46,7 +48,7 @@ const data = {
     {
       title: "Dashboard",
       url: "/",
-      icon: BarChart3,
+      icon: Home,
       isActive: true,
       items: [
         {
@@ -54,31 +56,31 @@ const data = {
           url: "/",
         },
         {
-          title: "Analytics",
-          url: "/analytics",
+          title: "Statistics",
+          url: "/?tab=stats",
         },
         {
-          title: "Performance",
-          url: "/performance",
+          title: "Quick Actions",
+          url: "/?tab=actions",
         },
       ],
     },
     {
       title: "Downloads",
-      url: "/downloads",
+      url: "/?tab=download",
       icon: Download,
       items: [
         {
-          title: "Queue",
+          title: "Download Center",
+          url: "/?tab=download",
+        },
+        {
+          title: "Queue Manager",
           url: "/downloads/queue",
         },
         {
-          title: "History",
+          title: "Download History",
           url: "/downloads/history",
-        },
-        {
-          title: "Settings",
-          url: "/downloads/settings",
         },
       ],
     },
@@ -92,19 +94,19 @@ const data = {
           url: "/gallery",
         },
         {
-          title: "Recent",
-          url: "/gallery/recent",
+          title: "Favorites",
+          url: "/favorites",
         },
         {
-          title: "Search",
-          url: "/gallery/search",
+          title: "Collections",
+          url: "/collections",
         },
       ],
     },
     {
       title: "Collections",
       url: "/collections",
-      icon: Folder,
+      icon: FolderOpen,
       items: [
         {
           title: "My Collections",
@@ -121,28 +123,9 @@ const data = {
       ],
     },
     {
-      title: "Favorites",
-      url: "/favorites",
-      icon: Heart,
-      items: [
-        {
-          title: "All Favorites",
-          url: "/favorites",
-        },
-        {
-          title: "Recently Added",
-          url: "/favorites/recent",
-        },
-        {
-          title: "Most Viewed",
-          url: "/favorites/popular",
-        },
-      ],
-    },
-    {
       title: "Settings",
       url: "/settings",
-      icon: Settings2,
+      icon: Settings,
       items: [
         {
           title: "General",
@@ -153,14 +136,31 @@ const data = {
           url: "/settings/api",
         },
         {
-          title: "Download",
-          url: "/settings/download",
+          title: "Download Settings",
+          url: "/settings/downloads",
         },
         {
           title: "Storage",
           url: "/settings/storage",
         },
       ],
+    },
+  ],
+  projects: [
+    {
+      name: "Waifu Collection",
+      url: "#",
+      icon: Frame,
+    },
+    {
+      name: "Neko Gallery",
+      url: "#",
+      icon: PieChart,
+    },
+    {
+      name: "Anime Archive",
+      url: "#",
+      icon: Map,
     },
   ],
 }

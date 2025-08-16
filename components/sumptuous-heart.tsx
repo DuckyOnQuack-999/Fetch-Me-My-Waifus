@@ -8,13 +8,13 @@ interface SumptuousHeartProps {
   className?: string
 }
 
-export function SumptuousHeart({ size = 32, className }: SumptuousHeartProps) {
+export function SumptuousHeart({ size = 64, className = "" }: SumptuousHeartProps) {
   return (
     <motion.div
       className={`relative ${className}`}
       style={{ width: size, height: size }}
       animate={{
-        scale: [1, 1.2, 1],
+        scale: [1, 1.1, 1],
       }}
       transition={{
         duration: 2,
@@ -22,47 +22,52 @@ export function SumptuousHeart({ size = 32, className }: SumptuousHeartProps) {
         ease: "easeInOut",
       }}
     >
-      {/* Outer glow */}
       <motion.div
-        className="absolute inset-0 rounded-full"
+        className="absolute inset-0"
         animate={{
-          boxShadow: [
-            "0 0 10px rgba(236, 72, 153, 0.3)",
-            "0 0 20px rgba(236, 72, 153, 0.6)",
-            "0 0 10px rgba(236, 72, 153, 0.3)",
-          ],
-        }}
-        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-      />
-
-      {/* Heart icon */}
-      <motion.div
-        className="flex items-center justify-center w-full h-full"
-        animate={{
-          rotate: [0, 10, -10, 0],
+          rotate: [0, 360],
         }}
         transition={{
-          duration: 4,
+          duration: 20,
           repeat: Number.POSITIVE_INFINITY,
-          ease: "easeInOut",
+          ease: "linear",
         }}
       >
-        <Heart className="w-full h-full text-pink-500 fill-pink-500" />
+        <div className="w-full h-full bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-600 rounded-full opacity-20 blur-sm" />
       </motion.div>
 
-      {/* Pulse effect */}
       <motion.div
-        className="absolute inset-0 rounded-full border-2 border-pink-500"
-        animate={{
-          scale: [1, 1.5, 1],
-          opacity: [0.8, 0, 0.8],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Number.POSITIVE_INFINITY,
-          ease: "easeOut",
-        }}
-      />
+        className="absolute inset-0 flex items-center justify-center"
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        <Heart
+          className="text-pink-500 fill-current drop-shadow-lg"
+          style={{ width: size * 0.6, height: size * 0.6 }}
+        />
+      </motion.div>
+
+      {/* Floating particles */}
+      {[...Array(6)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 bg-pink-400 rounded-full"
+          style={{
+            left: `${20 + i * 12}%`,
+            top: `${30 + (i % 2) * 40}%`,
+          }}
+          animate={{
+            y: [-10, -20, -10],
+            opacity: [0.3, 1, 0.3],
+          }}
+          transition={{
+            duration: 2 + i * 0.2,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "easeInOut",
+            delay: i * 0.3,
+          }}
+        />
+      ))}
     </motion.div>
   )
 }
