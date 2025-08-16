@@ -18,7 +18,7 @@ import { useSettings } from "@/context/settingsContext"
 import type { ImageCategory, DownloadItem } from "@/types/waifu"
 
 export function SimpleDownloadTab() {
-  const { addToQueue, downloadQueue } = useDownload()
+  const { addToQueue, downloads } = useDownload()
   const { settings } = useSettings()
 
   const [downloadConfig, setDownloadConfig] = useState({
@@ -95,7 +95,7 @@ export function SimpleDownloadTab() {
             .filter(Boolean),
           addedAt: new Date(),
           timestamp: new Date(),
-          source: downloadConfig.source,
+          source: downloadConfig.source as any,
         }
 
         addToQueue(downloadItem)
@@ -369,28 +369,26 @@ export function SimpleDownloadTab() {
       </Tabs>
 
       {/* Download Queue Status */}
-      {downloadQueue.length > 0 && (
+      {downloads && downloads.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ImageIcon className="h-5 w-5 text-primary" />
                 Download Queue
-                <Badge variant="secondary">{downloadQueue.length} items</Badge>
+                <Badge variant="secondary">{downloads.length} items</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {downloadQueue.slice(0, 3).map((item) => (
+                {downloads.slice(0, 3).map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
                     <span className="text-sm truncate">{item.filename}</span>
                     <Badge variant="outline">{item.status}</Badge>
                   </div>
                 ))}
-                {downloadQueue.length > 3 && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    And {downloadQueue.length - 3} more items...
-                  </p>
+                {downloads.length > 3 && (
+                  <p className="text-sm text-muted-foreground text-center">And {downloads.length - 3} more items...</p>
                 )}
               </div>
             </CardContent>
