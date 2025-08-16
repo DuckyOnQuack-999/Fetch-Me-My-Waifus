@@ -18,16 +18,8 @@ import { SimpleDownloadTab } from "@/components/simple-download-tab"
 import { ApiStatusIndicator } from "@/components/api-status-indicator"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { AppSidebar } from "@/components/app-sidebar"
-import { HomeDashboard } from "@/components/home-dashboard"
 
 function HomeContent() {
   const searchParams = useSearchParams()
@@ -310,19 +302,22 @@ export default function HomePage() {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/">Waifu Downloader</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
+                  <BreadcrumbPage>Home Dashboard</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
+
+        {/* API Status Bar */}
+        <div className="px-4 pb-4">
+          <ApiStatusIndicator />
+        </div>
+
+        {/* Main Content */}
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <HomeDashboard />
+          <HomeContent />
         </div>
       </SidebarInset>
     </>

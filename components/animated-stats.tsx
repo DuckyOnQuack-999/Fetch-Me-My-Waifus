@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion, useSpring, useTransform } from "framer-motion"
+import { cn } from "@/lib/utils"
 
 interface AnimatedStatsProps {
   value: number
@@ -9,40 +9,50 @@ interface AnimatedStatsProps {
   className?: string
   prefix?: string
   suffix?: string
+  decimals?: number
 }
 
 export function AnimatedStats({
   value,
-  duration = 2000,
-  className = "",
+  duration = 1000,
+  className,
   prefix = "",
   suffix = "",
+  decimals = 0,
 }: AnimatedStatsProps) {
   const [displayValue, setDisplayValue] = useState(0)
-  const spring = useSpring(0, { stiffness: 100, damping: 30 })
-  const display = useTransform(spring, (current) => Math.round(current))
+  const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
-    spring.set(value)
-  }, [spring, value])
+    setIsAnimating(true)
+    let startTime: number
+    const startValue = displayValue
 
-  useEffect(() => {
-    const unsubscribe = display.onChange((latest) => {
-      setDisplayValue(latest)
-    })
-    return unsubscribe
-  }, [display])
+    const animate = (currentTime: number) => {
+      if (!startTime) startTime = currentTime
+      const progress = Math.min((currentTime - startTime) / duration, 1)
+
+      // Easing function for smooth animation
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3)
+
+      const currentValue = startValue + (value - startValue) * easeOutCubic
+      setDisplayValue(currentValue)
+
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      } else {
+        setIsAnimating(false)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }, [value, duration, displayValue])
 
   return (
-    <motion.span
-      className={className}
-      initial={{ opacity: 0, scale: 0.5 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: "backOut" }}
-    >
+    <span className={cn("tabular-nums transition-colors", isAnimating && "text-primary", className)}>
       {prefix}
-      {displayValue.toLocaleString()}
+      {displayValue.toFixed(decimals)}
       {suffix}
-    </motion.span>
+    </span>
   )
 }

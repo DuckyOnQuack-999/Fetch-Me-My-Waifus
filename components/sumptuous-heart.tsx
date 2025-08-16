@@ -1,85 +1,46 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useState } from "react"
 import { Heart } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface SumptuousHeartProps {
-  size?: number
   className?: string
-  color?: string
+  size?: number
+  filled?: boolean
   animated?: boolean
+  onClick?: () => void
 }
 
 export function SumptuousHeart({
+  className,
   size = 24,
-  className = "",
-  color = "text-pink-500",
-  animated = true,
+  filled = false,
+  animated = false,
+  onClick,
 }: SumptuousHeartProps) {
-  const heartVariants = {
-    initial: { scale: 1 },
-    animate: {
-      scale: [1, 1.2, 1],
-      transition: {
-        duration: 2,
-        repeat: Number.POSITIVE_INFINITY,
-        ease: "easeInOut",
-      },
-    },
-    hover: {
-      scale: 1.3,
-      rotate: [0, -10, 10, -10, 0],
-      transition: {
-        duration: 0.5,
-        ease: "easeInOut",
-      },
-    },
-  }
+  const [isClicked, setIsClicked] = useState(false)
 
-  const glowVariants = {
-    initial: { opacity: 0 },
-    animate: {
-      opacity: [0, 0.5, 0],
-      scale: [1, 1.5, 1],
-      transition: {
-        duration: 2,
-        repeat: Number.POSITIVE_INFINITY,
-        ease: "easeInOut",
-      },
-    },
-  }
-
-  if (!animated) {
-    return <Heart className={`${color} ${className}`} size={size} fill="currentColor" />
+  const handleClick = () => {
+    if (onClick) {
+      setIsClicked(true)
+      onClick()
+      setTimeout(() => setIsClicked(false), 300)
+    }
   }
 
   return (
-    <div className={`relative inline-block ${className}`}>
-      {/* Glow effect */}
-      <motion.div
-        className="absolute inset-0 rounded-full bg-pink-500/20 blur-md"
-        variants={glowVariants}
-        initial="initial"
-        animate="animate"
-      />
-
-      {/* Main heart */}
-      <motion.div
-        variants={heartVariants}
-        initial="initial"
-        animate="animate"
-        whileHover="hover"
-        className="relative z-10"
-      >
-        <Heart
-          className={color}
-          size={size}
-          fill="currentColor"
-          style={{
-            filter: "drop-shadow(0 0 8px rgba(236, 72, 153, 0.3))",
-          }}
-        />
-      </motion.div>
-    </div>
+    <Heart
+      size={size}
+      className={cn(
+        "transition-all duration-300 cursor-pointer",
+        filled ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-500",
+        animated && "animate-pulse",
+        isClicked && "scale-125",
+        onClick && "hover:scale-110",
+        className,
+      )}
+      onClick={handleClick}
+    />
   )
 }
