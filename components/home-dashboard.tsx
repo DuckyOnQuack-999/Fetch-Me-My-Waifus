@@ -1,24 +1,20 @@
 import type React from "react"
+import ApiStatusIndicator from "./ApiStatusIndicator"
 import QuantumPerformanceMonitor from "./QuantumPerformanceMonitor"
-import OtherComponent from "./OtherComponent"
+import DashboardGrid from "./DashboardGrid"
 
 const HomeDashboard: React.FC = () => {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-      }}
-    >
-      <h1>Welcome to the Home Dashboard</h1>
-      <QuantumPerformanceMonitor />
-      <OtherComponent />
-      {/* Additional components can be added here */}
-    </div>
-  )
-}
+    <DashboardGrid>
+      {/* Monitoring Panel */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+        <ApiStatusIndicator />
+        <QuantumPerformanceMonitor />
+      </div>
+      {/* Other Dashboard Components */}\
+      {/* /** rest of code here **/ */}
+ {4}</DashboardGrid>
+  );
+};
 
-export default HomeDashboard
+export default HomeDashboard;\

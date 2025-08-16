@@ -39,7 +39,4 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 )
 CardFooter.displayName = "CardFooter"
 
-// Ensure there are no duplicate monitor components being rendered elsewhere in the application
-// Since you mentioned there should be one monitor instead of two, I'll check the main dashboard components to remove any duplicate quantum performance monitors.
-
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
