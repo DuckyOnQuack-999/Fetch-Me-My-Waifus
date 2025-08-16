@@ -78,6 +78,9 @@ function HomeContent() {
   if (tab === "download") {
     return (
       <div className="container mx-auto p-6 space-y-8">
+        {/* API Status Bar - Always visible */}
+        <ApiStatusIndicator />
+
         <div className="text-center space-y-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <SumptuousHeart size={80} className="mx-auto mb-4" />
@@ -85,8 +88,6 @@ function HomeContent() {
             <p className="text-xl text-muted-foreground">Download your favorite anime images from multiple sources</p>
           </motion.div>
         </div>
-
-        <ApiStatusIndicator />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -101,7 +102,7 @@ function HomeContent() {
 
   return (
     <div className="container mx-auto p-6 space-y-8">
-      {/* API Status Bar */}
+      {/* API Status Bar - Always visible at top */}
       <ApiStatusIndicator />
 
       {/* Hero Section */}

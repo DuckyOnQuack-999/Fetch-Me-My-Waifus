@@ -2,10 +2,26 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
 import {
   Activity,
   Cpu,
@@ -13,150 +29,109 @@ import {
   Wifi,
   Zap,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   CheckCircle,
   RefreshCw,
   Settings,
-  BarChart3,
   Monitor,
+  Database,
 } from "lucide-react"
 import { motion } from "framer-motion"
 
-interface PerformanceMetrics {
+interface PerformanceMetric {
+  timestamp: string
   cpu: number
   memory: number
   network: number
-  diskIO: number
-  quantumEfficiency: number
-  apiResponseTime: number
-  downloadSpeed: number
-  errorRate: number
+  downloads: number
+  apiLatency: number
+  cacheHitRate: number
 }
 
 interface SystemHealth {
   overall: number
-  status: "excellent" | "good" | "warning" | "critical"
-  recommendations: string[]
+  cpu: number
+  memory: number
+  network: number
+  storage: number
+  apis: number
 }
 
 export function QuantumPerformanceMonitor() {
-  const [metrics, setMetrics] = useState<PerformanceMetrics>({
-    cpu: 45,
-    memory: 62,
-    network: 78,
-    diskIO: 34,
-    quantumEfficiency: 94,
-    apiResponseTime: 245,
-    downloadSpeed: 15.6,
-    errorRate: 0.2,
-  })
-
+  const [metrics, setMetrics] = useState<PerformanceMetric[]>([])
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({
-    overall: 92,
-    status: "excellent",
-    recommendations: [
-      "System performance is optimal",
-      "All quantum processors running efficiently",
-      "Network connectivity is stable",
-    ],
+    overall: 95,
+    cpu: 45,
+    memory: 68,
+    network: 92,
+    storage: 34,
+    apis: 98,
   })
-
   const [isMonitoring, setIsMonitoring] = useState(true)
-  const [historicalData, setHistoricalData] = useState<PerformanceMetrics[]>([])
+  const [quantumMode, setQuantumMode] = useState(false)
 
   useEffect(() => {
+    // Generate initial metrics
+    const initialMetrics = Array.from({ length: 20 }, (_, i) => ({
+      timestamp: new Date(Date.now() - (19 - i) * 60000).toLocaleTimeString(),
+      cpu: Math.random() * 100,
+      memory: Math.random() * 100,
+      network: Math.random() * 100,
+      downloads: Math.floor(Math.random() * 50),
+      apiLatency: Math.random() * 1000,
+      cacheHitRate: 80 + Math.random() * 20,
+    }))
+    setMetrics(initialMetrics)
+
     if (isMonitoring) {
       const interval = setInterval(() => {
-        // Simulate real-time performance data
-        const newMetrics: PerformanceMetrics = {
-          cpu: Math.max(0, Math.min(100, metrics.cpu + (Math.random() - 0.5) * 10)),
-          memory: Math.max(0, Math.min(100, metrics.memory + (Math.random() - 0.5) * 8)),
-          network: Math.max(0, Math.min(100, metrics.network + (Math.random() - 0.5) * 12)),
-          diskIO: Math.max(0, Math.min(100, metrics.diskIO + (Math.random() - 0.5) * 15)),
-          quantumEfficiency: Math.max(80, Math.min(100, metrics.quantumEfficiency + (Math.random() - 0.5) * 3)),
-          apiResponseTime: Math.max(100, Math.min(1000, metrics.apiResponseTime + (Math.random() - 0.5) * 50)),
-          downloadSpeed: Math.max(1, Math.min(50, metrics.downloadSpeed + (Math.random() - 0.5) * 2)),
-          errorRate: Math.max(0, Math.min(5, metrics.errorRate + (Math.random() - 0.5) * 0.1)),
-        }
-
-        setMetrics(newMetrics)
-        setHistoricalData((prev) => [...prev.slice(-19), newMetrics])
+        setMetrics((prev) => {
+          const newMetric: PerformanceMetric = {
+            timestamp: new Date().toLocaleTimeString(),
+            cpu: Math.random() * 100,
+            memory: Math.random() * 100,
+            network: Math.random() * 100,
+            downloads: Math.floor(Math.random() * 50),
+            apiLatency: Math.random() * 1000,
+            cacheHitRate: 80 + Math.random() * 20,
+          }
+          return [...prev.slice(1), newMetric]
+        })
 
         // Update system health
-        const avgPerformance =
-          (newMetrics.cpu + newMetrics.memory + newMetrics.network + newMetrics.quantumEfficiency) / 4
-        let status: SystemHealth["status"] = "excellent"
-        let recommendations: string[] = []
-
-        if (avgPerformance >= 90) {
-          status = "excellent"
-          recommendations = ["System performance is optimal", "All quantum processors running efficiently"]
-        } else if (avgPerformance >= 75) {
-          status = "good"
-          recommendations = ["Performance is good", "Consider optimizing background processes"]
-        } else if (avgPerformance >= 60) {
-          status = "warning"
-          recommendations = [
-            "Performance degradation detected",
-            "Check system resources",
-            "Consider restarting services",
-          ]
-        } else {
-          status = "critical"
-          recommendations = [
-            "Critical performance issues",
-            "Immediate attention required",
-            "Contact system administrator",
-          ]
-        }
-
         setSystemHealth({
-          overall: Math.round(avgPerformance),
-          status,
-          recommendations,
+          overall: 90 + Math.random() * 10,
+          cpu: 30 + Math.random() * 40,
+          memory: 50 + Math.random() * 30,
+          network: 85 + Math.random() * 15,
+          storage: 20 + Math.random() * 40,
+          apis: 95 + Math.random() * 5,
         })
       }, 2000)
 
       return () => clearInterval(interval)
     }
-  }, [isMonitoring, metrics])
+  }, [isMonitoring])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "excellent":
-        return "text-green-500"
-      case "good":
-        return "text-blue-500"
-      case "warning":
-        return "text-yellow-500"
-      case "critical":
-        return "text-red-500"
-      default:
-        return "text-gray-500"
-    }
+  const getHealthColor = (value: number) => {
+    if (value >= 90) return "text-green-500"
+    if (value >= 70) return "text-yellow-500"
+    return "text-red-500"
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "excellent":
-        return <CheckCircle className="w-5 h-5 text-green-500" />
-      case "good":
-        return <CheckCircle className="w-5 h-5 text-blue-500" />
-      case "warning":
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />
-      case "critical":
-        return <AlertTriangle className="w-5 h-5 text-red-500" />
-      default:
-        return <Activity className="w-5 h-5 text-gray-500" />
-    }
+  const getHealthIcon = (value: number) => {
+    if (value >= 90) return <CheckCircle className="w-4 h-4 text-green-500" />
+    if (value >= 70) return <AlertTriangle className="w-4 h-4 text-yellow-500" />
+    return <AlertTriangle className="w-4 h-4 text-red-500" />
   }
 
-  const getProgressColor = (value: number) => {
-    if (value >= 90) return "bg-green-500"
-    if (value >= 75) return "bg-blue-500"
-    if (value >= 60) return "bg-yellow-500"
-    return "bg-red-500"
-  }
+  const pieData = [
+    { name: "CPU", value: systemHealth.cpu, color: "#8884d8" },
+    { name: "Memory", value: systemHealth.memory, color: "#82ca9d" },
+    { name: "Network", value: systemHealth.network, color: "#ffc658" },
+    { name: "Storage", value: systemHealth.storage, color: "#ff7300" },
+  ]
 
   return (
     <div className="space-y-6">
@@ -168,33 +143,25 @@ export function QuantumPerformanceMonitor() {
       >
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Zap className="w-6 h-6 text-primary" />
+            <Activity className="w-6 h-6 text-primary" />
             Quantum Performance Monitor
+            {quantumMode && <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">QUANTUM</Badge>}
           </h2>
           <p className="text-muted-foreground">Real-time system performance and health monitoring</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className={`text-2xl font-bold ${getStatusColor(systemHealth.status)}`}>{systemHealth.overall}%</div>
-            <div className="text-sm text-muted-foreground capitalize">{systemHealth.status}</div>
-          </div>
+        <div className="flex items-center gap-2">
           <Button
-            onClick={() => setIsMonitoring(!isMonitoring)}
-            variant={isMonitoring ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            className="flex items-center gap-2"
+            onClick={() => setQuantumMode(!quantumMode)}
+            className={`${quantumMode ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white" : "bg-transparent"}`}
           >
-            {isMonitoring ? (
-              <>
-                <Activity className="w-4 h-4 animate-pulse" />
-                Monitoring
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Start Monitor
-              </>
-            )}
+            <Zap className="w-4 h-4 mr-2" />
+            Quantum Mode
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsMonitoring(!isMonitoring)} className="bg-transparent">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isMonitoring ? "animate-spin" : ""}`} />
+            {isMonitoring ? "Monitoring" : "Paused"}
           </Button>
         </div>
       </motion.div>
@@ -202,258 +169,247 @@ export function QuantumPerformanceMonitor() {
       {/* System Health Overview */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card
-          className={`border-2 ${
-            systemHealth.status === "excellent"
-              ? "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/50"
-              : systemHealth.status === "good"
-                ? "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50"
-                : systemHealth.status === "warning"
-                  ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-800 dark:bg-yellow-950/50"
-                  : "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/50"
-          }`}
+          className={
+            quantumMode ? "bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950" : ""
+          }
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {getStatusIcon(systemHealth.status)}
-              System Health Status
+              <Monitor className="w-5 h-5 text-primary" />
+              System Health Overview
             </CardTitle>
-            <CardDescription>Overall system performance and recommendations</CardDescription>
+            <CardDescription>Real-time performance metrics and system status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Overall Health Score</span>
-                <span className="text-sm text-muted-foreground">{systemHealth.overall}%</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getHealthIcon(systemHealth.overall)}
+                    <span className="font-medium">Overall Health</span>
+                  </div>
+                  <span className={`text-2xl font-bold ${getHealthColor(systemHealth.overall)}`}>
+                    {Math.round(systemHealth.overall)}%
+                  </span>
+                </div>
+                <Progress value={systemHealth.overall} className="h-3" />
               </div>
-              <Progress value={systemHealth.overall} className="h-3" />
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Recommendations:</h4>
-                <ul className="space-y-1">
-                  {systemHealth.recommendations.map((rec, index) => (
-                    <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">
-                      <div className="w-1 h-1 bg-current rounded-full" />
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm">CPU Usage</span>
+                  </div>
+                  <span className="text-sm font-medium">{Math.round(systemHealth.cpu)}%</span>
+                </div>
+                <Progress value={systemHealth.cpu} className="h-2" />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-green-500" />
+                    <span className="text-sm">Memory</span>
+                  </div>
+                  <span className="text-sm font-medium">{Math.round(systemHealth.memory)}%</span>
+                </div>
+                <Progress value={systemHealth.memory} className="h-2" />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wifi className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm">Network</span>
+                  </div>
+                  <span className="text-sm font-medium">{Math.round(systemHealth.network)}%</span>
+                </div>
+                <Progress value={systemHealth.network} className="h-2" />
+              </div>
+
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary mb-1">
+                    {metrics.length > 0 ? metrics[metrics.length - 1].downloads : 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Active Downloads</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-500 mb-1">
+                    {metrics.length > 0 ? Math.round(metrics[metrics.length - 1].cacheHitRate) : 0}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">Cache Hit Rate</div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Performance Metrics */}
+      {/* Performance Charts */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <Tabs defaultValue="realtime" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="realtime">Real-time Metrics</TabsTrigger>
-            <TabsTrigger value="quantum">Quantum Analytics</TabsTrigger>
-            <TabsTrigger value="network">Network & API</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="realtime">Real-time</TabsTrigger>
+            <TabsTrigger value="network">Network</TabsTrigger>
+            <TabsTrigger value="downloads">Downloads</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="realtime" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-                  <Cpu className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(metrics.cpu)}%</div>
-                  <Progress value={metrics.cpu} className="mt-2 h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {metrics.cpu < 70 ? "Normal" : metrics.cpu < 85 ? "High" : "Critical"}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
-                  <Monitor className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(metrics.memory)}%</div>
-                  <Progress value={metrics.memory} className="mt-2 h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {metrics.memory < 70 ? "Normal" : metrics.memory < 85 ? "High" : "Critical"}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Network I/O</CardTitle>
-                  <Wifi className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(metrics.network)}%</div>
-                  <Progress value={metrics.network} className="mt-2 h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">{metrics.downloadSpeed.toFixed(1)} MB/s</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Disk I/O</CardTitle>
-                  <HardDrive className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(metrics.diskIO)}%</div>
-                  <Progress value={metrics.diskIO} className="mt-2 h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {metrics.diskIO < 50 ? "Low" : metrics.diskIO < 75 ? "Moderate" : "High"}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="quantum" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-primary" />
-                    Quantum Efficiency
-                  </CardTitle>
-                  <CardDescription>AI-powered performance optimization metrics</CardDescription>
+                  <CardTitle className="text-lg">System Resources</CardTitle>
+                  <CardDescription>CPU, Memory, and Network usage over time</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-primary mb-2">
-                        {Math.round(metrics.quantumEfficiency)}%
-                      </div>
-                      <Badge variant={metrics.quantumEfficiency >= 90 ? "default" : "secondary"}>
-                        {metrics.quantumEfficiency >= 95
-                          ? "Optimal"
-                          : metrics.quantumEfficiency >= 90
-                            ? "Excellent"
-                            : metrics.quantumEfficiency >= 85
-                              ? "Good"
-                              : "Needs Optimization"}
-                      </Badge>
-                    </div>
-                    <Progress value={metrics.quantumEfficiency} className="h-4" />
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Quantum Cores</div>
-                        <div className="font-medium">8/8 Active</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Processing Power</div>
-                        <div className="font-medium">2.4 THz</div>
-                      </div>
-                    </div>
-                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={metrics}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="timestamp" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="cpu" stroke="#8884d8" strokeWidth={2} name="CPU %" />
+                      <Line type="monotone" dataKey="memory" stroke="#82ca9d" strokeWidth={2} name="Memory %" />
+                      <Line type="monotone" dataKey="network" stroke="#ffc658" strokeWidth={2} name="Network %" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    Performance Trends
-                  </CardTitle>
-                  <CardDescription>Historical performance analysis</CardDescription>
+                  <CardTitle className="text-lg">Resource Distribution</CardTitle>
+                  <CardDescription>Current system resource allocation</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-500">↗ 12%</div>
-                        <div className="text-sm text-muted-foreground">Performance Gain</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-500">98.7%</div>
-                        <div className="text-sm text-muted-foreground">Uptime</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>CPU Optimization</span>
-                        <span className="text-green-500">+15%</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Memory Efficiency</span>
-                        <span className="text-green-500">+8%</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Network Throughput</span>
-                        <span className="text-green-500">+22%</span>
-                      </div>
-                    </div>
-                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="network" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Network Performance</CardTitle>
+                <CardDescription>API latency and network throughput metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={metrics}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="timestamp" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area
+                      type="monotone"
+                      dataKey="apiLatency"
+                      stackId="1"
+                      stroke="#8884d8"
+                      fill="#8884d8"
+                      name="API Latency (ms)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="network"
+                      stackId="2"
+                      stroke="#82ca9d"
+                      fill="#82ca9d"
+                      name="Network Usage %"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="downloads" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Download Activity</CardTitle>
+                <CardDescription>Active downloads and throughput over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={metrics}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="timestamp" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="downloads" fill="#8884d8" name="Active Downloads" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">API Response Time</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(metrics.apiResponseTime)}ms</div>
-                  <p className="text-xs text-muted-foreground">
-                    {metrics.apiResponseTime < 300
-                      ? "Excellent"
-                      : metrics.apiResponseTime < 500
-                        ? "Good"
-                        : metrics.apiResponseTime < 800
-                          ? "Slow"
-                          : "Critical"}
-                  </p>
-                  <div className="mt-2">
-                    <Progress value={Math.max(0, 100 - metrics.apiResponseTime / 10)} className="h-2" />
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Avg Response Time</p>
+                      <p className="text-2xl font-bold">
+                        {metrics.length > 0 ? Math.round(metrics[metrics.length - 1].apiLatency) : 0}ms
+                      </p>
+                    </div>
+                    <TrendingDown className="w-8 h-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Download Speed</CardTitle>
-                  <Wifi className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.downloadSpeed.toFixed(1)} MB/s</div>
-                  <p className="text-xs text-muted-foreground">
-                    {metrics.downloadSpeed > 20
-                      ? "Excellent"
-                      : metrics.downloadSpeed > 10
-                        ? "Good"
-                        : metrics.downloadSpeed > 5
-                          ? "Moderate"
-                          : "Slow"}
-                  </p>
-                  <div className="mt-2">
-                    <Progress value={(metrics.downloadSpeed / 50) * 100} className="h-2" />
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Cache Efficiency</p>
+                      <p className="text-2xl font-bold">
+                        {metrics.length > 0 ? Math.round(metrics[metrics.length - 1].cacheHitRate) : 0}%
+                      </p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.errorRate.toFixed(2)}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    {metrics.errorRate < 1
-                      ? "Excellent"
-                      : metrics.errorRate < 2
-                        ? "Good"
-                        : metrics.errorRate < 5
-                          ? "Warning"
-                          : "Critical"}
-                  </p>
-                  <div className="mt-2">
-                    <Progress value={Math.max(0, 100 - metrics.errorRate * 20)} className="h-2" />
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Error Rate</p>
+                      <p className="text-2xl font-bold">0.2%</p>
+                    </div>
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Uptime</p>
+                      <p className="text-2xl font-bold">99.9%</p>
+                    </div>
+                    <Activity className="w-8 h-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -461,51 +417,38 @@ export function QuantumPerformanceMonitor() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Network Performance Details</CardTitle>
-                <CardDescription>Detailed network and API performance metrics</CardDescription>
+                <CardTitle className="text-lg">Performance Insights</CardTitle>
+                <CardDescription>AI-powered recommendations for optimization</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Connection Status</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Waifu.im API</span>
-                        <Badge variant="default">Online</Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Waifu.pics API</span>
-                        <Badge variant="default">Online</Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Nekos.best API</span>
-                        <Badge variant="secondary">Slow</Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Wallhaven API</span>
-                        <Badge variant="default">Online</Badge>
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-green-800 dark:text-green-200">Excellent Performance</p>
+                      <p className="text-sm text-green-600 dark:text-green-300">
+                        Your system is running optimally with high cache hit rates and low latency.
+                      </p>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Performance Metrics</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Avg Response Time:</span>
-                        <span>{Math.round(metrics.apiResponseTime)}ms</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Throughput:</span>
-                        <span>{metrics.downloadSpeed.toFixed(1)} MB/s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Success Rate:</span>
-                        <span>{(100 - metrics.errorRate).toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Active Connections:</span>
-                        <span>4/4</span>
-                      </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <Database className="w-5 h-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-800 dark:text-blue-200">Cache Optimization</p>
+                      <p className="text-sm text-blue-600 dark:text-blue-300">
+                        Consider increasing cache size to improve performance for frequently accessed images.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                    <Settings className="w-5 h-5 text-yellow-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-yellow-800 dark:text-yellow-200">Memory Usage</p>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                        Memory usage is moderate. Consider enabling memory compression for better efficiency.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -515,43 +458,38 @@ export function QuantumPerformanceMonitor() {
         </Tabs>
       </motion.div>
 
-      {/* Control Panel */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-primary" />
-              Performance Control Panel
-            </CardTitle>
-            <CardDescription>Optimize and configure system performance settings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent">
-                <Zap className="w-6 h-6 text-primary" />
+      {/* Quantum Enhancement Panel */}
+      {quantumMode && (
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}>
+          <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Quantum Enhancement Active
+              </CardTitle>
+              <CardDescription className="text-purple-100">
+                Advanced AI-powered performance optimization is now active
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="font-medium">Quantum Boost</div>
-                  <div className="text-xs text-muted-foreground">Optimize performance</div>
+                  <div className="text-2xl font-bold mb-1">+47%</div>
+                  <div className="text-sm text-purple-100">Performance Boost</div>
                 </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent">
-                <RefreshCw className="w-6 h-6 text-primary" />
                 <div className="text-center">
-                  <div className="font-medium">System Refresh</div>
-                  <div className="text-xs text-muted-foreground">Clear cache & restart</div>
+                  <div className="text-2xl font-bold mb-1">-23%</div>
+                  <div className="text-sm text-purple-100">Latency Reduction</div>
                 </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent">
-                <BarChart3 className="w-6 h-6 text-primary" />
                 <div className="text-center">
-                  <div className="font-medium">Generate Report</div>
-                  <div className="text-xs text-muted-foreground">Export performance data</div>
+                  <div className="text-2xl font-bold mb-1">+89%</div>
+                  <div className="text-sm text-purple-100">Cache Efficiency</div>
                 </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   )
 }

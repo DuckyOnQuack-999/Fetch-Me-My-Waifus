@@ -1,159 +1,72 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState, useMemo } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   Search,
-  Filter,
-  Download,
-  Heart,
-  Star,
   Grid3X3,
   List,
-  SortAsc,
-  SortDesc,
+  Heart,
+  Download,
+  Share,
   Eye,
-  Share2,
-  Bookmark,
-  Tag,
   ImageIcon,
+  Maximize2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-
-interface ImageData {
-  id: string
-  url: string
-  thumbnail?: string
-  title?: string
-  tags?: string[]
-  source?: string
-  width?: number
-  height?: number
-  fileSize?: number
-  uploadDate?: string
-  rating?: number
-  isFavorite?: boolean
-}
+import type { WaifuImage } from "@/types/waifu"
 
 interface EnhancedImageGalleryProps {
-  images: ImageData[]
-  onDownload?: (image: ImageData) => void
-  onFavorite?: (image: ImageData) => void
-  onShare?: (image: ImageData) => void
+  images: WaifuImage[]
+  onDownload?: (image: WaifuImage) => void
+  onFavorite?: (image: WaifuImage) => void
   isLoading?: boolean
 }
 
-export function EnhancedImageGallery({
-  images = [],
-  onDownload,
-  onFavorite,
-  onShare,
-  isLoading = false,
-}: EnhancedImageGalleryProps) {
+export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading }: EnhancedImageGalleryProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<"date" | "rating" | "size" | "name">("date")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [sortBy, setSortBy] = useState("newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedImage, setSelectedImage] = useState<ImageData | null>(null)
-  const [filterSource, setFilterSource] = useState<string>("all")
-
-  // Sample data for demonstration
-  const sampleImages: ImageData[] = useMemo(
-    () => [
-      {
-        id: "1",
-        url: "/placeholder.svg?height=400&width=300&text=Anime+Girl+1",
-        thumbnail: "/placeholder.svg?height=200&width=150&text=Anime+Girl+1",
-        title: "Cute Anime Girl",
-        tags: ["anime", "cute", "girl", "kawaii"],
-        source: "waifu.im",
-        width: 1920,
-        height: 1080,
-        fileSize: 245000,
-        uploadDate: "2024-01-15",
-        rating: 4.8,
-        isFavorite: true,
-      },
-      {
-        id: "2",
-        url: "/placeholder.svg?height=400&width=300&text=Anime+Girl+2",
-        thumbnail: "/placeholder.svg?height=200&width=150&text=Anime+Girl+2",
-        title: "Magical Girl",
-        tags: ["anime", "magic", "girl", "fantasy"],
-        source: "waifu.pics",
-        width: 1600,
-        height: 900,
-        fileSize: 189000,
-        uploadDate: "2024-01-14",
-        rating: 4.6,
-        isFavorite: false,
-      },
-      {
-        id: "3",
-        url: "/placeholder.svg?height=400&width=300&text=Anime+Girl+3",
-        thumbnail: "/placeholder.svg?height=200&width=150&text=Anime+Girl+3",
-        title: "School Girl",
-        tags: ["anime", "school", "uniform", "student"],
-        source: "nekos.best",
-        width: 1920,
-        height: 1080,
-        fileSize: 312000,
-        uploadDate: "2024-01-13",
-        rating: 4.9,
-        isFavorite: true,
-      },
-    ],
-    [],
-  )
-
-  const displayImages = images.length > 0 ? images : sampleImages
-
-  // Get all unique tags
-  const allTags = useMemo(() => {
-    const tags = new Set<string>()
-    displayImages.forEach((image) => {
-      image.tags?.forEach((tag) => tags.add(tag))
-    })
-    return Array.from(tags).sort()
-  }, [displayImages])
-
-  // Get all unique sources
-  const allSources = useMemo(() => {
-    const sources = new Set<string>()
-    displayImages.forEach((image) => {
-      if (image.source) sources.add(image.source)
-    })
-    return Array.from(sources).sort()
-  }, [displayImages])
+  const [showNsfw, setShowNsfw] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<WaifuImage | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   // Filter and sort images
   const filteredImages = useMemo(() => {
-    const filtered = displayImages.filter((image) => {
-      // Search query filter
+    const filtered = images.filter((image) => {
+      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
-        const matchesTitle = image.title?.toLowerCase().includes(query)
-        const matchesTags = image.tags?.some((tag) => tag.toLowerCase().includes(query))
-        if (!matchesTitle && !matchesTags) return false
+        const matchesSearch =
+          image.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
+          image.character?.toLowerCase().includes(query) ||
+          image.series?.toLowerCase().includes(query) ||
+          image.artist?.toLowerCase().includes(query)
+        if (!matchesSearch) return false
       }
 
       // Tag filter
       if (selectedTags.length > 0) {
-        const hasSelectedTags = selectedTags.every((tag) => image.tags?.includes(tag))
+        const hasSelectedTags = selectedTags.some((tag) => image.tags?.includes(tag))
         if (!hasSelectedTags) return false
       }
 
-      // Source filter
-      if (filterSource !== "all" && image.source !== filterSource) {
+      // NSFW filter
+      if (!showNsfw && image.rating === "explicit") {
         return false
       }
 
@@ -161,47 +74,77 @@ export function EnhancedImageGallery({
     })
 
     // Sort images
-    filtered.sort((a, b) => {
-      let comparison = 0
-
-      switch (sortBy) {
-        case "date":
-          comparison = new Date(a.uploadDate || "").getTime() - new Date(b.uploadDate || "").getTime()
-          break
-        case "rating":
-          comparison = (a.rating || 0) - (b.rating || 0)
-          break
-        case "size":
-          comparison = (a.fileSize || 0) - (b.fileSize || 0)
-          break
-        case "name":
-          comparison = (a.title || "").localeCompare(b.title || "")
-          break
-      }
-
-      return sortOrder === "asc" ? comparison : -comparison
-    })
+    switch (sortBy) {
+      case "newest":
+        filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        break
+      case "oldest":
+        filtered.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+        break
+      case "favorites":
+        filtered.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0))
+        break
+      case "size":
+        filtered.sort((a, b) => b.width * b.height - a.width * a.height)
+        break
+      default:
+        break
+    }
 
     return filtered
-  }, [displayImages, searchQuery, selectedTags, sortBy, sortOrder, filterSource])
+  }, [images, searchQuery, selectedTags, sortBy, showNsfw])
 
-  const handleTagToggle = useCallback((tag: string) => {
+  // Get all unique tags
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    images.forEach((image) => {
+      image.tags?.forEach((tag) => tagSet.add(tag))
+    })
+    return Array.from(tagSet).sort()
+  }, [images])
+
+  const handleImageClick = (image: WaifuImage, index: number) => {
+    setSelectedImage(image)
+    setCurrentImageIndex(index)
+  }
+
+  const handlePrevImage = () => {
+    if (currentImageIndex > 0) {
+      const newIndex = currentImageIndex - 1
+      setCurrentImageIndex(newIndex)
+      setSelectedImage(filteredImages[newIndex])
+    }
+  }
+
+  const handleNextImage = () => {
+    if (currentImageIndex < filteredImages.length - 1) {
+      const newIndex = currentImageIndex + 1
+      setCurrentImageIndex(newIndex)
+      setSelectedImage(filteredImages[newIndex])
+    }
+  }
+
+  const toggleTag = (tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
-  }, [])
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="aspect-[3/4] w-full" />
+              <CardContent className="p-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     )
@@ -209,125 +152,118 @@ export function EnhancedImageGallery({
 
   return (
     <div className="space-y-6">
-      {/* Search and Filter Controls */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search images by title or tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      {/* Search and Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="w-5 h-5" />
+            Image Gallery
+          </CardTitle>
+          <CardDescription>Browse and manage your anime image collection</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="search" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="search">Search</TabsTrigger>
+              <TabsTrigger value="filters">Filters</TabsTrigger>
+              <TabsTrigger value="view">View</TabsTrigger>
+            </TabsList>
 
-        {/* Filter Controls */}
-        <div className="flex flex-wrap items-center gap-4">
-          <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              {allSources.map((source) => (
-                <SelectItem key={source} value={source}>
-                  {source}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <TabsContent value="search" className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search by tags, character, series, or artist..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="favorites">Favorites First</SelectItem>
+                    <SelectItem value="size">Largest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </TabsContent>
 
-          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Date</SelectItem>
-              <SelectItem value="rating">Rating</SelectItem>
-              <SelectItem value="size">Size</SelectItem>
-              <SelectItem value="name">Name</SelectItem>
-            </SelectContent>
-          </Select>
+            <TabsContent value="filters" className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch id="nsfw" checked={showNsfw} onCheckedChange={setShowNsfw} />
+                  <Label htmlFor="nsfw">Show NSFW Content</Label>
+                </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-            className="flex items-center gap-2"
-          >
-            {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
-            {sortOrder === "asc" ? "Ascending" : "Descending"}
-          </Button>
+                <div className="space-y-2">
+                  <Label>Filter by Tags</Label>
+                  <ScrollArea className="h-32 w-full border rounded-md p-4">
+                    <div className="flex flex-wrap gap-2">
+                      {allTags.slice(0, 50).map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant={selectedTags.includes(tag) ? "default" : "outline"}
+                          className="cursor-pointer hover:bg-primary/20 transition-colors"
+                          onClick={() => toggleTag(tag)}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  {selectedTags.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Selected:</span>
+                      {selectedTags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => toggleTag(tag)}>
+                          {tag} <X className="w-3 h-3 ml-1" />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <Button variant={viewMode === "grid" ? "default" : "outline"} size="sm" onClick={() => setViewMode("grid")}>
-              <Grid3X3 className="w-4 h-4" />
-            </Button>
-            <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" onClick={() => setViewMode("list")}>
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+            <TabsContent value="view" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label>View Mode:</Label>
+                  <div className="flex items-center border rounded-md">
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                      className="rounded-r-none"
+                    >
+                      <Grid3X3 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("list")}
+                      className="rounded-l-none"
+                    >
+                      <List className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredImages.length} of {images.length} images
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-        {/* Tag Filter */}
-        {allTags.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filter by tags:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {allTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant={selectedTags.includes(tag) ? "default" : "outline"}
-                  className="cursor-pointer hover:bg-primary/80"
-                  onClick={() => handleTagToggle(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Active Filters */}
-        {(selectedTags.length > 0 || searchQuery || filterSource !== "all") && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Active filters:</span>
-            {searchQuery && <Badge variant="secondary">Search: {searchQuery}</Badge>}
-            {filterSource !== "all" && <Badge variant="secondary">Source: {filterSource}</Badge>}
-            {selectedTags.map((tag) => (
-              <Badge key={tag} variant="secondary">
-                Tag: {tag}
-                <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => handleTagToggle(tag)} />
-              </Badge>
-            ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchQuery("")
-                setSelectedTags([])
-                setFilterSource("all")
-              }}
-              className="text-xs"
-            >
-              Clear all
-            </Button>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Results Count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredImages.length} of {displayImages.length} images
-        </p>
-      </div>
-
-      {/* Image Gallery */}
+      {/* Image Grid/List */}
       <AnimatePresence mode="wait">
         {filteredImages.length === 0 ? (
           <motion.div
@@ -336,99 +272,88 @@ export function EnhancedImageGallery({
             exit={{ opacity: 0 }}
             className="text-center py-12"
           >
-            <ImageIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <ImageIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="text-lg font-medium mb-2">No images found</h3>
-            <p className="text-muted-foreground">Try adjusting your search criteria or filters</p>
+            <p className="text-muted-foreground">Try adjusting your search or filters</p>
           </motion.div>
         ) : viewMode === "grid" ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {filteredImages.map((image, index) => (
               <motion.div
-                key={image.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                key={image.image_id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-                  <div className="relative aspect-[3/4] overflow-hidden">
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
+                  <div className="relative aspect-[3/4] overflow-hidden" onClick={() => handleImageClick(image, index)}>
                     <img
-                      src={image.thumbnail || image.url}
-                      alt={image.title || "Image"}
+                      src={image.preview_url || image.url || "/placeholder.svg?height=400&width=300"}
+                      alt={`Image ${image.image_id}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 w-8 p-0"
-                        onClick={() => setSelectedImage(image)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    {image.isFavorite && (
-                      <div className="absolute top-2 left-2">
-                        <Heart className="w-4 h-4 text-red-500 fill-current" />
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onFavorite?.(image)
+                          }}
+                        >
+                          <Heart className={`w-4 h-4 ${image.isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDownload?.(image)
+                          }}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
                       </div>
+                    </div>
+                    {image.rating === "explicit" && (
+                      <Badge className="absolute top-2 left-2 bg-red-500 text-white">NSFW</Badge>
                     )}
                   </div>
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
                     <div className="space-y-2">
-                      <h3 className="font-medium text-sm truncate">{image.title || "Untitled"}</h3>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{image.source}</span>
-                        {image.rating && (
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-current text-yellow-500" />
-                            {image.rating}
-                          </div>
-                        )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate">
+                          {image.character || image.series || `Image ${image.image_id}`}
+                        </span>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Eye className="w-3 h-3" />
+                          {image.width}×{image.height}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {image.tags?.slice(0, 2).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {(image.tags?.length || 0) > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{(image.tags?.length || 0) - 2}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 pt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 h-8 bg-transparent"
-                          onClick={() => onDownload?.(image)}
-                        >
-                          <Download className="w-3 h-3 mr-1" />
-                          Download
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 bg-transparent"
-                          onClick={() => onFavorite?.(image)}
-                        >
-                          <Heart className={`w-3 h-3 ${image.isFavorite ? "fill-current text-red-500" : ""}`} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 bg-transparent"
-                          onClick={() => onShare?.(image)}
-                        >
-                          <Share2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      {image.tags && image.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {image.tags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {image.tags.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{image.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -439,63 +364,74 @@ export function EnhancedImageGallery({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
             {filteredImages.map((image, index) => (
               <motion.div
-                key={image.id}
+                key={image.image_id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg">
-                        <img
-                          src={image.thumbnail || image.url}
-                          alt={image.title || "Image"}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <h3 className="font-medium truncate">{image.title || "Untitled"}</h3>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>{image.source}</span>
-                              <span>
-                                {image.width}x{image.height}
-                              </span>
-                              <span>{formatFileSize(image.fileSize || 0)}</span>
-                              {image.rating && (
-                                <div className="flex items-center gap-1">
-                                  <Star className="w-3 h-3 fill-current text-yellow-500" />
-                                  {image.rating}
-                                </div>
-                              )}
-                            </div>
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="flex">
+                    <div className="w-32 h-32 flex-shrink-0">
+                      <img
+                        src={image.preview_url || image.url || "/placeholder.svg?height=128&width=128"}
+                        alt={`Image ${image.image_id}`}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => handleImageClick(image, index)}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="flex-1 p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <h3 className="font-medium">
+                            {image.character || image.series || `Image ${image.image_id}`}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>
+                              {image.width}×{image.height}
+                            </span>
+                            {image.file_size && <span>{(image.file_size / 1024 / 1024).toFixed(1)} MB</span>}
+                            {image.artist && <span>by {image.artist}</span>}
+                          </div>
+                          {image.tags && image.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
-                              {image.tags?.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
+                              {image.tags.slice(0, 5).map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
                                   {tag}
                                 </Badge>
                               ))}
+                              {image.tags.length > 5 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{image.tags.length - 5}
+                                </Badge>
+                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setSelectedImage(image)}>
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => onDownload?.(image)}>
-                              <Download className="w-4 h-4 mr-1" />
-                              Download
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => onFavorite?.(image)}>
-                              <Heart className={`w-4 h-4 ${image.isFavorite ? "fill-current text-red-500" : ""}`} />
-                            </Button>
-                          </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onFavorite?.(image)}
+                            className="bg-transparent"
+                          >
+                            <Heart className={`w-4 h-4 ${image.isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onDownload?.(image)}
+                            className="bg-transparent"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="bg-transparent">
+                            <Share className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               </motion.div>
             ))}
@@ -503,123 +439,105 @@ export function EnhancedImageGallery({
         )}
       </AnimatePresence>
 
-      {/* Image Detail Modal */}
+      {/* Image Preview Dialog */}
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           {selectedImage && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>{selectedImage.title || "Image Details"}</span>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onDownload?.(selectedImage)}>
-                      <Download className="w-4 h-4 mr-1" />
-                      Download
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => onFavorite?.(selectedImage)}>
-                      <Heart className={`w-4 h-4 ${selectedImage.isFavorite ? "fill-current text-red-500" : ""}`} />
-                    </Button>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-lg">
-                    <img
-                      src={selectedImage.url || "/placeholder.svg"}
-                      alt={selectedImage.title || "Image"}
-                      className="w-full h-full object-cover"
+            <div className="relative">
+              <div className="relative">
+                <img
+                  src={selectedImage.url || "/placeholder.svg?height=600&width=800"}
+                  alt={`Image ${selectedImage.image_id}`}
+                  className="w-full max-h-[70vh] object-contain"
+                />
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onFavorite?.(selectedImage)}
+                    className="bg-black/50 hover:bg-black/70"
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${selectedImage.isFavorite ? "fill-red-500 text-red-500" : "text-white"}`}
                     />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onDownload?.(selectedImage)}
+                    className="bg-black/50 hover:bg-black/70 text-white"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+                {currentImageIndex > 0 && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handlePrevImage}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                )}
+                {currentImageIndex < filteredImages.length - 1 && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">
+                      {selectedImage.character || selectedImage.series || `Image ${selectedImage.image_id}`}
+                    </h2>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <span>
+                        {selectedImage.width}×{selectedImage.height}
+                      </span>
+                      {selectedImage.file_size && <span>{(selectedImage.file_size / 1024 / 1024).toFixed(1)} MB</span>}
+                      {selectedImage.artist && <span>by {selectedImage.artist}</span>}
+                    </div>
+                  </div>
+                  <Badge variant={selectedImage.rating === "explicit" ? "destructive" : "secondary"}>
+                    {selectedImage.rating?.toUpperCase() || "SAFE"}
+                  </Badge>
+                </div>
+                {selectedImage.tags && selectedImage.tags.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Tags</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedImage.tags.map((tag) => (
+                        <Badge key={tag} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Image {currentImageIndex + 1} of {filteredImages.length}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="bg-transparent">
+                      <Maximize2 className="w-4 h-4 mr-2" />
+                      Full Size
+                    </Button>
+                    <Button variant="outline" size="sm" className="bg-transparent">
+                      <Share className="w-4 h-4 mr-2" />
+                      Share
+                    </Button>
                   </div>
                 </div>
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-6 pr-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Source:</span>
-                          <span>{selectedImage.source}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dimensions:</span>
-                          <span>
-                            {selectedImage.width}x{selectedImage.height}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">File Size:</span>
-                          <span>{formatFileSize(selectedImage.fileSize || 0)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Upload Date:</span>
-                          <span>{selectedImage.uploadDate}</span>
-                        </div>
-                        {selectedImage.rating && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Rating:</span>
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-current text-yellow-500" />
-                              {selectedImage.rating}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <h3 className="font-medium mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedImage.tags?.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            <Tag className="w-3 h-3 mr-1" />
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div>
-                      <h3 className="font-medium mb-2">Actions</h3>
-                      <div className="space-y-2">
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-transparent"
-                          onClick={() => onDownload?.(selectedImage)}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Original
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-transparent"
-                          onClick={() => onFavorite?.(selectedImage)}
-                        >
-                          <Heart className="w-4 h-4 mr-2" />
-                          {selectedImage.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-transparent"
-                          onClick={() => onShare?.(selectedImage)}
-                        >
-                          <Share2 className="w-4 h-4 mr-2" />
-                          Share Image
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start bg-transparent">
-                          <Bookmark className="w-4 h-4 mr-2" />
-                          Add to Collection
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </ScrollArea>
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
