@@ -14,21 +14,20 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { CheckCircle, XCircle, AlertCircle, Clock, Settings, RefreshCw, Shield, Activity } from "lucide-react"
+import { CheckCircle, XCircle, AlertCircle, Settings, RefreshCw, Zap, Activity } from "lucide-react"
 import { motion } from "framer-motion"
-import { useSettings } from "@/context/settingsContext"
 
 interface ApiStatus {
   name: string
   url: string
-  status: "online" | "offline" | "slow" | "checking"
+  status: "online" | "offline" | "warning"
   responseTime: number
   lastChecked: Date
   uptime: number
-  rateLimit?: {
+  rateLimit: {
     remaining: number
     total: number
     resetTime: Date
@@ -36,348 +35,307 @@ interface ApiStatus {
 }
 
 export function ApiStatusIndicator() {
-  const { settings, updateSettings } = useSettings()
   const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([
     {
       name: "Waifu.im",
       url: "https://api.waifu.im",
-      status: "checking",
-      responseTime: 0,
+      status: "online",
+      responseTime: 245,
       lastChecked: new Date(),
-      uptime: 99.5,
-      rateLimit: { remaining: 95, total: 100, resetTime: new Date(Date.now() + 3600000) },
+      uptime: 99.8,
+      rateLimit: { remaining: 850, total: 1000, resetTime: new Date(Date.now() + 3600000) },
     },
     {
       name: "Waifu.pics",
       url: "https://api.waifu.pics",
-      status: "checking",
-      responseTime: 0,
+      status: "online",
+      responseTime: 180,
       lastChecked: new Date(),
-      uptime: 98.2,
-      rateLimit: { remaining: 48, total: 50, resetTime: new Date(Date.now() + 1800000) },
+      uptime: 99.9,
+      rateLimit: { remaining: 950, total: 1000, resetTime: new Date(Date.now() + 3600000) },
     },
     {
       name: "Nekos.best",
       url: "https://nekos.best/api/v2",
-      status: "checking",
-      responseTime: 0,
+      status: "warning",
+      responseTime: 890,
       lastChecked: new Date(),
-      uptime: 97.8,
+      uptime: 98.5,
+      rateLimit: { remaining: 450, total: 500, resetTime: new Date(Date.now() + 1800000) },
     },
     {
       name: "Wallhaven",
       url: "https://wallhaven.cc/api/v1",
-      status: "checking",
-      responseTime: 0,
+      status: "online",
+      responseTime: 320,
       lastChecked: new Date(),
-      uptime: 99.9,
+      uptime: 99.7,
       rateLimit: { remaining: 180, total: 200, resetTime: new Date(Date.now() + 3600000) },
     },
   ])
 
-  const [isChecking, setIsChecking] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
 
   useEffect(() => {
-    checkAllApis()
-
     if (autoRefresh) {
-      const interval = setInterval(checkAllApis, 30000) // Check every 30 seconds
+      const interval = setInterval(() => {
+        refreshStatuses()
+      }, 30000) // Refresh every 30 seconds
+
       return () => clearInterval(interval)
     }
   }, [autoRefresh])
 
-  const checkAllApis = async () => {
-    setIsChecking(true)
+  const refreshStatuses = async () => {
+    setIsRefreshing(true)
 
-    const updatedStatuses = await Promise.all(
-      apiStatuses.map(async (api) => {
-        try {
-          const startTime = Date.now()
+    // Simulate API status checks
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-          // Simulate API check with random response times and statuses
-          await new Promise((resolve) => setTimeout(resolve, Math.random() * 2000 + 500))
-
-          const responseTime = Date.now() - startTime
-          const randomStatus = Math.random()
-
-          let status: ApiStatus["status"]
-          if (randomStatus > 0.9) status = "offline"
-          else if (randomStatus > 0.8) status = "slow"
-          else status = "online"
-
-          return {
-            ...api,
-            status,
-            responseTime,
-            lastChecked: new Date(),
-            uptime: Math.max(95, Math.min(100, api.uptime + (Math.random() - 0.5) * 0.5)),
-          }
-        } catch (error) {
-          return {
-            ...api,
-            status: "offline" as const,
-            responseTime: 0,
-            lastChecked: new Date(),
-          }
-        }
-      }),
+    setApiStatuses((prev) =>
+      prev.map((api) => ({
+        ...api,
+        responseTime: Math.floor(Math.random() * 500) + 100,
+        lastChecked: new Date(),
+        status: Math.random() > 0.1 ? "online" : Math.random() > 0.5 ? "warning" : "offline",
+        rateLimit: {
+          ...api.rateLimit,
+          remaining: Math.max(0, api.rateLimit.remaining - Math.floor(Math.random() * 10)),
+        },
+      })),
     )
 
-    setApiStatuses(updatedStatuses)
-    setIsChecking(false)
+    setIsRefreshing(false)
   }
 
-  const getStatusIcon = (status: ApiStatus["status"]) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "online":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-500" />
+      case "warning":
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />
       case "offline":
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case "slow":
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      case "checking":
-        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />
+        return <XCircle className="w-4 h-4 text-red-500" />
+      default:
+        return <AlertCircle className="w-4 h-4 text-gray-500" />
     }
   }
 
-  const getStatusColor = (status: ApiStatus["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "online":
-        return "bg-green-500"
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+      case "warning":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
       case "offline":
-        return "bg-red-500"
-      case "slow":
-        return "bg-yellow-500"
-      case "checking":
-        return "bg-blue-500"
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
     }
   }
 
-  const getStatusText = (status: ApiStatus["status"]) => {
-    switch (status) {
-      case "online":
-        return "Online"
-      case "offline":
-        return "Offline"
-      case "slow":
-        return "Slow"
-      case "checking":
-        return "Checking..."
-    }
-  }
-
-  const overallHealth = apiStatuses.reduce((acc, api) => {
-    if (api.status === "online") return acc + 25
-    if (api.status === "slow") return acc + 15
-    return acc
-  }, 0)
+  const overallHealth =
+    (apiStatuses.reduce((acc, api) => {
+      if (api.status === "online") return acc + 1
+      if (api.status === "warning") return acc + 0.5
+      return acc
+    }, 0) /
+      apiStatuses.length) *
+    100
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       {/* Overall Status Header */}
-      <Card className="material-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Activity className="h-8 w-8 text-primary" />
-                <div
-                  className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ${getStatusColor(
-                    overallHealth > 75 ? "online" : overallHealth > 50 ? "slow" : "offline",
-                  )}`}
-                />
-              </div>
-              <div>
-                <CardTitle className="text-xl">API Status Dashboard</CardTitle>
-                <CardDescription>Real-time monitoring of all image sources</CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={overallHealth > 75 ? "default" : "destructive"}>{overallHealth}% Healthy</Badge>
-              <Button variant="outline" size="sm" onClick={checkAllApis} disabled={isChecking}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isChecking ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
-            </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Activity className="w-6 h-6 text-primary" />
+            API Status Dashboard
+          </h2>
+          <p className="text-muted-foreground">Real-time monitoring of all API endpoints</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-2xl font-bold text-green-500">{Math.round(overallHealth)}%</div>
+            <div className="text-sm text-muted-foreground">System Health</div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Overall System Health</span>
-              <span>{overallHealth}%</span>
-            </div>
-            <Progress value={overallHealth} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API Status Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {apiStatuses.map((api, index) => (
-          <motion.div
-            key={api.name}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
+          <Button
+            onClick={refreshStatuses}
+            disabled={isRefreshing}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2 bg-transparent"
           >
-            <Card className="material-card hover-lift">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(api.status)}
-                    <CardTitle className="text-lg">{api.name}</CardTitle>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`${
-                      api.status === "online"
-                        ? "border-green-500 text-green-500"
-                        : api.status === "slow"
-                          ? "border-yellow-500 text-yellow-500"
-                          : "border-red-500 text-red-500"
-                    }`}
-                  >
-                    {getStatusText(api.status)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Response Time</p>
-                    <p className="font-medium">{api.responseTime}ms</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Uptime</p>
-                    <p className="font-medium">{api.uptime.toFixed(1)}%</p>
-                  </div>
-                </div>
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </motion.div>
 
-                {api.rateLimit && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Rate Limit</span>
-                      <span>
-                        {api.rateLimit.remaining}/{api.rateLimit.total}
-                      </span>
-                    </div>
-                    <Progress value={(api.rateLimit.remaining / api.rateLimit.total) * 100} className="h-1" />
+      {/* Health Overview */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              System Health Overview
+            </CardTitle>
+            <CardDescription>Overall performance metrics across all APIs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Overall Health</span>
+                <span className="text-sm text-muted-foreground">{Math.round(overallHealth)}%</span>
+              </div>
+              <Progress value={overallHealth} className="h-3" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-500">
+                    {apiStatuses.filter((api) => api.status === "online").length}
                   </div>
-                )}
+                  <div className="text-sm text-muted-foreground">Online</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-500">
+                    {apiStatuses.filter((api) => api.status === "warning").length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Warning</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500">
+                    {apiStatuses.filter((api) => api.status === "offline").length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Offline</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
+      {/* API Status Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
+        {apiStatuses.map((api, index) => (
+          <Card key={api.name} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  {getStatusIcon(api.status)}
+                  {api.name}
+                </CardTitle>
+                <Badge className={getStatusColor(api.status)}>{api.status.toUpperCase()}</Badge>
+              </div>
+              <CardDescription className="text-xs">{api.url}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Response Time</div>
+                  <div className="font-medium">{api.responseTime}ms</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Uptime</div>
+                  <div className="font-medium">{api.uptime}%</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Rate Limit</span>
+                  <span className="font-medium">
+                    {api.rateLimit.remaining}/{api.rateLimit.total}
+                  </span>
+                </div>
+                <Progress value={(api.rateLimit.remaining / api.rateLimit.total) * 100} className="h-2" />
                 <div className="text-xs text-muted-foreground">
-                  Last checked: {api.lastChecked.toLocaleTimeString()}
+                  Resets: {api.rateLimit.resetTime.toLocaleTimeString()}
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">Last checked: {api.lastChecked.toLocaleTimeString()}</div>
+            </CardContent>
+          </Card>
         ))}
-      </div>
+      </motion.div>
 
       {/* Configuration Panel */}
-      <Card className="material-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Monitoring Configuration
-          </CardTitle>
-          <CardDescription>Configure API monitoring and alert settings</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Auto Refresh</Label>
-                <p className="text-sm text-muted-foreground">Automatically check API status every 30 seconds</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
+              Monitoring Configuration
+            </CardTitle>
+            <CardDescription>Configure API monitoring settings and preferences</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-refresh">Auto Refresh</Label>
+                  <div className="text-sm text-muted-foreground">Automatically refresh API status every 30 seconds</div>
+                </div>
+                <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
               </div>
-              <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Check Interval (seconds)</Label>
-                <Input type="number" placeholder="30" min="10" max="300" />
-              </div>
-              <div className="space-y-2">
-                <Label>Timeout (ms)</Label>
-                <Input type="number" placeholder="5000" min="1000" max="30000" />
-              </div>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full bg-transparent">
+                      Configure Endpoints
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>API Endpoint Configuration</DialogTitle>
+                      <DialogDescription>Manage your API endpoints and authentication settings</DialogDescription>
+                    </DialogHeader>
+                    <Tabs defaultValue="endpoints" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
+                        <TabsTrigger value="auth">Authentication</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="endpoints" className="space-y-4">
+                        {apiStatuses.map((api) => (
+                          <div key={api.name} className="space-y-2">
+                            <Label htmlFor={`url-${api.name}`}>{api.name} URL</Label>
+                            <Input id={`url-${api.name}`} defaultValue={api.url} placeholder="API endpoint URL" />
+                          </div>
+                        ))}
+                      </TabsContent>
+                      <TabsContent value="auth" className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="wallhaven-key">Wallhaven API Key</Label>
+                          <Input id="wallhaven-key" type="password" placeholder="Enter your Wallhaven API key" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="waifu-key">Waifu API Key (Optional)</Label>
+                          <Input id="waifu-key" type="password" placeholder="Enter your Waifu API key" />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </DialogContent>
+                </Dialog>
 
-            <Dialog>
-              <DialogTrigger asChild>
                 <Button variant="outline" className="w-full bg-transparent">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Configure API Keys
+                  Export Status Report
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>API Configuration</DialogTitle>
-                  <DialogDescription>Configure API keys and endpoints for each service</DialogDescription>
-                </DialogHeader>
-                <Tabs defaultValue="waifu-im" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="waifu-im">Waifu.im</TabsTrigger>
-                    <TabsTrigger value="waifu-pics">Waifu.pics</TabsTrigger>
-                    <TabsTrigger value="nekos">Nekos.best</TabsTrigger>
-                    <TabsTrigger value="wallhaven">Wallhaven</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="waifu-im" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>API Endpoint</Label>
-                      <Input value="https://api.waifu.im" readOnly />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>API Key (Optional)</Label>
-                      <Input placeholder="Enter API key for higher rate limits" />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="wallhaven" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>API Endpoint</Label>
-                      <Input value="https://wallhaven.cc/api/v1" readOnly />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>API Key</Label>
-                      <Input
-                        placeholder="Enter your Wallhaven API key"
-                        value={settings?.wallhavenApiKey || ""}
-                        onChange={(e) => updateSettings({ wallhavenApiKey: e.target.value })}
-                      />
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="waifu-pics" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>API Endpoint</Label>
-                      <Input value="https://api.waifu.pics" readOnly />
-                    </div>
-                    <p className="text-sm text-muted-foreground">No API key required for this service</p>
-                  </TabsContent>
-
-                  <TabsContent value="nekos" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>API Endpoint</Label>
-                      <Input value="https://nekos.best/api/v2" readOnly />
-                    </div>
-                    <p className="text-sm text-muted-foreground">No API key required for this service</p>
-                  </TabsContent>
-                </Tabs>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
   )
 }

@@ -7,552 +7,530 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Slider } from "@/components/ui/slider"
-import { Download, Play, Pause, Square, Settings, ImageIcon, Zap, Filter, Shuffle, Target } from "lucide-react"
+import { Download, Settings, ImageIcon, Tag, Shuffle, Heart, Star, Zap } from "lucide-react"
 import { motion } from "framer-motion"
 import { useDownload } from "@/context/downloadContext"
 import { useSettings } from "@/context/settingsContext"
 import { toast } from "sonner"
-import type { ImageCategory } from "@/types/waifu"
 
 export function SimpleDownloadTab() {
   const { startDownload, startBatchDownload, isDownloading, totalProgress } = useDownload()
-  const { settings, updateSettings } = useSettings()
+  const { settings } = useSettings()
 
-  const [downloadCount, setDownloadCount] = useState(10)
-  const [selectedCategory, setSelectedCategory] = useState<ImageCategory>("waifu")
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [isNsfw, setIsNsfw] = useState(false)
-  const [minWidth, setMinWidth] = useState(800)
-  const [minHeight, setMinHeight] = useState(600)
-  const [selectedSource, setSelectedSource] = useState("waifu.im")
-  const [isAdvancedMode, setIsAdvancedMode] = useState(false)
+  const [downloadConfig, setDownloadConfig] = useState({
+    source: "waifu.im",
+    category: "waifu",
+    count: 5,
+    tags: "",
+    nsfw: false,
+    minWidth: 800,
+    minHeight: 600,
+    orientation: "any",
+  })
 
-  const categories: ImageCategory[] = [
-    "waifu",
-    "neko",
-    "shinobu",
-    "megumin",
-    "bully",
-    "cuddle",
-    "cry",
-    "hug",
-    "awoo",
-    "kiss",
-    "lick",
-    "pat",
-    "smug",
-    "bonk",
-    "yeet",
-    "blush",
-    "smile",
-    "wave",
-    "highfive",
-    "handhold",
-    "nom",
-    "bite",
-    "glomp",
-    "slap",
-    "kill",
-    "kick",
-    "happy",
-    "wink",
-    "poke",
-    "dance",
-    "cringe",
+  const [isConfiguring, setIsConfiguring] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+
+  const apiSources = [
+    { value: "waifu.im", label: "Waifu.im", description: "High quality anime images" },
+    { value: "waifu.pics", label: "Waifu.pics", description: "SFW and NSFW anime images" },
+    { value: "nekos.best", label: "Nekos.best", description: "Neko and anime images" },
+    { value: "wallhaven", label: "Wallhaven", description: "Anime wallpapers" },
   ]
 
-  const popularTags = [
-    "anime",
-    "manga",
-    "cute",
-    "kawaii",
-    "moe",
-    "school",
-    "uniform",
-    "cat_ears",
-    "fox_girl",
-    "demon",
-    "angel",
-    "maid",
-    "witch",
-    "princess",
-    "blue_hair",
-    "pink_hair",
-    "long_hair",
-    "short_hair",
-    "twintails",
-    "glasses",
-    "headphones",
-    "sword",
-    "magic",
-    "fantasy",
-    "modern",
-  ]
+  const categories = {
+    "waifu.im": ["waifu", "maid", "marin-kitagawa", "mori-calliope", "raiden-shogun"],
+    "waifu.pics": ["waifu", "neko", "shinobu", "megumin", "bully"],
+    "nekos.best": ["neko", "kitsune", "husbando", "waifu"],
+    wallhaven: ["anime", "manga", "general"],
+  }
 
-  const sources = [
-    { id: "waifu.im", name: "Waifu.im", description: "High quality anime images" },
-    { id: "waifu.pics", name: "Waifu.pics", description: "SFW and NSFW anime images" },
-    { id: "nekos.best", name: "Nekos.best", description: "Neko and anime images" },
-    { id: "wallhaven", name: "Wallhaven", description: "Anime wallpapers" },
-  ]
-
-  const handleStartDownload = async () => {
-    if (isDownloading) {
-      toast.info("Downloads are already in progress")
-      return
-    }
-
+  const handleQuickDownload = async () => {
     try {
       const urls = Array.from(
-        { length: downloadCount },
-        (_, i) => `https://api.${selectedSource}/v1/random?category=${selectedCategory}&index=${i}`,
+        { length: downloadConfig.count },
+        (_, i) => `https://api.${downloadConfig.source}/random?category=${downloadConfig.category}&${i}`,
       )
 
       await startBatchDownload(urls, {
-        category: selectedCategory,
-        tags: selectedTags,
-        source: selectedSource,
-        metadata: {
-          nsfw: isNsfw,
-          minWidth,
-          minHeight,
-          downloadedAt: new Date().toISOString(),
-        },
+        source: downloadConfig.source,
+        category: downloadConfig.category,
+        tags: downloadConfig.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
       })
 
-      toast.success(`Started downloading ${downloadCount} ${selectedCategory} images from ${selectedSource}`)
+      toast.success(`Started downloading ${downloadConfig.count} images from ${downloadConfig.source}`)
     } catch (error) {
       toast.error("Failed to start download")
-      console.error("Download error:", error)
     }
   }
 
-  const handleQuickDownload = async (category: ImageCategory, count: number) => {
-    try {
-      const urls = Array.from(
-        { length: count },
-        (_, i) => `https://api.waifu.im/v1/random?category=${category}&index=${i}`,
-      )
-
-      await startBatchDownload(urls, {
-        category,
-        source: "waifu.im",
-        tags: [category],
-      })
-
-      toast.success(`Quick download started: ${count} ${category} images`)
-    } catch (error) {
-      toast.error("Quick download failed")
-    }
-  }
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  const handlePreviewImages = async () => {
+    // Simulate fetching preview images
+    const mockPreviews = Array.from(
+      { length: Math.min(downloadConfig.count, 6) },
+      (_, i) => `/placeholder.svg?height=200&width=150&text=Preview+${i + 1}`,
+    )
+    setPreviewImages(mockPreviews)
+    toast.success("Generated image previews")
   }
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <Card className="material-card">
+      {/* Quick Download Section */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
+              <Zap className="w-5 h-5 text-primary" />
               Quick Download
             </CardTitle>
-            <CardDescription>Start downloading immediately with popular categories</CardDescription>
+            <CardDescription>Download anime images instantly with smart defaults</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {["waifu", "neko", "shinobu", "megumin"].map((category) => (
-                <Button
-                  key={category}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center gap-2 hover:scale-105 transition-transform bg-transparent"
-                  onClick={() => handleQuickDownload(category as ImageCategory, 5)}
-                  disabled={isDownloading}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="source">API Source</Label>
+                <Select
+                  value={downloadConfig.source}
+                  onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, source: value }))}
                 >
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <ImageIcon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-medium text-sm capitalize">{category}</p>
-                    <p className="text-xs text-muted-foreground">5 images</p>
-                  </div>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiSources.map((source) => (
+                      <SelectItem key={source.value} value={source.value}>
+                        <div>
+                          <div className="font-medium">{source.label}</div>
+                          <div className="text-xs text-muted-foreground">{source.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={downloadConfig.category}
+                  onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(categories[downloadConfig.source as keyof typeof categories] || []).map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="count">Image Count</Label>
+                <Select
+                  value={downloadConfig.count.toString()}
+                  onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, count: Number.parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select count" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 image</SelectItem>
+                    <SelectItem value="5">5 images</SelectItem>
+                    <SelectItem value="10">10 images</SelectItem>
+                    <SelectItem value="20">20 images</SelectItem>
+                    <SelectItem value="50">50 images</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (optional)</Label>
+                <Input
+                  id="tags"
+                  placeholder="cute, kawaii, school"
+                  value={downloadConfig.tags}
+                  onChange={(e) => setDownloadConfig((prev) => ({ ...prev, tags: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="nsfw"
+                    checked={downloadConfig.nsfw}
+                    onCheckedChange={(checked) => setDownloadConfig((prev) => ({ ...prev, nsfw: checked }))}
+                  />
+                  <Label htmlFor="nsfw">Include NSFW</Label>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsConfiguring(!isConfiguring)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  {isConfiguring ? "Hide" : "Show"} Advanced
                 </Button>
-              ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handlePreviewImages}
+                  className="flex items-center gap-2 bg-transparent"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Preview
+                </Button>
+                <Button onClick={handleQuickDownload} disabled={isDownloading} className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  {isDownloading ? "Downloading..." : "Start Download"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Main Download Interface */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <Tabs defaultValue="simple" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="simple">Simple Mode</TabsTrigger>
-            <TabsTrigger value="advanced">Advanced Mode</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="simple" className="space-y-4">
-            <Card className="material-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5" />
-                  Simple Download
-                </CardTitle>
-                <CardDescription>Easy-to-use download interface for quick results</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Category</Label>
-                      <Select
-                        value={selectedCategory}
-                        onValueChange={(value) => setSelectedCategory(value as ImageCategory)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.slice(0, 10).map((category) => (
-                            <SelectItem key={category} value={category}>
-                              <span className="capitalize">{category}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Number of Images</Label>
-                      <div className="flex items-center gap-4">
-                        <Slider
-                          value={[downloadCount]}
-                          onValueChange={(value) => setDownloadCount(value[0])}
-                          max={100}
-                          min={1}
-                          step={1}
-                          className="flex-1"
-                        />
-                        <Badge variant="outline" className="min-w-12 text-center">
-                          {downloadCount}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Source</Label>
-                      <Select value={selectedSource} onValueChange={setSelectedSource}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sources.map((source) => (
-                            <SelectItem key={source.id} value={source.id}>
-                              <div>
-                                <div className="font-medium">{source.name}</div>
-                                <div className="text-xs text-muted-foreground">{source.description}</div>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      <Label>Options</Label>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm">NSFW Content</Label>
-                            <p className="text-xs text-muted-foreground">Include adult content</p>
-                          </div>
-                          <Switch checked={isNsfw} onCheckedChange={setIsNsfw} />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm">High Quality Only</Label>
-                            <p className="text-xs text-muted-foreground">Minimum 800x600 resolution</p>
-                          </div>
-                          <Switch
-                            checked={minWidth >= 800}
-                            onCheckedChange={(checked) => {
-                              setMinWidth(checked ? 800 : 400)
-                              setMinHeight(checked ? 600 : 300)
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm">Auto-organize</Label>
-                            <p className="text-xs text-muted-foreground">Sort by category</p>
-                          </div>
-                          <Switch defaultChecked />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 pt-4 border-t">
-                  <Button onClick={handleStartDownload} disabled={isDownloading} className="flex-1" size="lg">
-                    {isDownloading ? (
-                      <>
-                        <Pause className="h-4 w-4 mr-2" />
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Download
-                      </>
-                    )}
-                  </Button>
-
-                  <Button variant="outline" size="lg">
-                    <Shuffle className="h-4 w-4 mr-2" />
-                    Random
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="advanced" className="space-y-4">
-            <Card className="material-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Advanced Download
-                </CardTitle>
-                <CardDescription>Fine-tune your download preferences with advanced options</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Category & Tags</Label>
-                      <Select
-                        value={selectedCategory}
-                        onValueChange={(value) => setSelectedCategory(value as ImageCategory)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              <span className="capitalize">{category}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Popular Tags</Label>
-                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-md">
-                        {popularTags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant={selectedTags.includes(tag) ? "default" : "outline"}
-                            className="cursor-pointer hover:bg-primary/20 transition-colors"
-                            onClick={() => toggleTag(tag)}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      {selectedTags.length > 0 && (
-                        <p className="text-xs text-muted-foreground">Selected: {selectedTags.join(", ")}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Download Count</Label>
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="number"
-                          value={downloadCount}
-                          onChange={(e) => setDownloadCount(Number.parseInt(e.target.value) || 1)}
-                          min={1}
-                          max={1000}
-                          className="w-24"
-                        />
-                        <Slider
-                          value={[downloadCount]}
-                          onValueChange={(value) => setDownloadCount(value[0])}
-                          max={200}
-                          min={1}
-                          step={1}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Quality Settings</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Min Width</Label>
-                          <Input
-                            type="number"
-                            value={minWidth}
-                            onChange={(e) => setMinWidth(Number.parseInt(e.target.value) || 400)}
-                            min={100}
-                            max={4000}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Min Height</Label>
-                          <Input
-                            type="number"
-                            value={minHeight}
-                            onChange={(e) => setMinHeight(Number.parseInt(e.target.value) || 300)}
-                            min={100}
-                            max={4000}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Content Filters</Label>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">NSFW Content</Label>
-                          <Switch checked={isNsfw} onCheckedChange={setIsNsfw} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">Animated Images</Label>
-                          <Switch defaultChecked />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">Duplicate Detection</Label>
-                          <Switch defaultChecked />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Download Behavior</Label>
-                      <Select defaultValue="parallel">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="parallel">Parallel Downloads</SelectItem>
-                          <SelectItem value="sequential">Sequential Downloads</SelectItem>
-                          <SelectItem value="batch">Batch Processing</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 pt-4 border-t">
-                  <Button onClick={handleStartDownload} disabled={isDownloading} className="flex-1" size="lg">
-                    {isDownloading ? (
-                      <>
-                        <Pause className="h-4 w-4 mr-2" />
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Target className="h-4 w-4 mr-2" />
-                        Start Advanced Download
-                      </>
-                    )}
-                  </Button>
-
-                  <Button variant="outline" size="lg">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Preview
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </motion.div>
-
-      {/* Download Progress */}
-      {isDownloading && totalProgress && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <Card className="material-card">
+      {/* Advanced Configuration */}
+      {isConfiguring && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+        >
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 animate-pulse text-primary" />
-                Download Progress
+                <Settings className="w-5 h-5 text-primary" />
+                Advanced Configuration
               </CardTitle>
-              <CardDescription>
-                {totalProgress.downloaded} of {totalProgress.total} images completed
-              </CardDescription>
+              <CardDescription>Fine-tune your download preferences</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Overall Progress</span>
-                  <span>{Math.round((totalProgress.downloaded / totalProgress.total) * 100)}%</span>
-                </div>
-                <Progress value={(totalProgress.downloaded / totalProgress.total) * 100} className="h-3" />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="text-center">
-                  <div className="font-medium">{totalProgress.downloaded}</div>
-                  <div className="text-muted-foreground">Completed</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium">{totalProgress.total - totalProgress.downloaded}</div>
-                  <div className="text-muted-foreground">Remaining</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium">{((totalProgress.speed || 0) / 1024 / 1024).toFixed(1)} MB/s</div>
-                  <div className="text-muted-foreground">Speed</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium">
-                    {Math.floor((totalProgress.eta || 0) / 60)}m {Math.floor((totalProgress.eta || 0) % 60)}s
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Image Quality</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="minWidth">Min Width</Label>
+                      <Input
+                        id="minWidth"
+                        type="number"
+                        value={downloadConfig.minWidth}
+                        onChange={(e) =>
+                          setDownloadConfig((prev) => ({
+                            ...prev,
+                            minWidth: Number.parseInt(e.target.value) || 800,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="minHeight">Min Height</Label>
+                      <Input
+                        id="minHeight"
+                        type="number"
+                        value={downloadConfig.minHeight}
+                        onChange={(e) =>
+                          setDownloadConfig((prev) => ({
+                            ...prev,
+                            minHeight: Number.parseInt(e.target.value) || 600,
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
-                  <div className="text-muted-foreground">ETA</div>
+                  <div className="space-y-2">
+                    <Label htmlFor="orientation">Orientation</Label>
+                    <Select
+                      value={downloadConfig.orientation}
+                      onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, orientation: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select orientation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        <SelectItem value="landscape">Landscape</SelectItem>
+                        <SelectItem value="portrait">Portrait</SelectItem>
+                        <SelectItem value="square">Square</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
 
-              {totalProgress.currentFile && (
-                <div className="text-sm text-muted-foreground truncate">Current: {totalProgress.currentFile}</div>
-              )}
-
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause All
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                  <Square className="h-4 w-4 mr-2" />
-                  Cancel All
-                </Button>
+                <div className="space-y-4">
+                  <h4 className="font-medium">Download Settings</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Auto-start downloads</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Start downloads immediately when added to queue
+                        </div>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Skip duplicates</Label>
+                        <div className="text-sm text-muted-foreground">Avoid downloading duplicate images</div>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Auto-favorite high rated</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Automatically favorite images with high ratings
+                        </div>
+                      </div>
+                      <Switch />
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
       )}
+
+      {/* Image Previews */}
+      {previewImages.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-primary" />
+                Preview Images
+              </CardTitle>
+              <CardDescription>Preview of images that will be downloaded</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {previewImages.map((src, index) => (
+                  <div key={index} className="relative group">
+                    <div className="aspect-[3/4] overflow-hidden rounded-lg border">
+                      <img
+                        src={src || "/placeholder.svg"}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="sm" variant="secondary" className="h-6 w-6 p-0">
+                        <Heart className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">{previewImages.length} images ready for download</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm">
+                    <Shuffle className="w-4 h-4 mr-1" />
+                    Shuffle
+                  </Button>
+                  <Button size="sm">
+                    <Download className="w-4 h-4 mr-1" />
+                    Download All
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Download Progress */}
+      {isDownloading && totalProgress && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-green-500 animate-pulse" />
+                Download in Progress
+              </CardTitle>
+              <CardDescription>
+                {totalProgress.downloaded} of {totalProgress.total} images completed
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Progress
+                  value={totalProgress.total > 0 ? (totalProgress.downloaded / totalProgress.total) * 100 : 0}
+                  className="h-3"
+                />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Speed</div>
+                    <div className="font-medium">{((totalProgress.speed || 0) / 1024 / 1024).toFixed(1)} MB/s</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">ETA</div>
+                    <div className="font-medium">
+                      {Math.floor((totalProgress.eta || 0) / 60)}m {Math.floor((totalProgress.eta || 0) % 60)}s
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Current</div>
+                    <div className="font-medium truncate">{totalProgress.currentFile || "Processing..."}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Errors</div>
+                    <div className="font-medium text-red-500">{totalProgress.errors?.length || 0}</div>
+                  </div>
+                </div>
+                {totalProgress.errors && totalProgress.errors.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-red-600">Recent Errors:</h4>
+                    <div className="space-y-1">
+                      {totalProgress.errors.slice(0, 3).map((error, index) => (
+                        <p key={index} className="text-xs text-red-600 bg-red-50 dark:bg-red-950/50 p-2 rounded">
+                          {error}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Quick Actions */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-primary" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Popular download presets and shortcuts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setDownloadConfig({
+                    source: "waifu.im",
+                    category: "waifu",
+                    count: 10,
+                    tags: "cute, kawaii",
+                    nsfw: false,
+                    minWidth: 1920,
+                    minHeight: 1080,
+                    orientation: "landscape",
+                  })
+                  handleQuickDownload()
+                }}
+              >
+                <div className="w-8 h-8 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center">
+                  <Heart className="w-4 h-4 text-pink-500" />
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Cute Waifus</div>
+                  <div className="text-xs text-muted-foreground">10 HD cute anime girls</div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setDownloadConfig({
+                    source: "wallhaven",
+                    category: "anime",
+                    count: 20,
+                    tags: "wallpaper, landscape",
+                    nsfw: false,
+                    minWidth: 2560,
+                    minHeight: 1440,
+                    orientation: "landscape",
+                  })
+                  handleQuickDownload()
+                }}
+              >
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <ImageIcon className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Wallpapers</div>
+                  <div className="text-xs text-muted-foreground">20 4K anime wallpapers</div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setDownloadConfig({
+                    source: "nekos.best",
+                    category: "neko",
+                    count: 15,
+                    tags: "neko, cat ears",
+                    nsfw: false,
+                    minWidth: 800,
+                    minHeight: 600,
+                    orientation: "any",
+                  })
+                  handleQuickDownload()
+                }}
+              >
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                  <Tag className="w-4 h-4 text-purple-500" />
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Neko Girls</div>
+                  <div className="text-xs text-muted-foreground">15 cat ear anime girls</div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center gap-2 bg-transparent"
+                onClick={() => {
+                  setDownloadConfig({
+                    source: "waifu.pics",
+                    category: "waifu",
+                    count: 5,
+                    tags: "random",
+                    nsfw: false,
+                    minWidth: 600,
+                    minHeight: 600,
+                    orientation: "any",
+                  })
+                  handleQuickDownload()
+                }}
+              >
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                  <Shuffle className="w-4 h-4 text-green-500" />
+                </div>
+                <div className="text-center">
+                  <div className="font-medium">Random Mix</div>
+                  <div className="text-xs text-muted-foreground">5 random anime images</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }
