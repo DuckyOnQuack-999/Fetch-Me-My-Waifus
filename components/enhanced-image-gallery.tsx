@@ -8,7 +8,20 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Download, Heart, Share2, ZoomIn, RotateCw, Copy, Grid3X3, List, SortAsc, SortDesc } from "lucide-react"
+import {
+  Search,
+  Download,
+  Heart,
+  Share2,
+  ZoomIn,
+  RotateCw,
+  Copy,
+  Grid3X3,
+  List,
+  SortAsc,
+  SortDesc,
+  Filter,
+} from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
 
@@ -42,6 +55,7 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedImage, setSelectedImage] = useState<WaifuImage | null>(null)
   const [imageRotation, setImageRotation] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Get all unique tags from images
   const allTags = useMemo(() => {
@@ -110,20 +124,33 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
 
   const handleShare = useCallback(async (image: WaifuImage) => {
     try {
-      await navigator.share({
-        title: `Waifu Image - ${image.id}`,
-        url: image.url,
-      })
+      if (navigator.share) {
+        await navigator.share({
+          title: `Waifu Image - ${image.id}`,
+          url: image.url,
+        })
+      } else {
+        await navigator.clipboard.writeText(image.url)
+        toast.success("Image URL copied to clipboard")
+      }
     } catch (error) {
       // Fallback to clipboard
-      await navigator.clipboard.writeText(image.url)
-      toast.success("Image URL copied to clipboard")
+      try {
+        await navigator.clipboard.writeText(image.url)
+        toast.success("Image URL copied to clipboard")
+      } catch (clipboardError) {
+        toast.error("Failed to share image")
+      }
     }
   }, [])
 
   const handleCopyUrl = useCallback(async (image: WaifuImage) => {
-    await navigator.clipboard.writeText(image.url)
-    toast.success("Image URL copied to clipboard")
+    try {
+      await navigator.clipboard.writeText(image.url)
+      toast.success("Image URL copied to clipboard")
+    } catch (error) {
+      toast.error("Failed to copy URL")
+    }
   }, [])
 
   const formatFileSize = (bytes?: number) => {
@@ -135,17 +162,35 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <div className="aspect-square bg-muted rounded-lg" />
-            <CardContent className="p-4">
-              <div className="h-4 bg-muted rounded mb-2" />
-              <div className="h-3 bg-muted rounded w-2/3" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <div className="aspect-square bg-muted rounded-lg" />
+              <CardContent className="p-4">
+                <div className="h-4 bg-muted rounded mb-2" />
+                <div className="h-3 bg-muted rounded w-2/3" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
+    )
+  }
+
+  if (images.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">No images found</h3>
+            <p className="text-muted-foreground">Try downloading some images first or adjust your search filters.</p>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -186,26 +231,38 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
                 {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
               </Button>
+
+              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                <Filter className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
           {/* Tag Filter */}
-          <div className="mt-4">
-            <div className="flex flex-wrap gap-2">
-              {allTags.slice(0, 20).map((tag) => (
-                <Badge
-                  key={tag}
-                  variant={selectedTags.includes(tag) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
-                  }}
-                >
-                  {tag}
-                </Badge>
-              ))}
+          {showFilters && (
+            <div className="mt-4 space-y-2">
+              <h4 className="text-sm font-medium">Filter by tags:</h4>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {allTags.slice(0, 50).map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                    className="cursor-pointer hover:bg-primary/20 transition-colors"
+                    onClick={() => {
+                      setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+                    }}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+              {selectedTags.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setSelectedTags([])}>
+                  Clear Filters
+                </Button>
+              )}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -214,6 +271,16 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
         <p className="text-sm text-muted-foreground">
           Showing {filteredAndSortedImages.length} of {images.length} images
         </p>
+        {selectedTags.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {selectedTags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Image Grid */}
@@ -223,15 +290,19 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
         }
       >
         {filteredAndSortedImages.map((image) => (
-          <Card key={image.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
+          <Card key={image.id} className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover-lift">
             <div className="relative aspect-square overflow-hidden">
               <Image
-                src={image.preview_url || image.url}
+                src={image.preview_url || image.url || "/placeholder.svg?height=400&width=400"}
                 alt={`Waifu image ${image.id}`}
                 fill
                 className="object-cover transition-transform group-hover:scale-105"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                 loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.src = "/placeholder.svg?height=400&width=400&text=Image+Not+Found"
+                }}
               />
 
               {/* Overlay Controls */}
@@ -333,13 +404,17 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div className="relative aspect-square overflow-hidden rounded-lg">
+                  <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
                     <Image
-                      src={selectedImage.url || "/placeholder.svg"}
+                      src={selectedImage.url || "/placeholder.svg?height=600&width=600"}
                       alt={`Waifu image ${selectedImage.id}`}
                       fill
                       className="object-contain"
                       style={{ transform: `rotate(${imageRotation}deg)` }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = "/placeholder.svg?height=600&width=600&text=Image+Not+Found"
+                      }}
                     />
                   </div>
 
@@ -384,11 +459,19 @@ export function EnhancedImageGallery({ images, onDownload, onFavorite, isLoading
                         <p className="text-muted-foreground">{selectedImage.character}</p>
                       </div>
                     )}
+                    {selectedImage.created_at && (
+                      <div>
+                        <p className="font-medium">Created</p>
+                        <p className="text-muted-foreground">
+                          {new Date(selectedImage.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <p className="font-medium mb-2">Tags</p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
                       {selectedImage.tags.map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tag}
