@@ -12,11 +12,9 @@ export default function GalleryLoading() {
       <AppSidebar />
       <SidebarInset>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-          {/* API Status Skeleton */}
           <Skeleton className="h-16 w-full" />
 
           <div className="space-y-6">
-            {/* Header Skeleton */}
             <div className="flex items-center justify-between">
               <div className="space-y-2">
                 <Skeleton className="h-8 w-32" />
@@ -25,7 +23,6 @@ export default function GalleryLoading() {
               <Skeleton className="h-6 w-20" />
             </div>
 
-            {/* Search and Filter Bar Skeleton */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex flex-col lg:flex-row gap-4">
@@ -41,7 +38,6 @@ export default function GalleryLoading() {
               </CardContent>
             </Card>
 
-            {/* Gallery Grid Skeleton */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {Array.from({ length: 20 }).map((_, i) => (
                 <Card key={i}>

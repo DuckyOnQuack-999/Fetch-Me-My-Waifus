@@ -12,11 +12,9 @@ export default function CollectionsLoading() {
       <AppSidebar />
       <SidebarInset>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-          {/* API Status Skeleton */}
           <Skeleton className="h-16 w-full" />
 
           <div className="space-y-6">
-            {/* Header Skeleton */}
             <div className="flex items-center justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -31,14 +29,12 @@ export default function CollectionsLoading() {
               </div>
             </div>
 
-            {/* Search Bar Skeleton */}
             <Card>
               <CardContent className="p-4">
                 <Skeleton className="h-10 w-full" />
               </CardContent>
             </Card>
 
-            {/* Collections Grid Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i}>
@@ -56,20 +52,17 @@ export default function CollectionsLoading() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* Collection Preview */}
                       <div className="grid grid-cols-3 gap-2 h-24">
                         <Skeleton className="aspect-square rounded" />
                         <Skeleton className="aspect-square rounded" />
                         <Skeleton className="aspect-square rounded" />
                       </div>
 
-                      {/* Collection Stats */}
                       <div className="flex items-center justify-between">
                         <Skeleton className="h-6 w-20" />
                         <Skeleton className="h-8 w-24" />
                       </div>
 
-                      {/* Tags */}
                       <div className="flex gap-1">
                         <Skeleton className="h-5 w-12" />
                         <Skeleton className="h-5 w-16" />

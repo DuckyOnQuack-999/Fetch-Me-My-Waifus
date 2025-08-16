@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, FolderOpen, Edit, Trash2, ImageIcon, Search } from "lucide-react"
+import { Plus, FolderOpen, Edit, Trash2, ImageIcon, Search, Eye } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
 import { SidebarInset } from "@/components/ui/sidebar"
@@ -62,21 +62,22 @@ export default function CollectionsPage() {
       return
     }
 
-    const collection: Omit<Collection, "id" | "created_at" | "updated_at"> = {
-      name: newCollection.name.trim(),
-      description: newCollection.description.trim() || undefined,
-      imageIds: [],
-      tags: newCollection.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      isPublic: false,
-    }
+    const collectionId = createCollection(newCollection.name.trim(), newCollection.description.trim())
 
-    createCollection(collection)
-    setNewCollection({ name: "", description: "", tags: "" })
-    setIsCreateDialogOpen(false)
-    toast.success("Collection created successfully")
+    if (collectionId) {
+      // Update with tags if provided
+      if (newCollection.tags.trim()) {
+        const tags = newCollection.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+        updateCollection(collectionId, { tags })
+      }
+
+      setNewCollection({ name: "", description: "", tags: "" })
+      setIsCreateDialogOpen(false)
+      toast.success("Collection created successfully")
+    }
   }
 
   const handleUpdateCollection = () => {
@@ -287,6 +288,7 @@ export default function CollectionsPage() {
                             <div className="flex items-center justify-between">
                               <Badge variant="secondary">{collection.imageIds.length} images</Badge>
                               <Button size="sm" onClick={() => setSelectedCollection(collection)}>
+                                <Eye className="h-4 w-4 mr-2" />
                                 View Collection
                               </Button>
                             </div>
@@ -391,7 +393,6 @@ export default function CollectionsPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Navigate to gallery with collection filter
                         window.location.href = `/gallery?collection=${selectedCollection.id}`
                       }}
                     >

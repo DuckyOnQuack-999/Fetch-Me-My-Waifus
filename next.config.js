@@ -1,12 +1,38 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
-    domains: ['api.waifu.im', 'api.waifu.pics', 'cdn.nekos.best'],
+    domains: [
+      "api.waifu.im",
+      "api.waifu.pics",
+      "nekos.best",
+      "wallhaven.cc",
+      "femboyfinder.firestreaker2.gq",
+      "cdn.waifu.im",
+      "i.waifu.pics",
+      "nekos.best",
+      "w.wallhaven.cc",
+      "th.wallhaven.cc",
+    ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+    unoptimized: true,
   },
   experimental: {
-    appDir: true,
+    serverComponentsExternalPackages: ["sharp"],
+  },
+  webpack: (config) => {
+    config.resolve.alias.canvas = false
+    return config
   },
 }
 

@@ -310,8 +310,8 @@ export default function SettingsPage() {
                               <div className="text-sm text-muted-foreground">Enable downloading of mature content</div>
                             </div>
                             <Switch
-                              checked={localSettings.allowNsfw || false}
-                              onCheckedChange={(checked) => handleSettingChange("allowNsfw", checked)}
+                              checked={localSettings.enableNsfw || false}
+                              onCheckedChange={(checked) => handleSettingChange("enableNsfw", checked)}
                             />
                           </div>
 
@@ -527,8 +527,8 @@ export default function SettingsPage() {
                             <div className="text-sm text-muted-foreground">Allow not-safe-for-work content</div>
                           </div>
                           <Switch
-                            checked={localSettings.allowNsfw || false}
-                            onCheckedChange={(checked) => handleSettingChange("allowNsfw", checked)}
+                            checked={localSettings.enableNsfw || false}
+                            onCheckedChange={(checked) => handleSettingChange("enableNsfw", checked)}
                           />
                         </div>
 

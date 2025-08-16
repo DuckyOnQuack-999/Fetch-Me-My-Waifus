@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Heart, Grid3X3, List, Download, Trash2, SortAsc, SortDesc } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Search, Heart, Grid3X3, List, Download, SortAsc, SortDesc, Eye, Wand2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
+import { EnhancedImagePreview } from "@/components/enhanced-image-preview"
+import { AIUpscaler } from "@/components/ai-upscaler"
+import { BatchOperationsPanel } from "@/components/batch-operations-panel"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
@@ -16,16 +20,18 @@ import { ApiStatusIndicator } from "@/components/api-status-indicator"
 import { toast } from "sonner"
 
 export default function FavoritesPage() {
-  const { images, favorites, toggleFavorite, removeImage } = useStorage()
+  const { images, favorites, toggleFavorite, removeImage, isFavorite } = useStorage()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"date" | "name" | "size">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
+  const [selectedImageForPreview, setSelectedImageForPreview] = useState<any>(null)
+  const [selectedImageForUpscale, setSelectedImageForUpscale] = useState<any>(null)
 
   const favoriteImages = useMemo(() => {
-    return images.filter((image) => favorites.has(image.image_id.toString()))
+    return images.filter((image) => isFavorite(image.image_id.toString()))
   }, [images, favorites])
 
   const categories = useMemo(() => {
@@ -50,13 +56,13 @@ export default function FavoritesPage() {
 
       switch (sortBy) {
         case "date":
-          comparison = new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
           break
         case "name":
           comparison = (a.filename || "").localeCompare(b.filename || "")
           break
         case "size":
-          comparison = (a.size || 0) - (b.size || 0)
+          comparison = (a.file_size || 0) - (b.file_size || 0)
           break
       }
 
@@ -84,18 +90,6 @@ export default function FavoritesPage() {
     } else {
       setSelectedImages(new Set(filteredAndSortedImages.map((img) => img.image_id.toString())))
     }
-  }
-
-  const handleBatchRemoveFromFavorites = () => {
-    selectedImages.forEach((id) => toggleFavorite(id))
-    toast.success(`Removed ${selectedImages.size} images from favorites`)
-    setSelectedImages(new Set())
-  }
-
-  const handleBatchDelete = () => {
-    selectedImages.forEach((id) => removeImage(id))
-    toast.success(`Deleted ${selectedImages.size} images`)
-    setSelectedImages(new Set())
   }
 
   const handleDownloadImage = (image: any) => {
@@ -143,6 +137,14 @@ export default function FavoritesPage() {
               </Card>
             ) : (
               <>
+                {/* Batch Operations Panel */}
+                {selectedImages.size > 0 && (
+                  <BatchOperationsPanel
+                    selectedImages={Array.from(selectedImages)}
+                    onClearSelection={() => setSelectedImages(new Set())}
+                  />
+                )}
+
                 {/* Search and Filter Bar */}
                 <Card>
                   <CardContent className="p-4">
@@ -221,19 +223,7 @@ export default function FavoritesPage() {
                           <Button variant="outline" size="sm" onClick={handleSelectAll}>
                             {selectedImages.size === filteredAndSortedImages.length ? "Deselect All" : "Select All"}
                           </Button>
-                          {selectedImages.size > 0 && (
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{selectedImages.size} selected</Badge>
-                              <Button variant="outline" size="sm" onClick={handleBatchRemoveFromFavorites}>
-                                <Heart className="h-4 w-4 mr-1" />
-                                Remove from Favorites
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={handleBatchDelete}>
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
-                            </div>
-                          )}
+                          {selectedImages.size > 0 && <Badge variant="secondary">{selectedImages.size} selected</Badge>}
                         </div>
 
                         <div className="text-sm text-muted-foreground">
@@ -302,10 +292,10 @@ export default function FavoritesPage() {
                                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        toggleFavorite(image.image_id.toString())
+                                        setSelectedImageForPreview(image)
                                       }}
                                     >
-                                      <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                                      <Eye className="h-4 w-4" />
                                     </Button>
 
                                     <Button
@@ -318,6 +308,18 @@ export default function FavoritesPage() {
                                       }}
                                     >
                                       <Download className="h-4 w-4" />
+                                    </Button>
+
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedImageForUpscale(image)
+                                      }}
+                                    >
+                                      <Wand2 className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </div>
@@ -346,7 +348,7 @@ export default function FavoritesPage() {
 
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                   <span>{image.source}</span>
-                                  <span>{new Date(image.timestamp || Date.now()).toLocaleDateString()}</span>
+                                  <span>{new Date(image.created_at || Date.now()).toLocaleDateString()}</span>
                                 </div>
                               </div>
                             </CardContent>
@@ -400,21 +402,21 @@ export default function FavoritesPage() {
 
                                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                     <span>{image.source}</span>
-                                    <span>{new Date(image.timestamp || Date.now()).toLocaleDateString()}</span>
+                                    <span>{new Date(image.created_at || Date.now()).toLocaleDateString()}</span>
                                   </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => toggleFavorite(image.image_id.toString())}
-                                  >
-                                    <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                                  <Button size="sm" variant="outline" onClick={() => setSelectedImageForPreview(image)}>
+                                    <Eye className="h-4 w-4" />
                                   </Button>
 
                                   <Button size="sm" variant="outline" onClick={() => handleDownloadImage(image)}>
                                     <Download className="h-4 w-4" />
+                                  </Button>
+
+                                  <Button size="sm" variant="outline" onClick={() => setSelectedImageForUpscale(image)}>
+                                    <Wand2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </div>
@@ -428,6 +430,28 @@ export default function FavoritesPage() {
               </>
             )}
           </div>
+
+          {/* Image Preview Dialog */}
+          <Dialog open={!!selectedImageForPreview} onOpenChange={() => setSelectedImageForPreview(null)}>
+            <DialogContent className="max-w-6xl">
+              <DialogHeader>
+                <DialogTitle>Image Preview</DialogTitle>
+              </DialogHeader>
+              {selectedImageForPreview && <EnhancedImagePreview image={selectedImageForPreview} />}
+            </DialogContent>
+          </Dialog>
+
+          {/* AI Upscaler Dialog */}
+          <Dialog open={!!selectedImageForUpscale} onOpenChange={() => setSelectedImageForUpscale(null)}>
+            <DialogContent className="max-w-6xl">
+              <DialogHeader>
+                <DialogTitle>AI Image Upscaler</DialogTitle>
+              </DialogHeader>
+              {selectedImageForUpscale && (
+                <AIUpscaler image={selectedImageForUpscale} onClose={() => setSelectedImageForUpscale(null)} />
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </SidebarInset>
     </SidebarProvider>
