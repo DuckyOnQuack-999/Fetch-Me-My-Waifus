@@ -1,58 +1,53 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
 
 interface AnimatedStatsProps {
   value: number
   duration?: number
   className?: string
-  prefix?: string
-  suffix?: string
-  decimals?: number
 }
 
-export function AnimatedStats({
-  value,
-  duration = 1000,
-  className,
-  prefix = "",
-  suffix = "",
-  decimals = 0,
-}: AnimatedStatsProps) {
+export function AnimatedStats({ value, duration = 2000, className }: AnimatedStatsProps) {
   const [displayValue, setDisplayValue] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
 
   useEffect(() => {
-    setIsAnimating(true)
     let startTime: number
-    const startValue = displayValue
+    let animationFrame: number
 
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime
       const progress = Math.min((currentTime - startTime) / duration, 1)
 
       // Easing function for smooth animation
-      const easeOutCubic = 1 - Math.pow(1 - progress, 3)
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
+      const currentValue = Math.floor(easeOutQuart * value)
 
-      const currentValue = startValue + (value - startValue) * easeOutCubic
       setDisplayValue(currentValue)
 
       if (progress < 1) {
-        requestAnimationFrame(animate)
-      } else {
-        setIsAnimating(false)
+        animationFrame = requestAnimationFrame(animate)
       }
     }
 
-    requestAnimationFrame(animate)
-  }, [value, duration, displayValue])
+    animationFrame = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame)
+      }
+    }
+  }, [value, duration])
 
   return (
-    <span className={cn("tabular-nums transition-colors", isAnimating && "text-primary", className)}>
-      {prefix}
-      {displayValue.toFixed(decimals)}
-      {suffix}
-    </span>
+    <motion.span
+      className={className}
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+    >
+      {displayValue.toLocaleString()}
+    </motion.span>
   )
 }

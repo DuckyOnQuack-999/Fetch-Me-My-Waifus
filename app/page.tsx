@@ -16,10 +16,9 @@ import { toast } from "sonner"
 import type { ImageCategory, DownloadItem } from "@/types/waifu"
 import { SimpleDownloadTab } from "@/components/simple-download-tab"
 import { ApiStatusIndicator } from "@/components/api-status-indicator"
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
+import { SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 
 function HomeContent() {
   const searchParams = useSearchParams()
@@ -293,33 +292,19 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <>
+    <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Home Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          {/* API Status Bar - Always visible at top */}
+          <div className="w-full">
+            <ApiStatusIndicator />
           </div>
-        </header>
 
-        {/* API Status Bar */}
-        <div className="px-4 pb-4">
-          <ApiStatusIndicator />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          {/* Main Dashboard Content */}
           <HomeContent />
         </div>
       </SidebarInset>
-    </>
+    </SidebarProvider>
   )
 }

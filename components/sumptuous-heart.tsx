@@ -1,46 +1,68 @@
 "use client"
 
-import { useState } from "react"
+import { motion } from "framer-motion"
 import { Heart } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface SumptuousHeartProps {
-  className?: string
   size?: number
-  filled?: boolean
-  animated?: boolean
-  onClick?: () => void
+  className?: string
 }
 
-export function SumptuousHeart({
-  className,
-  size = 24,
-  filled = false,
-  animated = false,
-  onClick,
-}: SumptuousHeartProps) {
-  const [isClicked, setIsClicked] = useState(false)
-
-  const handleClick = () => {
-    if (onClick) {
-      setIsClicked(true)
-      onClick()
-      setTimeout(() => setIsClicked(false), 300)
-    }
-  }
-
+export function SumptuousHeart({ size = 32, className }: SumptuousHeartProps) {
   return (
-    <Heart
-      size={size}
-      className={cn(
-        "transition-all duration-300 cursor-pointer",
-        filled ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-500",
-        animated && "animate-pulse",
-        isClicked && "scale-125",
-        onClick && "hover:scale-110",
-        className,
-      )}
-      onClick={handleClick}
-    />
+    <motion.div
+      className={`relative ${className}`}
+      style={{ width: size, height: size }}
+      animate={{
+        scale: [1, 1.2, 1],
+      }}
+      transition={{
+        duration: 2,
+        repeat: Number.POSITIVE_INFINITY,
+        ease: "easeInOut",
+      }}
+    >
+      {/* Outer glow */}
+      <motion.div
+        className="absolute inset-0 rounded-full"
+        animate={{
+          boxShadow: [
+            "0 0 10px rgba(236, 72, 153, 0.3)",
+            "0 0 20px rgba(236, 72, 153, 0.6)",
+            "0 0 10px rgba(236, 72, 153, 0.3)",
+          ],
+        }}
+        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+      />
+
+      {/* Heart icon */}
+      <motion.div
+        className="flex items-center justify-center w-full h-full"
+        animate={{
+          rotate: [0, 10, -10, 0],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeInOut",
+        }}
+      >
+        <Heart className="w-full h-full text-pink-500 fill-pink-500" />
+      </motion.div>
+
+      {/* Pulse effect */}
+      <motion.div
+        className="absolute inset-0 rounded-full border-2 border-pink-500"
+        animate={{
+          scale: [1, 1.5, 1],
+          opacity: [0.8, 0, 0.8],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Number.POSITIVE_INFINITY,
+          ease: "easeOut",
+        }}
+      />
+    </motion.div>
   )
 }
