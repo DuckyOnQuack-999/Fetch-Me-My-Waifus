@@ -9,10 +9,12 @@ import {
   Map,
   PieChart,
   Download,
+  Heart,
   ImageIcon,
   Settings,
   Home,
-  FolderOpen,
+  Folder,
+  Star,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -25,21 +27,21 @@ const data = {
   user: {
     name: "Waifu Collector",
     email: "collector@waifudownloader.com",
-    avatar: "/placeholder.svg?height=32&width=32",
+    avatar: "/placeholder.svg?height=32&width=32&text=WC",
   },
   teams: [
     {
       name: "Waifu Downloader",
       logo: GalleryVerticalEnd,
-      plan: "Pro",
+      plan: "Enterprise",
     },
     {
-      name: "Anime Collection",
+      name: "Personal Collection",
       logo: AudioWaveform,
-      plan: "Free",
+      plan: "Startup",
     },
     {
-      name: "Image Gallery",
+      name: "Shared Gallery",
       logo: Command,
       plan: "Free",
     },
@@ -56,18 +58,18 @@ const data = {
           url: "/",
         },
         {
-          title: "Statistics",
-          url: "/?tab=stats",
+          title: "Analytics",
+          url: "/analytics",
         },
         {
-          title: "Quick Actions",
-          url: "/?tab=actions",
+          title: "Performance",
+          url: "/performance",
         },
       ],
     },
     {
       title: "Downloads",
-      url: "/?tab=download",
+      url: "/downloads",
       icon: Download,
       items: [
         {
@@ -79,8 +81,12 @@ const data = {
           url: "/downloads/queue",
         },
         {
-          title: "Download History",
+          title: "History",
           url: "/downloads/history",
+        },
+        {
+          title: "Failed Downloads",
+          url: "/downloads/failed",
         },
       ],
     },
@@ -94,19 +100,23 @@ const data = {
           url: "/gallery",
         },
         {
-          title: "Favorites",
-          url: "/favorites",
+          title: "Recent",
+          url: "/gallery/recent",
         },
         {
-          title: "Collections",
-          url: "/collections",
+          title: "Categories",
+          url: "/gallery/categories",
+        },
+        {
+          title: "Search",
+          url: "/gallery/search",
         },
       ],
     },
     {
       title: "Collections",
       url: "/collections",
-      icon: FolderOpen,
+      icon: Folder,
       items: [
         {
           title: "My Collections",
@@ -119,6 +129,29 @@ const data = {
         {
           title: "Shared",
           url: "/collections/shared",
+        },
+        {
+          title: "Archived",
+          url: "/collections/archived",
+        },
+      ],
+    },
+    {
+      title: "Favorites",
+      url: "/favorites",
+      icon: Heart,
+      items: [
+        {
+          title: "All Favorites",
+          url: "/favorites",
+        },
+        {
+          title: "Recently Added",
+          url: "/favorites/recent",
+        },
+        {
+          title: "Most Viewed",
+          url: "/favorites/popular",
         },
       ],
     },
@@ -136,31 +169,40 @@ const data = {
           url: "/settings/api",
         },
         {
-          title: "Download Settings",
+          title: "Download Preferences",
           url: "/settings/downloads",
         },
         {
           title: "Storage",
           url: "/settings/storage",
         },
+        {
+          title: "Privacy",
+          url: "/settings/privacy",
+        },
       ],
     },
   ],
   projects: [
     {
-      name: "Waifu Collection",
-      url: "#",
+      name: "Waifu Collection 2024",
+      url: "/collections/waifu-2024",
       icon: Frame,
     },
     {
-      name: "Neko Gallery",
-      url: "#",
+      name: "Neko Archive",
+      url: "/collections/neko-archive",
       icon: PieChart,
     },
     {
-      name: "Anime Archive",
-      url: "#",
+      name: "Seasonal Favorites",
+      url: "/collections/seasonal",
       icon: Map,
+    },
+    {
+      name: "High Quality Pack",
+      url: "/collections/hq-pack",
+      icon: Star,
     },
   ],
 }
@@ -173,6 +215,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
