@@ -1,323 +1,222 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { X, Download, Heart, Share2, RotateCw, ZoomIn, ZoomOut, Info, Copy } from "lucide-react"
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Heart, Download, Share, Copy, ExternalLink, Calendar, Tag, FileImage, Palette, Info } from "lucide-react"
+import { motion } from "framer-motion"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-
-interface ImageMetadata {
-  url: string
-  filename?: string
-  size?: string
-  dimensions?: string
-  format?: string
-  source?: string
-  tags?: string[]
-  artist?: string
-  uploadDate?: string
-}
+import { useStorage } from "@/context/storageContext"
+import type { WaifuImage } from "@/types/waifu"
 
 interface EnhancedImagePreviewProps {
-  image: ImageMetadata
-  isOpen: boolean
-  onClose: () => void
-  onDownload?: (url: string, filename?: string) => void
-  onFavorite?: (image: ImageMetadata) => void
-  isFavorited?: boolean
+  image: WaifuImage
 }
 
-export function EnhancedImagePreview({
-  image,
-  isOpen,
-  onClose,
-  onDownload,
-  onFavorite,
-  isFavorited = false,
-}: EnhancedImagePreviewProps) {
-  const [zoom, setZoom] = useState(1)
-  const [rotation, setRotation] = useState(0)
-  const [showMetadata, setShowMetadata] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [imageError, setImageError] = useState(false)
-  const imageRef = useRef<HTMLImageElement>(null)
+export function EnhancedImagePreview({ image }: EnhancedImagePreviewProps) {
+  const { toggleFavorite } = useStorage()
+  const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    if (isOpen) {
-      setZoom(1)
-      setRotation(0)
-      setIsLoading(true)
-      setImageError(false)
-    }
-  }, [isOpen, image.url])
-
-  const handleImageLoad = () => {
-    setIsLoading(false)
-  }
-
-  const handleImageError = () => {
-    setIsLoading(false)
-    setImageError(true)
-  }
-
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev * 1.2, 5))
-  }
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev / 1.2, 0.1))
-  }
-
-  const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360)
-  }
-
-  const handleDownload = () => {
-    if (onDownload) {
-      onDownload(image.url, image.filename)
-      toast.success("Download started")
+  const handleDownload = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(image.url)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = image.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success("Image downloaded successfully!")
+    } catch (error) {
+      toast.error("Failed to download image")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleFavorite = () => {
-    if (onFavorite) {
-      onFavorite(image)
-      toast.success(isFavorited ? "Removed from favorites" : "Added to favorites")
-    }
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(image.url)
+    toast.success("Image URL copied to clipboard!")
   }
 
   const handleShare = async () => {
-    try {
-      if (navigator.share) {
+    if (navigator.share) {
+      try {
         await navigator.share({
-          title: image.filename || "Waifu Image",
+          title: image.filename,
           url: image.url,
         })
-      } else {
-        await navigator.clipboard.writeText(image.url)
-        toast.success("Image URL copied to clipboard")
+      } catch (error) {
+        handleCopyUrl()
       }
-    } catch (error) {
-      toast.error("Failed to share image")
+    } else {
+      handleCopyUrl()
     }
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast.success("Copied to clipboard")
-  }
-
-  const formatFileSize = (bytes?: string) => {
-    if (!bytes) return "Unknown"
-    const size = Number.parseInt(bytes)
-    if (isNaN(size)) return bytes
-
-    const units = ["B", "KB", "MB", "GB"]
-    let unitIndex = 0
-    let fileSize = size
-
-    while (fileSize >= 1024 && unitIndex < units.length - 1) {
-      fileSize /= 1024
-      unitIndex++
-    }
-
-    return `${fileSize.toFixed(1)} ${units[unitIndex]}`
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] p-0 overflow-hidden">
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <DialogHeader className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg font-semibold truncate">{image.filename || "Image Preview"}</DialogTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowMetadata(!showMetadata)}>
-                  <Info className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                  <ZoomOut className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                  <ZoomIn className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleRotate}>
-                  <RotateCw className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleShare}>
-                  <Share2 className="w-4 h-4" />
-                </Button>
-                <Button variant={isFavorited ? "default" : "outline"} size="sm" onClick={handleFavorite}>
-                  <Heart className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={onClose}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[80vh] overflow-hidden">
+      {/* Image Display */}
+      <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="relative aspect-square overflow-hidden rounded-lg bg-muted"
+        >
+          <img
+            src={image.url || "/placeholder.svg"}
+            alt={image.filename}
+            className="w-full h-full object-contain"
+            loading="lazy"
+          />
+        </motion.div>
 
-          <div className="flex flex-1 overflow-hidden">
-            {/* Image Container */}
-            <div className="flex-1 flex items-center justify-center bg-black/5 overflow-auto">
-              <div className="relative">
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                )}
-                {imageError ? (
-                  <div className="flex items-center justify-center p-8 text-muted-foreground">
-                    <div className="text-center">
-                      <X className="w-12 h-12 mx-auto mb-2" />
-                      <p>Failed to load image</p>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    ref={imageRef}
-                    src={image.url || "/placeholder.svg"}
-                    alt={image.filename || "Preview"}
-                    className="max-w-none transition-transform duration-200"
-                    style={{
-                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                      maxHeight: showMetadata ? "60vh" : "80vh",
-                    }}
-                    onLoad={handleImageLoad}
-                    onError={handleImageError}
-                  />
-                )}
-              </div>
-            </div>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => toggleFavorite(image.image_id)}
+            variant={image.isFavorite ? "default" : "outline"}
+            className="flex-1"
+          >
+            <Heart className={`h-4 w-4 mr-2 ${image.isFavorite ? "fill-current" : ""}`} />
+            {image.isFavorite ? "Favorited" : "Add to Favorites"}
+          </Button>
 
-            {/* Metadata Sidebar */}
-            {showMetadata && (
-              <div className="w-80 border-l bg-background overflow-auto">
-                <Card className="h-full rounded-none border-0">
-                  <CardContent className="p-4 space-y-4">
-                    <div>
-                      <h3 className="font-semibold mb-2">Image Details</h3>
-                      <div className="space-y-2 text-sm">
-                        {image.filename && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Filename:</span>
-                            <span className="font-mono text-xs truncate ml-2" title={image.filename}>
-                              {image.filename}
-                            </span>
-                          </div>
-                        )}
-                        {image.dimensions && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Dimensions:</span>
-                            <span>{image.dimensions}</span>
-                          </div>
-                        )}
-                        {image.size && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Size:</span>
-                            <span>{formatFileSize(image.size)}</span>
-                          </div>
-                        )}
-                        {image.format && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Format:</span>
-                            <span className="uppercase">{image.format}</span>
-                          </div>
-                        )}
-                        {image.source && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Source:</span>
-                            <span>{image.source}</span>
-                          </div>
-                        )}
-                        {image.artist && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Artist:</span>
-                            <span>{image.artist}</span>
-                          </div>
-                        )}
-                        {image.uploadDate && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Upload Date:</span>
-                            <span>{new Date(image.uploadDate).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+          <Button onClick={handleDownload} disabled={isLoading} variant="outline" className="flex-1 bg-transparent">
+            <Download className="h-4 w-4 mr-2" />
+            {isLoading ? "Downloading..." : "Download"}
+          </Button>
 
-                    {image.tags && image.tags.length > 0 && (
-                      <>
-                        <Separator />
-                        <div>
-                          <h3 className="font-semibold mb-2">Tags</h3>
-                          <div className="flex flex-wrap gap-1">
-                            {image.tags.map((tag, index) => (
-                              <Badge
-                                key={index}
-                                variant="secondary"
-                                className="text-xs cursor-pointer"
-                                onClick={() => copyToClipboard(tag)}
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
+          <Button onClick={handleShare} variant="outline" size="sm">
+            <Share className="h-4 w-4" />
+          </Button>
 
-                    <Separator />
-                    <div>
-                      <h3 className="font-semibold mb-2">Actions</h3>
-                      <div className="space-y-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start bg-transparent"
-                          onClick={() => copyToClipboard(image.url)}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy URL
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start bg-transparent"
-                          onClick={() => window.open(image.url, "_blank")}
-                        >
-                          <Share2 className="w-4 h-4 mr-2" />
-                          Open in New Tab
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
+          <Button onClick={handleCopyUrl} variant="outline" size="sm">
+            <Copy className="h-4 w-4" />
+          </Button>
 
-          {/* Footer */}
-          <div className="p-4 border-t bg-muted/30">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div>
-                Zoom: {Math.round(zoom * 100)}% | Rotation: {rotation}°
-              </div>
-              <div className="flex items-center gap-4">
-                <span>Use mouse wheel to zoom</span>
-                <span>•</span>
-                <span>Click and drag to pan</span>
-              </div>
-            </div>
-          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href={image.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {/* Image Details */}
+      <div className="space-y-4 overflow-y-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Image Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-semibold mb-2">{image.filename}</h3>
+              <p className="text-sm text-muted-foreground">{image.description || "No description available"}</p>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <FileImage className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Format</span>
+                </div>
+                <p className="text-muted-foreground">{image.filename.split(".").pop()?.toUpperCase() || "Unknown"}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Size</span>
+                </div>
+                <p className="text-muted-foreground">
+                  {image.size ? `${(image.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Source</span>
+                </div>
+                <p className="text-muted-foreground">{image.source || "Unknown"}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Added</span>
+                </div>
+                <p className="text-muted-foreground">{new Date(image.timestamp).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Tags */}
+            <div>
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Tags
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {(image.tags || []).length > 0 ? (
+                  image.tags?.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No tags available</p>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Metadata */}
+            {image.artist && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Artist</h4>
+                  <p className="text-sm text-muted-foreground">{image.artist}</p>
+                </div>
+              </>
+            )}
+
+            {image.character && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Character</h4>
+                  <p className="text-sm text-muted-foreground">{image.character}</p>
+                </div>
+              </>
+            )}
+
+            {image.series && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Series</h4>
+                  <p className="text-sm text-muted-foreground">{image.series}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

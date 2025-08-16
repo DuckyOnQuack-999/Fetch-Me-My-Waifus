@@ -1,226 +1,61 @@
 "use client"
 
-import type * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Download, ImageIcon, Heart, Settings, FolderOpen, Home } from "lucide-react"
 import {
-  AudioWaveform,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Download,
-  Heart,
-  ImageIcon,
-  Settings,
-  Home,
-  Folder,
-  Star,
-} from "lucide-react"
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
+import { SumptuousHeart } from "./sumptuous-heart"
 
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+export function AppSidebar() {
+  const pathname = usePathname()
 
-// This is sample data.
-const data = {
-  user: {
-    name: "Waifu Collector",
-    email: "collector@waifudownloader.com",
-    avatar: "/placeholder.svg?height=32&width=32&text=WC",
-  },
-  teams: [
-    {
-      name: "Waifu Downloader",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Personal Collection",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Shared Gallery",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: Home,
-      isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/",
-        },
-        {
-          title: "Analytics",
-          url: "/analytics",
-        },
-        {
-          title: "Performance",
-          url: "/performance",
-        },
-      ],
-    },
-    {
-      title: "Downloads",
-      url: "/downloads",
-      icon: Download,
-      items: [
-        {
-          title: "Download Center",
-          url: "/?tab=download",
-        },
-        {
-          title: "Queue Manager",
-          url: "/downloads/queue",
-        },
-        {
-          title: "History",
-          url: "/downloads/history",
-        },
-        {
-          title: "Failed Downloads",
-          url: "/downloads/failed",
-        },
-      ],
-    },
-    {
-      title: "Gallery",
-      url: "/gallery",
-      icon: ImageIcon,
-      items: [
-        {
-          title: "All Images",
-          url: "/gallery",
-        },
-        {
-          title: "Recent",
-          url: "/gallery/recent",
-        },
-        {
-          title: "Categories",
-          url: "/gallery/categories",
-        },
-        {
-          title: "Search",
-          url: "/gallery/search",
-        },
-      ],
-    },
-    {
-      title: "Collections",
-      url: "/collections",
-      icon: Folder,
-      items: [
-        {
-          title: "My Collections",
-          url: "/collections",
-        },
-        {
-          title: "Create New",
-          url: "/collections/new",
-        },
-        {
-          title: "Shared",
-          url: "/collections/shared",
-        },
-        {
-          title: "Archived",
-          url: "/collections/archived",
-        },
-      ],
-    },
-    {
-      title: "Favorites",
-      url: "/favorites",
-      icon: Heart,
-      items: [
-        {
-          title: "All Favorites",
-          url: "/favorites",
-        },
-        {
-          title: "Recently Added",
-          url: "/favorites/recent",
-        },
-        {
-          title: "Most Viewed",
-          url: "/favorites/popular",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings,
-      items: [
-        {
-          title: "General",
-          url: "/settings",
-        },
-        {
-          title: "API Keys",
-          url: "/settings/api",
-        },
-        {
-          title: "Download Preferences",
-          url: "/settings/downloads",
-        },
-        {
-          title: "Storage",
-          url: "/settings/storage",
-        },
-        {
-          title: "Privacy",
-          url: "/settings/privacy",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Waifu Collection 2024",
-      url: "/collections/waifu-2024",
-      icon: Frame,
-    },
-    {
-      name: "Neko Archive",
-      url: "/collections/neko-archive",
-      icon: PieChart,
-    },
-    {
-      name: "Seasonal Favorites",
-      url: "/collections/seasonal",
-      icon: Map,
-    },
-    {
-      name: "High Quality Pack",
-      url: "/collections/hq-pack",
-      icon: Star,
-    },
-  ],
-}
+  const menuItems = [
+    { icon: Home, label: "Home", href: "/" },
+    { icon: Download, label: "Download", href: "/?tab=download" },
+    { icon: ImageIcon, label: "Gallery", href: "/gallery" },
+    { icon: Heart, label: "Favorites", href: "/favorites" },
+    { icon: FolderOpen, label: "Collections", href: "/collections" },
+    { icon: Settings, label: "Settings", href: "/settings" },
+  ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar className="border-r border-border/40 bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <div className="flex items-center gap-2 px-6 py-4">
+          <SumptuousHeart size={40} className="flex-shrink-0" />
+          <div>
+            <h2 className="text-xl font-bold text-gradient">Waifu</h2>
+            <p className="text-xs text-muted-foreground">Downloader</p>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        {/* <NavProjects projects={data.projects} /> */}
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton asChild className={`nav-item ${pathname === item.href ? "active" : ""}`}>
+                <Link href={item.href}>
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <div className="px-6 py-4">
+          <p className="text-xs text-muted-foreground">Built with ❤️ by weebs</p>
+        </div>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }

@@ -1,58 +1,19 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Heart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SumptuousHeartProps {
   size?: number
   className?: string
-  animated?: boolean
-  color?: string
-  pulseColor?: string
+  animate?: boolean
 }
 
-export function SumptuousHeart({
-  size = 24,
-  className = "",
-  animated = true,
-  color = "text-pink-500",
-  pulseColor = "border-pink-500/30",
-}: SumptuousHeartProps) {
+export function SumptuousHeart({ size = 60, className, animate = true }: SumptuousHeartProps) {
   const heartVariants = {
-    initial: { scale: 0, rotate: -45 },
+    initial: { scale: 1 },
     animate: {
-      scale: 1,
-      rotate: 0,
-      transition: {
-        type: "spring",
-        stiffness: 260,
-        damping: 20,
-        duration: 0.8,
-      },
-    },
-    hover: {
-      scale: 1.2,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 10,
-      },
-    },
-    tap: {
-      scale: 0.9,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 10,
-      },
-    },
-  }
-
-  const pulseVariants = {
-    animate: {
-      scale: [1, 1.5, 1],
-      opacity: [0.7, 0, 0.7],
+      scale: [1, 1.1, 1],
       transition: {
         duration: 2,
         repeat: Number.POSITIVE_INFINITY,
@@ -62,12 +23,9 @@ export function SumptuousHeart({
   }
 
   const glowVariants = {
+    initial: { opacity: 0.5 },
     animate: {
-      boxShadow: [
-        "0 0 20px rgba(236, 72, 153, 0.3)",
-        "0 0 40px rgba(236, 72, 153, 0.6)",
-        "0 0 20px rgba(236, 72, 153, 0.3)",
-      ],
+      opacity: [0.5, 0.8, 0.5],
       transition: {
         duration: 3,
         repeat: Number.POSITIVE_INFINITY,
@@ -77,115 +35,84 @@ export function SumptuousHeart({
   }
 
   return (
-    <motion.div
-      className={cn("relative flex items-center justify-center cursor-pointer", className)}
-      style={{ width: size, height: size }}
-      variants={animated ? heartVariants : undefined}
-      initial={animated ? "initial" : undefined}
-      animate={animated ? "animate" : undefined}
-      whileHover={animated ? "hover" : undefined}
-      whileTap={animated ? "tap" : undefined}
-    >
-      {/* Glow Effect */}
-      {animated && (
-        <motion.div
-          className="absolute inset-0 rounded-full"
-          variants={glowVariants}
-          animate="animate"
-          style={{ width: size, height: size }}
-        />
-      )}
+    <div className={cn("relative inline-block", className)} style={{ width: size, height: size }}>
+      {/* Glow effect */}
+      <motion.div
+        className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-pink-500/20 blur-xl"
+        variants={animate ? glowVariants : undefined}
+        initial={animate ? "initial" : undefined}
+        animate={animate ? "animate" : undefined}
+      />
 
-      {/* Pulse Rings */}
-      {animated && (
-        <>
-          <motion.div
-            className={cn("absolute inset-0 rounded-full border-2", pulseColor)}
-            style={{ width: size, height: size }}
-            variants={pulseVariants}
-            animate="animate"
+      {/* Main heart */}
+      <motion.div
+        className="relative z-10 flex items-center justify-center"
+        variants={animate ? heartVariants : undefined}
+        initial={animate ? "initial" : undefined}
+        animate={animate ? "animate" : undefined}
+        style={{ width: size, height: size }}
+      >
+        <svg width={size * 0.8} height={size * 0.8} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ec4899" />
+              <stop offset="50%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#ec4899" />
+            </linearGradient>
+            <filter id="heartShadow">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#ec4899" floodOpacity="0.3" />
+            </filter>
+          </defs>
+          <path
+            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            fill="url(#heartGradient)"
+            filter="url(#heartShadow)"
+            className="drop-shadow-lg"
           />
-          <motion.div
-            className={cn("absolute inset-0 rounded-full border-2", pulseColor)}
-            style={{ width: size, height: size }}
-            variants={{
-              ...pulseVariants,
-              animate: {
-                ...pulseVariants.animate,
-                transition: {
-                  ...pulseVariants.animate.transition,
-                  delay: 0.5,
-                },
-              },
-            }}
-            animate="animate"
-          />
-        </>
-      )}
-
-      {/* Main Heart */}
-      <motion.div className="relative z-10">
-        <Heart className={cn(color, "drop-shadow-lg")} size={size * 0.6} fill="currentColor" />
+        </svg>
       </motion.div>
 
-      {/* Sparkle Particles */}
-      {animated && (
+      {/* Sparkle effects */}
+      {animate && (
         <>
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1 h-1 bg-pink-400 rounded-full"
-              style={{
-                top: `${20 + Math.sin((i * Math.PI) / 3) * 15}%`,
-                left: `${50 + Math.cos((i * Math.PI) / 3) * 15}%`,
-              }}
-              animate={{
-                scale: [0, 1, 0],
-                opacity: [0, 1, 0],
-                y: [0, -10, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Number.POSITIVE_INFINITY,
-                delay: i * 0.3,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
+          <motion.div
+            className="absolute top-1 right-1 w-1 h-1 bg-pink-300 rounded-full"
+            animate={{
+              opacity: [0, 1, 0],
+              scale: [0, 1, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 0.5,
+            }}
+          />
+          <motion.div
+            className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-purple-300 rounded-full"
+            animate={{
+              opacity: [0, 1, 0],
+              scale: [0, 1, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 1,
+            }}
+          />
+          <motion.div
+            className="absolute top-1/2 left-0 w-1 h-1 bg-pink-400 rounded-full"
+            animate={{
+              opacity: [0, 1, 0],
+              scale: [0, 1, 0],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 1.5,
+            }}
+          />
         </>
       )}
-
-      {/* Floating Hearts */}
-      {animated && (
-        <>
-          {[...Array(3)].map((_, i) => (
-            <motion.div
-              key={`floating-${i}`}
-              className="absolute"
-              style={{
-                top: `${30 + i * 20}%`,
-                left: `${70 + i * 10}%`,
-              }}
-              animate={{
-                y: [-20, -40, -20],
-                x: [0, 10, 0],
-                opacity: [0, 0.6, 0],
-                scale: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Number.POSITIVE_INFINITY,
-                delay: i * 0.8,
-                ease: "easeInOut",
-              }}
-            >
-              <Heart className="text-pink-300" size={size * 0.2} fill="currentColor" />
-            </motion.div>
-          ))}
-        </>
-      )}
-    </motion.div>
+    </div>
   )
 }
-
-export default SumptuousHeart

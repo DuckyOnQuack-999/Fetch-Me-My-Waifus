@@ -38,7 +38,6 @@ function HomeContent() {
     toast.success(`Starting download of ${downloadCount} ${downloadCategory} images`)
 
     try {
-      // Simulate adding items to download queue
       for (let i = 0; i < downloadCount; i++) {
         const downloadItem: DownloadItem = {
           id: `download_${Date.now()}_${i}`,
@@ -53,11 +52,8 @@ function HomeContent() {
           source: settings?.apiSource || "waifu.im",
         }
         addToQueue(downloadItem)
-
-        // Small delay to simulate real downloading
         await new Promise((resolve) => setTimeout(resolve, 100))
       }
-
       toast.success("Images added to download queue!")
     } catch (error) {
       toast.error("Failed to start download")
@@ -76,7 +72,6 @@ function HomeContent() {
             <p className="text-xl text-muted-foreground">Download your favorite anime images from multiple sources</p>
           </motion.div>
         </div>
-
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -90,7 +85,6 @@ function HomeContent() {
 
   return (
     <div className="container mx-auto p-6 space-y-8">
-      {/* Hero Section */}
       <div className="text-center space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <SumptuousHeart size={120} className="mx-auto mb-6 animate-float" />
@@ -117,7 +111,6 @@ function HomeContent() {
         </motion.div>
       </div>
 
-      {/* Stats Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -152,7 +145,6 @@ function HomeContent() {
         </Card>
       </motion.div>
 
-      {/* Features Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -234,7 +226,6 @@ function HomeContent() {
         </Card>
       </motion.div>
 
-      {/* Quick Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -290,12 +281,9 @@ export default function HomePage() {
       <AppSidebar />
       <SidebarInset>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-          {/* Single API Status Bar - Only one instance */}
           <div className="w-full">
             <ApiStatusIndicator />
           </div>
-
-          {/* Main Dashboard Content */}
           <HomeContent />
         </div>
       </SidebarInset>
