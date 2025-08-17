@@ -32,7 +32,7 @@ export default function HomePage() {
     },
     {
       title: "Favorites",
-      value: favorites.size,
+      value: favorites.length,
       icon: Heart,
       color: "text-red-500",
       bgColor: "bg-red-500/10",

@@ -4,275 +4,288 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Activity, AlertCircle, CheckCircle, Clock, RefreshCw, Zap, Globe, Shield, TrendingUp } from "lucide-react"
+import { Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, RefreshCw, ChevronDown, ChevronUp } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-
-interface ApiStatus {
-  name: string
-  status: "online" | "offline" | "degraded"
-  responseTime: number
-  uptime: number
-  lastChecked: Date
-  endpoint: string
-}
+import type { ApiStatusData } from "@/types/waifu"
 
 export function ApiStatusIndicator() {
-  const [apis, setApis] = useState<ApiStatus[]>([
-    {
-      name: "Waifu.im",
-      status: "online",
-      responseTime: 120,
-      uptime: 99.9,
-      lastChecked: new Date(),
-      endpoint: "https://api.waifu.im",
-    },
-    {
-      name: "Waifu.pics",
-      status: "online",
-      responseTime: 85,
-      uptime: 99.8,
-      lastChecked: new Date(),
-      endpoint: "https://api.waifu.pics",
-    },
-    {
-      name: "Nekos.best",
-      status: "degraded",
-      responseTime: 340,
-      uptime: 98.5,
-      lastChecked: new Date(),
-      endpoint: "https://nekos.best/api",
-    },
-    {
-      name: "Wallhaven",
-      status: "online",
-      responseTime: 95,
-      uptime: 99.7,
-      lastChecked: new Date(),
-      endpoint: "https://wallhaven.cc/api",
-    },
-  ])
-
+  const [apiStatuses, setApiStatuses] = useState<ApiStatusData[]>([])
+  const [isExpanded, setIsExpanded] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState(new Date())
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "online":
-        return "text-green-500"
-      case "degraded":
-        return "text-yellow-500"
-      case "offline":
-        return "text-red-500"
-      default:
-        return "text-gray-500"
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "online":
-        return CheckCircle
-      case "degraded":
-        return AlertCircle
-      case "offline":
-        return AlertCircle
-      default:
-        return Clock
-    }
-  }
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "online":
-        return "default"
-      case "degraded":
-        return "secondary"
-      case "offline":
-        return "destructive"
-      default:
-        return "outline"
-    }
-  }
-
-  const refreshStatus = async () => {
-    setIsRefreshing(true)
-
-    // Simulate API status check
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    setApis((prev) =>
-      prev.map((api) => ({
-        ...api,
-        responseTime: Math.floor(Math.random() * 300) + 50,
-        lastChecked: new Date(),
-        status: Math.random() > 0.1 ? "online" : Math.random() > 0.5 ? "degraded" : "offline",
-      })),
-    )
-
-    setLastUpdate(new Date())
-    setIsRefreshing(false)
-  }
-
-  const overallStatus = apis.every((api) => api.status === "online")
-    ? "All Systems Operational"
-    : apis.some((api) => api.status === "offline")
-      ? "Service Disruption"
-      : "Partial Outage"
-
-  const averageResponseTime = Math.round(apis.reduce((sum, api) => sum + api.responseTime, 0) / apis.length)
-
-  const overallUptime = Math.round((apis.reduce((sum, api) => sum + api.uptime, 0) / apis.length) * 10) / 10
+  const mockApiStatuses: ApiStatusData[] = [
+    {
+      name: "waifu.im",
+      displayName: "Waifu.im",
+      url: "https://api.waifu.im",
+      endpoint: "/search",
+      status: "online",
+      latency: 156,
+      lastChecked: new Date(),
+      description: "High-quality anime images with advanced filtering",
+      features: ["NSFW Filter", "Tag Search", "Quality Filter"],
+      keyRequired: false,
+      keyName: "waifuImApiKey",
+      rateLimit: {
+        requests: 100,
+        window: 3600,
+        remaining: 87,
+        resetTime: new Date(Date.now() + 3600000),
+      },
+      statistics: {
+        totalRequests: 1247,
+        successfulRequests: 1198,
+        failedRequests: 49,
+        averageLatency: 164,
+      },
+    },
+    {
+      name: "waifu.pics",
+      displayName: "Waifu.pics",
+      url: "https://api.waifu.pics",
+      endpoint: "/sfw/waifu",
+      status: "online",
+      latency: 89,
+      lastChecked: new Date(),
+      description: "Simple and fast anime image API",
+      features: ["SFW/NSFW", "Multiple Categories", "Single Image"],
+      keyRequired: false,
+      keyName: "waifuPicsApiKey",
+      statistics: {
+        totalRequests: 892,
+        successfulRequests: 889,
+        failedRequests: 3,
+        averageLatency: 92,
+      },
+    },
+    {
+      name: "nekos.best",
+      displayName: "Nekos.best",
+      url: "https://nekos.best/api/v2",
+      endpoint: "/neko",
+      status: "degraded",
+      latency: 342,
+      lastChecked: new Date(),
+      description: "Neko and anime character images",
+      features: ["Multiple Characters", "Batch Requests", "Metadata"],
+      keyRequired: false,
+      keyName: "nekosBestApiKey",
+      statistics: {
+        totalRequests: 567,
+        successfulRequests: 523,
+        failedRequests: 44,
+        averageLatency: 298,
+      },
+    },
+    {
+      name: "wallhaven",
+      displayName: "Wallhaven",
+      url: "https://wallhaven.cc/api/v1",
+      endpoint: "/search",
+      status: "online",
+      latency: 203,
+      lastChecked: new Date(),
+      description: "High-resolution wallpapers and artwork",
+      features: ["High Resolution", "Categories", "User Collections"],
+      keyRequired: true,
+      keyName: "wallhavenApiKey",
+      rateLimit: {
+        requests: 45,
+        window: 60,
+        remaining: 32,
+        resetTime: new Date(Date.now() + 60000),
+      },
+      statistics: {
+        totalRequests: 234,
+        successfulRequests: 231,
+        failedRequests: 3,
+        averageLatency: 187,
+      },
+    },
+    {
+      name: "femboyfinder",
+      displayName: "FemboyFinder",
+      url: "https://femboyfinder.firestreaker2.gq/api",
+      endpoint: "/femboy",
+      status: "offline",
+      lastChecked: new Date(),
+      description: "Specialized character image collection",
+      features: ["Character Focus", "Quality Curated"],
+      keyRequired: false,
+      keyName: "femboyFinderApiKey",
+      statistics: {
+        totalRequests: 45,
+        successfulRequests: 12,
+        failedRequests: 33,
+        averageLatency: 0,
+      },
+    },
+  ]
 
   useEffect(() => {
+    setApiStatuses(mockApiStatuses)
+
+    // Simulate periodic status updates
     const interval = setInterval(() => {
-      setApis((prev) =>
+      setApiStatuses((prev) =>
         prev.map((api) => ({
           ...api,
-          responseTime: api.responseTime + (Math.random() - 0.5) * 20,
+          latency: api.status === "online" ? Math.floor(Math.random() * 300) + 50 : undefined,
           lastChecked: new Date(),
+          statistics: {
+            ...api.statistics,
+            totalRequests: api.statistics.totalRequests + Math.floor(Math.random() * 5),
+            successfulRequests: api.statistics.successfulRequests + Math.floor(Math.random() * 4),
+          },
         })),
       )
-      setLastUpdate(new Date())
     }, 30000)
 
     return () => clearInterval(interval)
   }, [])
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+
+    // Simulate API status check
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    setApiStatuses((prev) =>
+      prev.map((api) => ({
+        ...api,
+        lastChecked: new Date(),
+        latency: api.status === "online" ? Math.floor(Math.random() * 300) + 50 : undefined,
+      })),
+    )
+
+    setIsRefreshing(false)
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "online":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "degraded":
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+      case "offline":
+        return <WifiOff className="h-4 w-4 text-red-500" />
+      case "checking":
+        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />
+      default:
+        return <Wifi className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "online":
+        return "bg-green-500"
+      case "degraded":
+        return "bg-yellow-500"
+      case "offline":
+        return "bg-red-500"
+      case "checking":
+        return "bg-blue-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  const overallStatus = apiStatuses.every((api) => api.status === "online")
+    ? "online"
+    : apiStatuses.some((api) => api.status === "offline")
+      ? "degraded"
+      : "degraded"
+
+  const onlineCount = apiStatuses.filter((api) => api.status === "online").length
+  const totalCount = apiStatuses.length
+
   return (
-    <TooltipProvider>
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card className="bg-gradient-to-r from-card/80 via-card/90 to-card/80 backdrop-blur-sm border-border/50 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-lg">API Status</h3>
-                </div>
-                <Badge
-                  variant={overallStatus === "All Systems Operational" ? "default" : "secondary"}
-                  className="font-medium"
-                >
-                  {overallStatus}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div className="flex items-center gap-1">
-                        <Zap className="h-4 w-4" />
-                        <span>{averageResponseTime}ms</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Average Response Time</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>{overallUptime}%</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Overall Uptime</TooltipContent>
-                  </Tooltip>
-
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{lastUpdate.toLocaleTimeString()}</span>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshStatus}
-                  disabled={isRefreshing}
-                  className="gap-2 bg-transparent"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
-              </div>
+    <Card className="w-full">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${getStatusColor(overallStatus)} animate-pulse`} />
+              <span className="font-medium">API Status</span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <AnimatePresence>
-                {apis.map((api, index) => {
-                  const StatusIcon = getStatusIcon(api.status)
-                  return (
-                    <motion.div
-                      key={api.name}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
+            <Badge variant={overallStatus === "online" ? "default" : "secondary"}>
+              {onlineCount}/{totalCount} Online
+            </Badge>
+
+            <div className="text-sm text-muted-foreground">Last updated: {new Date().toLocaleTimeString()}</div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+
+            <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-4 space-y-3"
+            >
+              {apiStatuses.map((api) => (
+                <div key={api.name} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                  <div className="flex items-center space-x-3">
+                    {getStatusIcon(api.status)}
+                    <div>
+                      <div className="font-medium">{api.displayName}</div>
+                      <div className="text-sm text-muted-foreground">{api.description}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4 text-sm">
+                    {api.latency && (
+                      <div className="text-center">
+                        <div className="font-medium">{api.latency}ms</div>
+                        <div className="text-xs text-muted-foreground">Latency</div>
+                      </div>
+                    )}
+
+                    {api.statistics && (
+                      <div className="text-center">
+                        <div className="font-medium">
+                          {((api.statistics.successfulRequests / api.statistics.totalRequests) * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">Success</div>
+                      </div>
+                    )}
+
+                    {api.rateLimit && (
+                      <div className="text-center">
+                        <div className="font-medium">{api.rateLimit.remaining}</div>
+                        <div className="text-xs text-muted-foreground">Remaining</div>
+                      </div>
+                    )}
+
+                    <Badge
+                      variant={
+                        api.status === "online" ? "default" : api.status === "degraded" ? "secondary" : "destructive"
+                      }
                     >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="p-3 rounded-lg bg-background/50 border border-border/30 hover:bg-background/70 transition-colors cursor-pointer">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-sm truncate">{api.name}</span>
-                              <StatusIcon className={`h-4 w-4 ${getStatusColor(api.status)}`} />
-                            </div>
-
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Response</span>
-                                <span className="font-mono">{Math.round(api.responseTime)}ms</span>
-                              </div>
-
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Uptime</span>
-                                <span className="font-mono">{api.uptime}%</span>
-                              </div>
-                            </div>
-
-                            <Badge
-                              variant={getStatusBadgeVariant(api.status)}
-                              className="w-full justify-center mt-2 text-xs"
-                            >
-                              {api.status.charAt(0).toUpperCase() + api.status.slice(1)}
-                            </Badge>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-xs">
-                          <div className="space-y-2">
-                            <div className="font-semibold">{api.name}</div>
-                            <div className="text-xs space-y-1">
-                              <div>Endpoint: {api.endpoint}</div>
-                              <div>Last checked: {api.lastChecked.toLocaleTimeString()}</div>
-                              <div>Status: {api.status}</div>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-border/30">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    <span>4 APIs monitored</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    <span>Auto-refresh every 30s</span>
+                      {api.status}
+                    </Badge>
                   </div>
                 </div>
-                <div>Last updated: {lastUpdate.toLocaleString()}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </TooltipProvider>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </CardContent>
+    </Card>
   )
 }

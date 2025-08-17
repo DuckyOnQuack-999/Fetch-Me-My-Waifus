@@ -1,33 +1,27 @@
 "use client"
 
-import { Component, type ErrorInfo, type ReactNode } from "react"
-import { AlertTriangle, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, RefreshCw } from "lucide-react"
 
-interface Props {
-  children: ReactNode
-}
-
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
-  errorInfo?: ErrorInfo
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: React.ReactNode }) {
     super(props)
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Error caught by boundary:", error, errorInfo)
-    this.setState({ error, errorInfo })
   }
 
   render() {
@@ -45,22 +39,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <CardContent className="space-y-4">
               {this.state.error && (
                 <div className="rounded-md bg-muted p-3">
-                  <p className="text-sm font-mono text-muted-foreground">{this.state.error.message}</p>
+                  <code className="text-sm text-muted-foreground">{this.state.error.message}</code>
                 </div>
               )}
-              <div className="flex gap-2">
-                <Button onClick={() => window.location.reload()} className="flex-1">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh Page
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => this.setState({ hasError: false, error: undefined, errorInfo: undefined })}
-                  className="flex-1"
-                >
-                  Try Again
-                </Button>
-              </div>
+              <Button onClick={() => window.location.reload()} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Page
+              </Button>
             </CardContent>
           </Card>
         </div>

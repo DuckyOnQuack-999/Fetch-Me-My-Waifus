@@ -1,61 +1,175 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Download, ImageIcon, Heart, Settings, FolderOpen, Home } from "lucide-react"
+import type * as React from "react"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { SumptuousHeart } from "./sumptuous-heart"
+  Bot,
+  Command,
+  Frame,
+  GalleryVerticalEnd,
+  Map,
+  PieChart,
+  Settings2,
+  Download,
+  Heart,
+  ImageIcon,
+  Home,
+  FolderOpen,
+} from "lucide-react"
 
-export function AppSidebar() {
-  const pathname = usePathname()
+import { NavMain } from "@/components/nav-main"
+import { NavUser } from "@/components/nav-user"
+import { TeamSwitcher } from "@/components/team-switcher"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
 
-  const menuItems = [
-    { icon: Home, label: "Home", href: "/" },
-    { icon: Download, label: "Download", href: "/?tab=download" },
-    { icon: ImageIcon, label: "Gallery", href: "/gallery" },
-    { icon: Heart, label: "Favorites", href: "/favorites" },
-    { icon: FolderOpen, label: "Collections", href: "/collections" },
-    { icon: Settings, label: "Settings", href: "/settings" },
-  ]
+// This is sample data.
+const data = {
+  user: {
+    name: "Waifu Downloader",
+    email: "user@waifudownloader.com",
+    avatar: "/placeholder.svg?height=32&width=32",
+  },
+  teams: [
+    {
+      name: "Waifu Downloader",
+      logo: GalleryVerticalEnd,
+      plan: "Enterprise",
+    },
+    {
+      name: "AI Enhanced",
+      logo: Bot,
+      plan: "Pro",
+    },
+    {
+      name: "Quantum Ready",
+      logo: Command,
+      plan: "Free",
+    },
+  ],
+  navMain: [
+    {
+      title: "Dashboard",
+      url: "/",
+      icon: Home,
+      isActive: true,
+    },
+    {
+      title: "Download",
+      url: "/?tab=download",
+      icon: Download,
+      items: [
+        {
+          title: "Simple Download",
+          url: "/?tab=download",
+        },
+        {
+          title: "Batch Download",
+          url: "/batch-download",
+        },
+        {
+          title: "Queue Manager",
+          url: "/queue",
+        },
+      ],
+    },
+    {
+      title: "Gallery",
+      url: "/gallery",
+      icon: ImageIcon,
+      items: [
+        {
+          title: "All Images",
+          url: "/gallery",
+        },
+        {
+          title: "Recent",
+          url: "/gallery?filter=recent",
+        },
+        {
+          title: "High Quality",
+          url: "/gallery?filter=hq",
+        },
+      ],
+    },
+    {
+      title: "Favorites",
+      url: "/favorites",
+      icon: Heart,
+    },
+    {
+      title: "Collections",
+      url: "/collections",
+      icon: FolderOpen,
+      items: [
+        {
+          title: "My Collections",
+          url: "/collections",
+        },
+        {
+          title: "Shared",
+          url: "/collections/shared",
+        },
+        {
+          title: "Create New",
+          url: "/collections/new",
+        },
+      ],
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings2,
+      items: [
+        {
+          title: "API Keys",
+          url: "/settings?tab=api",
+        },
+        {
+          title: "Download Settings",
+          url: "/settings?tab=download",
+        },
+        {
+          title: "Appearance",
+          url: "/settings?tab=appearance",
+        },
+        {
+          title: "Advanced",
+          url: "/settings?tab=advanced",
+        },
+      ],
+    },
+  ],
+  projects: [
+    {
+      name: "Waifu Collection",
+      url: "#",
+      icon: Frame,
+    },
+    {
+      name: "Anime Artwork",
+      url: "#",
+      icon: PieChart,
+    },
+    {
+      name: "Character Gallery",
+      url: "#",
+      icon: Map,
+    },
+  ],
+}
 
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar className="border-r border-border/40 bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-6 py-4">
-          <SumptuousHeart size={40} className="flex-shrink-0" />
-          <div>
-            <h2 className="text-xl font-bold text-gradient">Waifu</h2>
-            <p className="text-xs text-muted-foreground">Downloader</p>
-          </div>
-        </div>
+        <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild className={`nav-item ${pathname === item.href ? "active" : ""}`}>
-                <Link href={item.href}>
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <div className="px-6 py-4">
-          <p className="text-xs text-muted-foreground">Built with ❤️ by weebs</p>
-        </div>
+        <NavUser user={data.user} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

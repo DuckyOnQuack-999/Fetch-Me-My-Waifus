@@ -6,33 +6,42 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["localhost:3000", "*.vercel.app"],
+    },
+  },
   images: {
-    domains: [
-      "api.waifu.im",
-      "api.waifu.pics",
-      "nekos.best",
-      "wallhaven.cc",
-      "femboyfinder.firestreaker2.gq",
-      "cdn.waifu.im",
-      "i.waifu.pics",
-      "nekos.best",
-      "w.wallhaven.cc",
-      "th.wallhaven.cc",
-    ],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "**",
       },
     ],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     unoptimized: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ["sharp"],
-  },
-  webpack: (config) => {
-    config.resolve.alias.canvas = false
-    return config
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ]
   },
 }
 
