@@ -2,18 +2,18 @@
 
 import type * as React from "react"
 import {
-  Bot,
+  AudioWaveform,
   Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
   Settings2,
-  Download,
   Heart,
-  ImageIcon,
-  Home,
+  Download,
   FolderOpen,
+  Home,
+  ImageIcon,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -24,8 +24,8 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } fr
 // This is sample data.
 const data = {
   user: {
-    name: "Waifu Downloader",
-    email: "user@waifudownloader.com",
+    name: "Waifu Collector",
+    email: "collector@waifudownloader.com",
     avatar: "/placeholder.svg?height=32&width=32",
   },
   teams: [
@@ -35,14 +35,14 @@ const data = {
       plan: "Enterprise",
     },
     {
-      name: "AI Enhanced",
-      logo: Bot,
-      plan: "Pro",
+      name: "Personal Collection",
+      logo: AudioWaveform,
+      plan: "Free",
     },
     {
-      name: "Quantum Ready",
+      name: "Shared Gallery",
       logo: Command,
-      plan: "Free",
+      plan: "Pro",
     },
   ],
   navMain: [
@@ -54,7 +54,7 @@ const data = {
     },
     {
       title: "Download",
-      url: "/?tab=download",
+      url: "#",
       icon: Download,
       items: [
         {
@@ -63,7 +63,7 @@ const data = {
         },
         {
           title: "Batch Download",
-          url: "/batch-download",
+          url: "/batch",
         },
         {
           title: "Queue Manager",
@@ -106,11 +106,11 @@ const data = {
         },
         {
           title: "Shared",
-          url: "/collections/shared",
+          url: "/collections?filter=shared",
         },
         {
-          title: "Create New",
-          url: "/collections/new",
+          title: "Public",
+          url: "/collections?filter=public",
         },
       ],
     },
@@ -120,37 +120,37 @@ const data = {
       icon: Settings2,
       items: [
         {
+          title: "General",
+          url: "/settings",
+        },
+        {
           title: "API Keys",
           url: "/settings?tab=api",
         },
         {
-          title: "Download Settings",
+          title: "Downloads",
           url: "/settings?tab=download",
         },
         {
           title: "Appearance",
           url: "/settings?tab=appearance",
         },
-        {
-          title: "Advanced",
-          url: "/settings?tab=advanced",
-        },
       ],
     },
   ],
   projects: [
     {
-      name: "Waifu Collection",
+      name: "Anime Collection",
       url: "#",
       icon: Frame,
     },
     {
-      name: "Anime Artwork",
+      name: "Waifu Archive",
       url: "#",
       icon: PieChart,
     },
     {
-      name: "Character Gallery",
+      name: "Favorites Backup",
       url: "#",
       icon: Map,
     },

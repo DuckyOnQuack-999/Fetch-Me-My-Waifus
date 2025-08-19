@@ -4,284 +4,251 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, RefreshCw, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle, XCircle, AlertCircle, RefreshCw, Wifi, WifiOff, Clock } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import type { ApiStatusData } from "@/types/waifu"
+
+interface ApiStatus {
+  name: string
+  url: string
+  status: "online" | "offline" | "slow" | "unknown"
+  responseTime?: number
+  lastChecked: Date
+}
 
 export function ApiStatusIndicator() {
-  const [apiStatuses, setApiStatuses] = useState<ApiStatusData[]>([])
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const mockApiStatuses: ApiStatusData[] = [
+  const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([
     {
-      name: "waifu.im",
-      displayName: "Waifu.im",
+      name: "Waifu.im",
       url: "https://api.waifu.im",
-      endpoint: "/search",
-      status: "online",
-      latency: 156,
+      status: "unknown",
       lastChecked: new Date(),
-      description: "High-quality anime images with advanced filtering",
-      features: ["NSFW Filter", "Tag Search", "Quality Filter"],
-      keyRequired: false,
-      keyName: "waifuImApiKey",
-      rateLimit: {
-        requests: 100,
-        window: 3600,
-        remaining: 87,
-        resetTime: new Date(Date.now() + 3600000),
-      },
-      statistics: {
-        totalRequests: 1247,
-        successfulRequests: 1198,
-        failedRequests: 49,
-        averageLatency: 164,
-      },
     },
     {
-      name: "waifu.pics",
-      displayName: "Waifu.pics",
+      name: "Waifu.pics",
       url: "https://api.waifu.pics",
-      endpoint: "/sfw/waifu",
-      status: "online",
-      latency: 89,
+      status: "unknown",
       lastChecked: new Date(),
-      description: "Simple and fast anime image API",
-      features: ["SFW/NSFW", "Multiple Categories", "Single Image"],
-      keyRequired: false,
-      keyName: "waifuPicsApiKey",
-      statistics: {
-        totalRequests: 892,
-        successfulRequests: 889,
-        failedRequests: 3,
-        averageLatency: 92,
-      },
     },
     {
-      name: "nekos.best",
-      displayName: "Nekos.best",
+      name: "Nekos.best",
       url: "https://nekos.best/api/v2",
-      endpoint: "/neko",
-      status: "degraded",
-      latency: 342,
+      status: "unknown",
       lastChecked: new Date(),
-      description: "Neko and anime character images",
-      features: ["Multiple Characters", "Batch Requests", "Metadata"],
-      keyRequired: false,
-      keyName: "nekosBestApiKey",
-      statistics: {
-        totalRequests: 567,
-        successfulRequests: 523,
-        failedRequests: 44,
-        averageLatency: 298,
-      },
     },
     {
-      name: "wallhaven",
-      displayName: "Wallhaven",
+      name: "Wallhaven",
       url: "https://wallhaven.cc/api/v1",
-      endpoint: "/search",
-      status: "online",
-      latency: 203,
+      status: "unknown",
       lastChecked: new Date(),
-      description: "High-resolution wallpapers and artwork",
-      features: ["High Resolution", "Categories", "User Collections"],
-      keyRequired: true,
-      keyName: "wallhavenApiKey",
-      rateLimit: {
-        requests: 45,
-        window: 60,
-        remaining: 32,
-        resetTime: new Date(Date.now() + 60000),
-      },
-      statistics: {
-        totalRequests: 234,
-        successfulRequests: 231,
-        failedRequests: 3,
-        averageLatency: 187,
-      },
     },
-    {
-      name: "femboyfinder",
-      displayName: "FemboyFinder",
-      url: "https://femboyfinder.firestreaker2.gq/api",
-      endpoint: "/femboy",
-      status: "offline",
-      lastChecked: new Date(),
-      description: "Specialized character image collection",
-      features: ["Character Focus", "Quality Curated"],
-      keyRequired: false,
-      keyName: "femboyFinderApiKey",
-      statistics: {
-        totalRequests: 45,
-        successfulRequests: 12,
-        failedRequests: 33,
-        averageLatency: 0,
-      },
-    },
-  ]
+  ])
+
+  const [isChecking, setIsChecking] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+
+  const checkApiStatus = async (api: ApiStatus): Promise<ApiStatus> => {
+    const startTime = Date.now()
+
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+      const response = await fetch(`/api/proxy/status?url=${encodeURIComponent(api.url)}`, {
+        method: "GET",
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+        },
+      })
+
+      clearTimeout(timeoutId)
+      const responseTime = Date.now() - startTime
+
+      let status: "online" | "offline" | "slow" = "online"
+      if (responseTime > 3000) {
+        status = "slow"
+      } else if (!response.ok) {
+        status = "offline"
+      }
+
+      return {
+        ...api,
+        status,
+        responseTime,
+        lastChecked: new Date(),
+      }
+    } catch (error) {
+      return {
+        ...api,
+        status: "offline",
+        responseTime: undefined,
+        lastChecked: new Date(),
+      }
+    }
+  }
+
+  const checkAllApis = async () => {
+    setIsChecking(true)
+
+    try {
+      const promises = apiStatuses.map((api) => checkApiStatus(api))
+      const results = await Promise.all(promises)
+      setApiStatuses(results)
+      setLastUpdate(new Date())
+    } catch (error) {
+      console.error("Failed to check API statuses:", error)
+    } finally {
+      setIsChecking(false)
+    }
+  }
 
   useEffect(() => {
-    setApiStatuses(mockApiStatuses)
+    checkAllApis()
 
-    // Simulate periodic status updates
-    const interval = setInterval(() => {
-      setApiStatuses((prev) =>
-        prev.map((api) => ({
-          ...api,
-          latency: api.status === "online" ? Math.floor(Math.random() * 300) + 50 : undefined,
-          lastChecked: new Date(),
-          statistics: {
-            ...api.statistics,
-            totalRequests: api.statistics.totalRequests + Math.floor(Math.random() * 5),
-            successfulRequests: api.statistics.successfulRequests + Math.floor(Math.random() * 4),
-          },
-        })),
-      )
-    }, 30000)
+    // Check every 5 minutes
+    const interval = setInterval(checkAllApis, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [])
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-
-    // Simulate API status check
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setApiStatuses((prev) =>
-      prev.map((api) => ({
-        ...api,
-        lastChecked: new Date(),
-        latency: api.status === "online" ? Math.floor(Math.random() * 300) + 50 : undefined,
-      })),
-    )
-
-    setIsRefreshing(false)
-  }
-
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: ApiStatus["status"]) => {
     switch (status) {
       case "online":
         return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "degraded":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
       case "offline":
-        return <WifiOff className="h-4 w-4 text-red-500" />
-      case "checking":
-        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case "slow":
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
       default:
-        return <Wifi className="h-4 w-4 text-gray-500" />
+        return <Clock className="h-4 w-4 text-gray-500" />
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: ApiStatus["status"]) => {
     switch (status) {
       case "online":
-        return "bg-green-500"
-      case "degraded":
-        return "bg-yellow-500"
+        return (
+          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+            Online
+          </Badge>
+        )
       case "offline":
-        return "bg-red-500"
-      case "checking":
-        return "bg-blue-500"
+        return <Badge variant="destructive">Offline</Badge>
+      case "slow":
+        return (
+          <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">
+            Slow
+          </Badge>
+        )
       default:
-        return "bg-gray-500"
+        return <Badge variant="outline">Unknown</Badge>
     }
   }
 
   const overallStatus = apiStatuses.every((api) => api.status === "online")
     ? "online"
-    : apiStatuses.some((api) => api.status === "offline")
-      ? "degraded"
-      : "degraded"
+    : apiStatuses.some((api) => api.status === "online")
+      ? "partial"
+      : "offline"
 
-  const onlineCount = apiStatuses.filter((api) => api.status === "online").length
-  const totalCount = apiStatuses.length
+  const getOverallIcon = () => {
+    switch (overallStatus) {
+      case "online":
+        return <Wifi className="h-4 w-4 text-green-500" />
+      case "partial":
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      default:
+        return <WifiOff className="h-4 w-4 text-red-500" />
+    }
+  }
 
   return (
-    <Card className="w-full">
+    <Card className="material-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${getStatusColor(overallStatus)} animate-pulse`} />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {getOverallIcon()}
               <span className="font-medium">API Status</span>
             </div>
 
-            <Badge variant={overallStatus === "online" ? "default" : "secondary"}>
-              {onlineCount}/{totalCount} Online
-            </Badge>
-
-            <div className="text-sm text-muted-foreground">Last updated: {new Date().toLocaleTimeString()}</div>
+            <div className="flex items-center gap-2">
+              {apiStatuses.map((api) => (
+                <motion.div
+                  key={api.name}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="flex items-center gap-1"
+                >
+                  {getStatusIcon(api.status)}
+                  <span className="text-sm text-muted-foreground hidden sm:inline">{api.name}</span>
+                  {api.responseTime && (
+                    <span className="text-xs text-muted-foreground hidden md:inline">({api.responseTime}ms)</span>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-muted-foreground hidden sm:block">
+              Last updated: {lastUpdate.toLocaleTimeString()}
+            </div>
 
-            <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkAllApis}
+              disabled={isChecking}
+              className="h-8 bg-transparent"
+            >
+              <RefreshCw className={`h-3 w-3 ${isChecking ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline ml-1">Refresh</span>
             </Button>
           </div>
         </div>
 
         <AnimatePresence>
-          {isExpanded && (
+          {overallStatus !== "online" && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-4 space-y-3"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mt-3 pt-3 border-t"
             >
-              {apiStatuses.map((api) => (
-                <div key={api.name} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
-                  <div className="flex items-center space-x-3">
-                    {getStatusIcon(api.status)}
-                    <div>
-                      <div className="font-medium">{api.displayName}</div>
-                      <div className="text-sm text-muted-foreground">{api.description}</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {apiStatuses.map((api) => (
+                  <div key={api.name} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(api.status)}
+                      <span className="text-sm font-medium">{api.name}</span>
                     </div>
+                    {getStatusBadge(api.status)}
                   </div>
+                ))}
+              </div>
 
-                  <div className="flex items-center space-x-4 text-sm">
-                    {api.latency && (
-                      <div className="text-center">
-                        <div className="font-medium">{api.latency}ms</div>
-                        <div className="text-xs text-muted-foreground">Latency</div>
-                      </div>
-                    )}
-
-                    {api.statistics && (
-                      <div className="text-center">
-                        <div className="font-medium">
-                          {((api.statistics.successfulRequests / api.statistics.totalRequests) * 100).toFixed(1)}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">Success</div>
-                      </div>
-                    )}
-
-                    {api.rateLimit && (
-                      <div className="text-center">
-                        <div className="font-medium">{api.rateLimit.remaining}</div>
-                        <div className="text-xs text-muted-foreground">Remaining</div>
-                      </div>
-                    )}
-
-                    <Badge
-                      variant={
-                        api.status === "online" ? "default" : api.status === "degraded" ? "secondary" : "destructive"
-                      }
-                    >
-                      {api.status}
-                    </Badge>
+              {overallStatus === "offline" && (
+                <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      All APIs are currently offline. Some features may not work properly.
+                    </span>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {overallStatus === "partial" && (
+                <div className="mt-2 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Some APIs are experiencing issues. Functionality may be limited.
+                    </span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
