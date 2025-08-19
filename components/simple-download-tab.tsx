@@ -9,391 +9,460 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Download, Settings, Zap, ImageIcon } from "lucide-react"
-import { motion } from "framer-motion"
-import { toast } from "sonner"
-import { useDownload } from "@/context/downloadContext"
+import { Separator } from "@/components/ui/separator"
+import { Download, Pause, Zap, ImageIcon, AlertCircle } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useSettings } from "@/context/settingsContext"
-import type { ImageCategory, DownloadItem } from "@/types/waifu"
+import { useDownload } from "@/context/downloadContext"
+import { useStorage } from "@/context/storageContext"
+import { fetchImagesFromMultipleSources } from "@/services/waifuApi"
+import { toast } from "sonner"
+import type { ImageCategory, ApiSource, WaifuImage } from "@/types/waifu"
 
 export function SimpleDownloadTab() {
-  const { addToQueue, downloads } = useDownload()
   const { settings } = useSettings()
+  const { startBatchDownload, downloads, isDownloading, totalProgress } = useDownload()
+  const { addImage } = useStorage()
 
   const [downloadConfig, setDownloadConfig] = useState({
     category: "waifu" as ImageCategory,
+    apiSource: "all" as ApiSource,
     count: 10,
     isNsfw: false,
-    tags: "",
-    source: "waifu.im",
+    minWidth: 800,
+    minHeight: 600,
   })
 
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [previewImages, setPreviewImages] = useState<WaifuImage[]>([])
+  const [showPreview, setShowPreview] = useState(false)
 
-  const categories: { value: ImageCategory; label: string; icon: string }[] = [
-    { value: "waifu", label: "Waifu", icon: "👧" },
-    { value: "neko", label: "Neko", icon: "🐱" },
-    { value: "shinobu", label: "Shinobu", icon: "🦋" },
-    { value: "megumin", label: "Megumin", icon: "💥" },
-    { value: "bully", label: "Bully", icon: "😤" },
-    { value: "cuddle", label: "Cuddle", icon: "🤗" },
-    { value: "cry", label: "Cry", icon: "😢" },
-    { value: "hug", label: "Hug", icon: "🫂" },
-    { value: "awoo", label: "Awoo", icon: "🐺" },
-    { value: "kiss", label: "Kiss", icon: "💋" },
-    { value: "lick", label: "Lick", icon: "👅" },
-    { value: "pat", label: "Pat", icon: "✋" },
-    { value: "smug", label: "Smug", icon: "😏" },
-    { value: "bonk", label: "Bonk", icon: "🔨" },
-    { value: "yeet", label: "Yeet", icon: "🚀" },
-    { value: "blush", label: "Blush", icon: "😊" },
-    { value: "smile", label: "Smile", icon: "😄" },
-    { value: "wave", label: "Wave", icon: "👋" },
-    { value: "highfive", label: "High Five", icon: "🙏" },
-    { value: "handhold", label: "Handhold", icon: "🤝" },
-    { value: "nom", label: "Nom", icon: "😋" },
-    { value: "bite", label: "Bite", icon: "🦷" },
-    { value: "glomp", label: "Glomp", icon: "🤸" },
-    { value: "slap", label: "Slap", icon: "👋" },
-    { value: "kill", label: "Kill", icon: "⚔️" },
-    { value: "kick", label: "Kick", icon: "🦵" },
-    { value: "happy", label: "Happy", icon: "😊" },
-    { value: "wink", label: "Wink", icon: "😉" },
-    { value: "poke", label: "Poke", icon: "👉" },
-    { value: "dance", label: "Dance", icon: "💃" },
+  const categories: ImageCategory[] = [
+    "waifu",
+    "neko",
+    "shinobu",
+    "megumin",
+    "bully",
+    "cuddle",
+    "cry",
+    "hug",
+    "awoo",
+    "kiss",
+    "lick",
+    "pat",
+    "smug",
+    "bonk",
+    "yeet",
+    "blush",
+    "smile",
+    "wave",
+    "highfive",
+    "handhold",
+    "nom",
+    "bite",
+    "glomp",
+    "slap",
+    "kill",
+    "kick",
+    "happy",
+    "wink",
+    "poke",
+    "dance",
+    "cringe",
+    "maid",
+    "uniform",
+    "selfies",
+    "husbando",
+    "kitsune",
   ]
 
-  const sources = [
-    { value: "waifu.im", label: "Waifu.im", description: "High quality anime images" },
-    { value: "waifu.pics", label: "Waifu.pics", description: "SFW and NSFW anime images" },
-    { value: "nekos.best", label: "Nekos.best", description: "Neko-focused API" },
-    { value: "wallhaven", label: "Wallhaven", description: "Wallpapers and backgrounds" },
+  const apiSources: { value: ApiSource; label: string; description: string }[] = [
+    { value: "all", label: "All Sources", description: "Fetch from all available APIs" },
+    { value: "waifu.im", label: "Waifu.im", description: "High-quality curated images" },
+    { value: "waifu.pics", label: "Waifu.pics", description: "Large collection of anime images" },
+    { value: "nekos.best", label: "Nekos.best", description: "Neko-focused image collection" },
+    { value: "wallhaven", label: "Wallhaven", description: "High-resolution wallpapers" },
+    { value: "femboyfinder", label: "FemboyFinder", description: "Specialized collection" },
   ]
 
-  const handleDownload = async () => {
-    if (isDownloading) return
-
-    setIsDownloading(true)
-    setDownloadProgress(0)
-
-    toast.success(`Starting download of ${downloadConfig.count} ${downloadConfig.category} images`)
-
+  const handlePreview = async () => {
+    setIsLoading(true)
     try {
-      for (let i = 0; i < downloadConfig.count; i++) {
-        const downloadItem: DownloadItem = {
-          id: `download_${Date.now()}_${i}`,
-          url: `https://example.com/${downloadConfig.category}_${i}.jpg`,
-          filename: `${downloadConfig.category}_${Date.now()}_${i}.jpg`,
-          status: "pending",
-          progress: 0,
-          category: downloadConfig.category,
-          tags: downloadConfig.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-          addedAt: new Date(),
-          timestamp: new Date(),
-          source: downloadConfig.source as any,
-        }
+      const images = await fetchImagesFromMultipleSources(
+        downloadConfig.category,
+        Math.min(downloadConfig.count, 6), // Limit preview to 6 images
+        downloadConfig.isNsfw,
+        "RANDOM",
+        1,
+        downloadConfig.minWidth,
+        downloadConfig.minHeight,
+        settings,
+        downloadConfig.apiSource,
+      )
 
-        addToQueue(downloadItem)
-        setDownloadProgress(((i + 1) / downloadConfig.count) * 100)
+      setPreviewImages(images)
+      setShowPreview(true)
+      toast.success(`Found ${images.length} images for preview`)
+    } catch (error) {
+      console.error("Preview failed:", error)
+      toast.error("Failed to load preview images")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-        // Simulate download delay
-        await new Promise((resolve) => setTimeout(resolve, 200))
+  const handleStartDownload = async () => {
+    setIsLoading(true)
+    try {
+      const images = await fetchImagesFromMultipleSources(
+        downloadConfig.category,
+        downloadConfig.count,
+        downloadConfig.isNsfw,
+        "RANDOM",
+        1,
+        downloadConfig.minWidth,
+        downloadConfig.minHeight,
+        settings,
+        downloadConfig.apiSource,
+      )
+
+      if (images.length === 0) {
+        toast.error("No images found with the current settings")
+        return
       }
 
-      toast.success("All images added to download queue!")
+      // Add images to storage
+      images.forEach((image) => addImage(image))
+
+      // Start batch download
+      const urls = images.map((img) => img.url)
+      await startBatchDownload(urls, {
+        source: downloadConfig.apiSource,
+        category: downloadConfig.category,
+        tags: [downloadConfig.category],
+      })
+
+      toast.success(`Started downloading ${images.length} images`)
     } catch (error) {
+      console.error("Download failed:", error)
       toast.error("Failed to start download")
     } finally {
-      setIsDownloading(false)
-      setDownloadProgress(0)
+      setIsLoading(false)
     }
   }
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="simple" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="simple" className="flex items-center gap-2">
-            <Zap className="h-4 w-4" />
-            Quick Download
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Advanced
-          </TabsTrigger>
-        </TabsList>
+      {/* Download Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5 text-primary" />
+            Download Configuration
+          </CardTitle>
+          <CardDescription>Configure your image download preferences</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={downloadConfig.category}
+                onValueChange={(value: ImageCategory) => setDownloadConfig((prev) => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <TabsContent value="simple" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5 text-primary" />
-                Quick Download
-              </CardTitle>
-              <CardDescription>Download images quickly with basic settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="api-source">API Source</Label>
+              <Select
+                value={downloadConfig.apiSource}
+                onValueChange={(value: ApiSource) => setDownloadConfig((prev) => ({ ...prev, apiSource: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {apiSources.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      <div className="space-y-1">
+                        <div className="font-medium">{source.label}</div>
+                        <div className="text-xs text-muted-foreground">{source.description}</div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="count">Image Count</Label>
+              <Input
+                id="count"
+                type="number"
+                min="1"
+                max="100"
+                value={downloadConfig.count}
+                onChange={(e) =>
+                  setDownloadConfig((prev) => ({ ...prev, count: Number.parseInt(e.target.value) || 1 }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="min-width">Min Width (px)</Label>
+              <Input
+                id="min-width"
+                type="number"
+                min="100"
+                max="10000"
+                value={downloadConfig.minWidth}
+                onChange={(e) =>
+                  setDownloadConfig((prev) => ({ ...prev, minWidth: Number.parseInt(e.target.value) || 100 }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="min-height">Min Height (px)</Label>
+              <Input
+                id="min-height"
+                type="number"
+                min="100"
+                max="10000"
+                value={downloadConfig.minHeight}
+                onChange={(e) =>
+                  setDownloadConfig((prev) => ({ ...prev, minHeight: Number.parseInt(e.target.value) || 100 }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="nsfw"
+                checked={downloadConfig.isNsfw}
+                onCheckedChange={(checked) => setDownloadConfig((prev) => ({ ...prev, isNsfw: checked }))}
+              />
+              <Label htmlFor="nsfw">Include NSFW Content</Label>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <ImageIcon className="h-3 w-3" />
+              {downloadConfig.category}
+            </Badge>
+            <Badge variant="outline">{downloadConfig.apiSource}</Badge>
+            <Badge variant={downloadConfig.isNsfw ? "destructive" : "default"}>
+              {downloadConfig.isNsfw ? "NSFW" : "SFW"}
+            </Badge>
+            <Badge variant="secondary">{downloadConfig.count} images</Badge>
+            <Badge variant="outline">
+              {downloadConfig.minWidth}×{downloadConfig.minHeight}+
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Button onClick={handlePreview} disabled={isLoading} variant="outline" className="flex-1 bg-transparent">
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Preview Images
+            </div>
+          )}
+        </Button>
+
+        <Button onClick={handleStartDownload} disabled={isLoading || isDownloading} className="flex-1">
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Starting...
+            </div>
+          ) : isDownloading ? (
+            <div className="flex items-center gap-2">
+              <Pause className="h-4 w-4" />
+              Downloading...
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Start Download
+            </div>
+          )}
+        </Button>
+      </div>
+
+      {/* Download Progress */}
+      <AnimatePresence>
+        {isDownloading && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Zap className="h-5 w-5" />
+                  Download Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={downloadConfig.category}
-                    onValueChange={(value: ImageCategory) =>
-                      setDownloadConfig((prev) => ({ ...prev, category: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex items-center gap-2">
-                            <span>{category.icon}</span>
-                            <span>{category.label}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>
+                      {totalProgress.downloaded} / {totalProgress.total}
+                    </span>
+                  </div>
+                  <Progress value={(totalProgress.downloaded / totalProgress.total) * 100} className="h-2" />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="count">Number of Images</Label>
-                  <Input
-                    id="count"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={downloadConfig.count}
-                    onChange={(e) =>
-                      setDownloadConfig((prev) => ({
-                        ...prev,
-                        count: Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)),
-                      }))
-                    }
-                  />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Speed:</span>
+                    <div className="font-mono">{(totalProgress.speed / 1024 / 1024).toFixed(1)} MB/s</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">ETA:</span>
+                    <div className="font-mono">
+                      {Math.floor(totalProgress.eta / 60)}m {Math.floor(totalProgress.eta % 60)}s
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Current:</span>
+                    <div className="font-mono truncate">{totalProgress.currentFile || "Processing..."}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Errors:</span>
+                    <div className="font-mono text-destructive">{totalProgress.errors?.length || 0}</div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="source">API Source</Label>
-                <Select
-                  value={downloadConfig.source}
-                  onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, source: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select API source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sources.map((source) => (
-                      <SelectItem key={source.value} value={source.value}>
-                        <div className="space-y-1">
-                          <div className="font-medium">{source.label}</div>
-                          <div className="text-xs text-muted-foreground">{source.description}</div>
+                {totalProgress.errors && totalProgress.errors.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Errors occurred:</span>
+                    </div>
+                    <div className="max-h-20 overflow-y-auto space-y-1">
+                      {totalProgress.errors.map((error, index) => (
+                        <div key={index} className="text-xs text-muted-foreground bg-destructive/10 p-2 rounded">
+                          {error}
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="nsfw">NSFW Content</Label>
-                  <p className="text-xs text-muted-foreground">Include not-safe-for-work content</p>
-                </div>
-                <Switch
-                  id="nsfw"
-                  checked={downloadConfig.isNsfw}
-                  onCheckedChange={(checked) => setDownloadConfig((prev) => ({ ...prev, isNsfw: checked }))}
-                />
-              </div>
-
-              {isDownloading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Adding to queue...</span>
-                    <span>{Math.round(downloadProgress)}%</span>
-                  </div>
-                  <Progress value={downloadProgress} className="h-2" />
-                </div>
-              )}
-
-              <Button onClick={handleDownload} disabled={isDownloading} className="w-full" size="lg">
-                {isDownloading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Adding to Queue...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
-                    Download {downloadConfig.count} Images
-                  </div>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="advanced" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-primary" />
-                Advanced Download
-              </CardTitle>
-              <CardDescription>Fine-tune your download with advanced options</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="category-advanced">Category</Label>
-                  <Select
-                    value={downloadConfig.category}
-                    onValueChange={(value: ImageCategory) =>
-                      setDownloadConfig((prev) => ({ ...prev, category: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          <div className="flex items-center gap-2">
-                            <span>{category.icon}</span>
-                            <span>{category.label}</span>
-                          </div>
-                        </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="count-advanced">Number of Images</Label>
-                  <Input
-                    id="count-advanced"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={downloadConfig.count}
-                    onChange={(e) =>
-                      setDownloadConfig((prev) => ({
-                        ...prev,
-                        count: Math.max(1, Math.min(100, Number.parseInt(e.target.value) || 1)),
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
-                <Input
-                  id="tags"
-                  placeholder="e.g., cute, anime, girl"
-                  value={downloadConfig.tags}
-                  onChange={(e) => setDownloadConfig((prev) => ({ ...prev, tags: e.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">Add specific tags to filter your downloads</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="source-advanced">API Source</Label>
-                <Select
-                  value={downloadConfig.source}
-                  onValueChange={(value) => setDownloadConfig((prev) => ({ ...prev, source: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select API source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sources.map((source) => (
-                      <SelectItem key={source.value} value={source.value}>
-                        <div className="space-y-1">
-                          <div className="font-medium">{source.label}</div>
-                          <div className="text-xs text-muted-foreground">{source.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="nsfw-advanced">NSFW Content</Label>
-                  <p className="text-xs text-muted-foreground">Include not-safe-for-work content</p>
-                </div>
-                <Switch
-                  id="nsfw-advanced"
-                  checked={downloadConfig.isNsfw}
-                  onCheckedChange={(checked) => setDownloadConfig((prev) => ({ ...prev, isNsfw: checked }))}
-                />
-              </div>
-
-              {isDownloading && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Adding to queue...</span>
-                    <span>{Math.round(downloadProgress)}%</span>
-                  </div>
-                  <Progress value={downloadProgress} className="h-2" />
-                </div>
-              )}
-
-              <Button onClick={handleDownload} disabled={isDownloading} className="w-full" size="lg">
-                {isDownloading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Adding to Queue...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
-                    Download {downloadConfig.count} Images
+                    </div>
                   </div>
                 )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Download Queue Status */}
-      {downloads && downloads.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-primary" />
-                Download Queue
-                <Badge variant="secondary">{downloads.length} items</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {downloads.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span className="text-sm truncate">{item.filename}</span>
-                    <Badge variant="outline">{item.status}</Badge>
+      {/* Image Preview */}
+      <AnimatePresence>
+        {showPreview && previewImages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Preview Images
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>
+                    Hide Preview
+                  </Button>
+                </div>
+                <CardDescription>Preview of {previewImages.length} images that will be downloaded</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {previewImages.map((image, index) => (
+                    <motion.div
+                      key={image.image_id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: index * 0.1 }}
+                      className="aspect-square rounded-lg overflow-hidden bg-muted"
+                    >
+                      <img
+                        src={image.url || "/placeholder.svg?height=150&width=150"}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                        loading="lazy"
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Recent Downloads Summary */}
+      {downloads.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Recent Downloads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {downloads.slice(0, 5).map((download) => (
+                <div key={download.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        download.status === "completed"
+                          ? "bg-green-500"
+                          : download.status === "downloading"
+                            ? "bg-blue-500"
+                            : download.status === "failed"
+                              ? "bg-red-500"
+                              : "bg-yellow-500"
+                      }`}
+                    />
+                    <span className="text-sm font-medium truncate">{download.filename}</span>
                   </div>
-                ))}
-                {downloads.length > 3 && (
-                  <p className="text-sm text-muted-foreground text-center">And {downloads.length - 3} more items...</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                  <Badge variant="outline" className="text-xs">
+                    {download.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
