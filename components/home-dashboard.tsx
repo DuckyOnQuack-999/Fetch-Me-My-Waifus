@@ -11,21 +11,51 @@ import { useStorage } from "@/context/storageContext"
 import { useDownload } from "@/context/downloadContext"
 import { useSettings } from "@/context/settingsContext"
 
+interface StorageStats {
+  usage: {
+    used: number
+    available: number
+    percentage: number
+  }
+  counts: {
+    images: number
+    favorites: number
+    collections: number
+    downloadHistory: number
+  }
+  lastUpdated: string
+}
+
 export function HomeDashboard() {
   const { images, favorites, getStorageStats } = useStorage()
   const { downloads, activeDownloads, completedDownloads, totalProgress } = useDownload()
   const { settings } = useSettings()
-  const [storageStats, setStorageStats] = useState<any>(null)
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null)
 
   useEffect(() => {
-    const stats = getStorageStats()
-    setStorageStats(stats)
-  }, [images, favorites])
+    try {
+      const stats = getStorageStats()
+      setStorageStats(stats)
+    } catch (error) {
+      console.error("Failed to get storage stats:", error)
+      // Set fallback stats
+      setStorageStats({
+        usage: { used: 0, available: 100 * 1024 * 1024, percentage: 0 },
+        counts: {
+          images: images?.length || 0,
+          favorites: favorites?.length || 0,
+          collections: 0,
+          downloadHistory: 0,
+        },
+        lastUpdated: new Date().toISOString(),
+      })
+    }
+  }, [images, favorites, getStorageStats])
 
   const quickStats = [
     {
       title: "Total Images",
-      value: images.length,
+      value: images?.length || 0,
       change: "+12%",
       icon: ImageIcon,
       color: "text-blue-500",
@@ -33,7 +63,7 @@ export function HomeDashboard() {
     },
     {
       title: "Favorites",
-      value: favorites.length,
+      value: favorites?.length || 0,
       change: "+8%",
       icon: Heart,
       color: "text-red-500",
@@ -41,7 +71,7 @@ export function HomeDashboard() {
     },
     {
       title: "Downloads",
-      value: completedDownloads.length,
+      value: completedDownloads?.length || 0,
       change: "+23%",
       icon: Download,
       color: "text-green-500",
@@ -49,7 +79,7 @@ export function HomeDashboard() {
     },
     {
       title: "Active",
-      value: activeDownloads.length,
+      value: activeDownloads?.length || 0,
       change: "Live",
       icon: Activity,
       color: "text-orange-500",
@@ -79,6 +109,16 @@ export function HomeDashboard() {
         return <Activity className="h-4 w-4 text-gray-500" />
     }
   }
+
+  // Safe access to totalProgress with fallbacks
+  const safeProgress = {
+    downloaded: totalProgress?.downloaded || 0,
+    total: totalProgress?.total || 0,
+    speed: totalProgress?.speed || 0,
+    currentFile: totalProgress?.currentFile || null,
+  }
+
+  const progressPercentage = safeProgress.total > 0 ? (safeProgress.downloaded / safeProgress.total) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -130,33 +170,33 @@ export function HomeDashboard() {
             <CardDescription>Current download status and queue information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeDownloads.length > 0 ? (
+            {activeDownloads && activeDownloads.length > 0 ? (
               <>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Overall Progress</span>
-                    <span>{Math.round((totalProgress.downloaded / totalProgress.total) * 100)}%</span>
+                    <span>{Math.round(progressPercentage)}%</span>
                   </div>
-                  <Progress value={(totalProgress.downloaded / totalProgress.total) * 100} className="h-2" />
+                  <Progress value={progressPercentage} className="h-2" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="space-y-1">
                     <p className="text-muted-foreground">Downloaded</p>
                     <p className="font-medium">
-                      {totalProgress.downloaded} / {totalProgress.total}
+                      {safeProgress.downloaded} / {safeProgress.total}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-muted-foreground">Speed</p>
-                    <p className="font-medium">{(totalProgress.speed / 1024 / 1024).toFixed(1)} MB/s</p>
+                    <p className="font-medium">{(safeProgress.speed / 1024 / 1024).toFixed(1)} MB/s</p>
                   </div>
                 </div>
 
-                {totalProgress.currentFile && (
+                {safeProgress.currentFile && (
                   <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-sm text-muted-foreground">Currently downloading:</p>
-                    <p className="font-medium truncate">{totalProgress.currentFile}</p>
+                    <p className="font-medium truncate">{safeProgress.currentFile}</p>
                   </div>
                 )}
               </>
@@ -182,7 +222,7 @@ export function HomeDashboard() {
             <CardDescription>Local storage and cache information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {storageStats && (
+            {storageStats && storageStats.usage ? (
               <>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -218,6 +258,11 @@ export function HomeDashboard() {
                   </div>
                 </div>
               </>
+            ) : (
+              <div className="text-center py-8">
+                <HardDrive className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading storage information...</p>
+              </div>
             )}
           </CardContent>
         </Card>

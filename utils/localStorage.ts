@@ -1,34 +1,38 @@
-interface StorageData {
-  images: any[]
-  favorites: string[]
-  collections: any
-  downloadHistory: any[]
-  settings: any
-  version: string
-}
+import type { WaifuImage, Collection, Collections, Settings } from "@/types/waifu"
+
+// Storage keys with versioning for future migrations
+const STORAGE_KEYS = {
+  IMAGES: "waifu-downloader-images-v2",
+  FAVORITES: "waifu-downloader-favorites-v2",
+  COLLECTIONS: "waifu-downloader-collections-v2",
+  SETTINGS: "waifu-downloader-settings-v2",
+  DOWNLOAD_HISTORY: "waifu-downloader-download-history-v2",
+  CACHE: "waifu-downloader-cache-v2",
+  USER_PREFERENCES: "waifu-downloader-preferences-v2",
+  API_CACHE: "waifu-downloader-api-cache-v2",
+} as const
 
 // Storage quota management
 const STORAGE_QUOTA = {
   MAX_IMAGES: 10000,
   MAX_FAVORITES: 5000,
   MAX_COLLECTIONS: 1000,
-  MAX_DOWNLOAD_HISTORY: 1000,
+  MAX_DOWNLOAD_HISTORY: 2000,
   MAX_CACHE_SIZE: 100 * 1024 * 1024, // 100MB
   CLEANUP_THRESHOLD: 0.9, // Clean up when 90% full
 } as const
 
 class LocalStorageManager {
-  private readonly STORAGE_KEY = "waifu-downloader"
-  private readonly VERSION = "2.0.0"
   private isClient = typeof window !== "undefined"
 
   // Safe JSON operations with error handling
-  private safeJsonParse<T>(data: string | null, fallback: T): T {
-    if (!data) return fallback
+  private safeJsonParse<T>(json: string | null, fallback: T): T {
+    if (!json) return fallback
     try {
-      return JSON.parse(data) || fallback
+      const parsed = JSON.parse(json)
+      return parsed !== null && parsed !== undefined ? parsed : fallback
     } catch (error) {
-      console.warn("Failed to parse JSON data:", error)
+      console.warn("Failed to parse JSON from localStorage:", error)
       return fallback
     }
   }
@@ -37,8 +41,50 @@ class LocalStorageManager {
     try {
       return JSON.stringify(data)
     } catch (error) {
-      console.error("Failed to stringify data:", error)
+      console.error("Failed to stringify data for localStorage:", error)
       return "{}"
+    }
+  }
+
+  private safeGetItem(key: string): string | null {
+    if (!this.isClient) return null
+    try {
+      return localStorage.getItem(key)
+    } catch (error) {
+      console.error(`Failed to get item from localStorage (${key}):`, error)
+      return null
+    }
+  }
+
+  private safeSetItem(key: string, value: string): boolean {
+    if (!this.isClient) return false
+    try {
+      localStorage.setItem(key, value)
+      return true
+    } catch (error) {
+      console.error(`Failed to set item in localStorage (${key}):`, error)
+      // Try to free up space and retry
+      if (error.name === "QuotaExceededError") {
+        this.cleanupStorage()
+        try {
+          localStorage.setItem(key, value)
+          return true
+        } catch (retryError) {
+          console.error("Failed to set item even after cleanup:", retryError)
+        }
+      }
+      return false
+    }
+  }
+
+  private safeRemoveItem(key: string): boolean {
+    if (!this.isClient) return false
+    try {
+      localStorage.removeItem(key)
+      return true
+    } catch (error) {
+      console.error(`Failed to remove item from localStorage (${key}):`, error)
+      return false
     }
   }
 
@@ -59,7 +105,7 @@ class LocalStorageManager {
       }
 
       const available = STORAGE_QUOTA.MAX_CACHE_SIZE - used
-      const percentage = used / STORAGE_QUOTA.MAX_CACHE_SIZE
+      const percentage = (used / STORAGE_QUOTA.MAX_CACHE_SIZE) * 100
 
       return { used, available, percentage }
     } catch (error) {
@@ -102,186 +148,130 @@ class LocalStorageManager {
     }
   }
 
-  // Get storage data with migration support
-  private getStorageData(): StorageData {
-    const defaultData: StorageData = {
-      images: [],
-      favorites: [],
-      collections: {},
-      downloadHistory: [],
-      settings: {},
-      version: this.VERSION,
-    }
-
-    try {
-      const data = localStorage.getItem(this.STORAGE_KEY)
-      const parsed = this.safeJsonParse(data, defaultData)
-
-      // Migration logic
-      if (!parsed.version || parsed.version !== this.VERSION) {
-        return this.migrateData(parsed)
-      }
-
-      return { ...defaultData, ...parsed }
-    } catch (error) {
-      console.error("Failed to get storage data:", error)
-      return defaultData
-    }
-  }
-
-  // Save storage data safely
-  private saveStorageData(data: Partial<StorageData>): boolean {
-    try {
-      const currentData = this.getStorageData()
-      const newData = { ...currentData, ...data, version: this.VERSION }
-      localStorage.setItem(this.STORAGE_KEY, this.safeJsonStringify(newData))
-      return true
-    } catch (error) {
-      console.error("Failed to save storage data:", error)
-      return false
-    }
-  }
-
-  // Migrate data from older versions
-  private migrateData(oldData: any): StorageData {
-    const newData: StorageData = {
-      images: [],
-      favorites: [],
-      collections: {},
-      downloadHistory: [],
-      settings: {},
-      version: this.VERSION,
-    }
-
-    try {
-      // Migrate images with proper ID generation
-      if (Array.isArray(oldData.images)) {
-        newData.images = oldData.images.map((image: any, index: number) => ({
-          ...image,
-          id: image.id || `migrated-${index}-${Date.now()}`,
-          createdAt: image.createdAt || new Date().toISOString(),
-          tags: Array.isArray(image.tags) ? image.tags : [],
-        }))
-      }
-
-      // Migrate favorites with validation
-      if (Array.isArray(oldData.favorites)) {
-        newData.favorites = oldData.favorites.filter((id: any) => typeof id === "string" && id.trim() !== "")
-      }
-
-      // Migrate other data
-      if (oldData.collections && typeof oldData.collections === "object") {
-        newData.collections = oldData.collections
-      }
-
-      if (Array.isArray(oldData.downloadHistory)) {
-        newData.downloadHistory = oldData.downloadHistory
-      }
-
-      if (oldData.settings && typeof oldData.settings === "object") {
-        newData.settings = oldData.settings
-      }
-
-      // Save migrated data
-      this.saveStorageData(newData)
-      console.log("Data migrated successfully to version", this.VERSION)
-
-      return newData
-    } catch (error) {
-      console.error("Migration failed:", error)
-      return newData
-    }
-  }
-
   // Images management
-  getImages(): any[] {
-    const data = this.getStorageData()
-    return data.images || []
+  getImages(): WaifuImage[] {
+    const data = this.safeGetItem(STORAGE_KEYS.IMAGES)
+    const images = this.safeJsonParse<WaifuImage[]>(data, [])
+
+    // Ensure images don't exceed quota and have valid IDs
+    return images.slice(0, STORAGE_QUOTA.MAX_IMAGES).map((image, index) => ({
+      ...image,
+      image_id: image.image_id || `image-${Date.now()}-${index}`,
+      id: image.id || image.image_id || `image-${Date.now()}-${index}`,
+      created_at: image.created_at || new Date().toISOString(),
+      metadata: {
+        ...image.metadata,
+        addedAt: image.metadata?.addedAt || new Date().toISOString(),
+        aspectRatio: image.width && image.height ? image.width / image.height : 1,
+      },
+    }))
   }
 
-  addImage(image: any): boolean {
-    if (!image || typeof image !== "object") return false
+  saveImages(images: WaifuImage[]): boolean {
+    // Trim if exceeding quota and ensure all have IDs
+    const trimmedImages = images.slice(0, STORAGE_QUOTA.MAX_IMAGES).map((image, index) => ({
+      ...image,
+      image_id: image.image_id || `image-${Date.now()}-${index}`,
+      id: image.id || image.image_id || `image-${Date.now()}-${index}`,
+    }))
+    return this.safeSetItem(STORAGE_KEYS.IMAGES, this.safeJsonStringify(trimmedImages))
+  }
 
-    try {
-      const images = this.getImages()
-      const imageWithId = {
-        ...image,
-        id: image.id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: image.createdAt || new Date().toISOString(),
-        tags: Array.isArray(image.tags) ? image.tags : [],
-      }
+  addImage(image: WaifuImage): boolean {
+    const images = this.getImages()
 
-      // Check for duplicates
-      const exists = images.some(
-        (existing) => existing.id === imageWithId.id || (existing.url && existing.url === imageWithId.url),
-      )
-
-      if (exists) {
-        console.warn("Image already exists")
-        return false
-      }
-
-      images.push(imageWithId)
-      return this.saveStorageData({ images })
-    } catch (error) {
-      console.error("Failed to add image:", error)
-      return false
+    // Ensure image has valid ID
+    const imageWithId = {
+      ...image,
+      image_id: image.image_id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: image.id || image.image_id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      created_at: image.created_at || new Date().toISOString(),
+      metadata: {
+        ...image.metadata,
+        addedAt: new Date().toISOString(),
+        aspectRatio: image.width && image.height ? image.width / image.height : 1,
+      },
     }
+
+    // Check if image already exists
+    const exists = images.some(
+      (img) =>
+        (img.image_id && img.image_id === imageWithId.image_id) ||
+        (img.id && img.id === imageWithId.id) ||
+        (img.url && img.url === imageWithId.url),
+    )
+
+    if (exists) return true
+
+    images.unshift(imageWithId) // Add to beginning
+    return this.saveImages(images)
   }
 
   removeImage(imageId: string | number): boolean {
     if (!imageId) return false
 
-    try {
-      const id = imageId.toString()
-      const images = this.getImages()
-      const filteredImages = images.filter((image) => image.id !== id)
-
-      if (filteredImages.length === images.length) {
-        console.warn("Image not found for removal")
-        return false
-      }
-
-      return this.saveStorageData({ images: filteredImages })
-    } catch (error) {
-      console.error("Failed to remove image:", error)
-      return false
-    }
+    const images = this.getImages()
+    const id = imageId.toString()
+    const filtered = images.filter((img) => img.image_id?.toString() !== id && img.id?.toString() !== id)
+    return this.saveImages(filtered)
   }
 
-  updateImage(imageId: string | number, updates: any): boolean {
-    if (!imageId || !updates) return false
+  updateImage(imageId: string | number, updates: Partial<WaifuImage>): boolean {
+    if (!imageId) return false
 
-    try {
-      const id = imageId.toString()
-      const images = this.getImages()
-      const imageIndex = images.findIndex((image) => image.id === id)
-
-      if (imageIndex === -1) {
-        console.warn("Image not found for update")
-        return false
-      }
-
-      images[imageIndex] = { ...images[imageIndex], ...updates }
-      return this.saveStorageData({ images })
-    } catch (error) {
-      console.error("Failed to update image:", error)
-      return false
-    }
+    const images = this.getImages()
+    const id = imageId.toString()
+    const updated = images.map((img) =>
+      img.image_id?.toString() === id || img.id?.toString() === id
+        ? { ...img, ...updates, updated_at: new Date().toISOString() }
+        : img,
+    )
+    return this.saveImages(updated)
   }
 
   // Favorites management
   getFavorites(): string[] {
-    const data = this.getStorageData()
-    return Array.isArray(data.favorites) ? data.favorites : []
+    const data = this.safeGetItem(STORAGE_KEYS.FAVORITES)
+    const favorites = this.safeJsonParse<string[]>(data, [])
+
+    // Ensure favorites don't exceed quota and are valid strings
+    return favorites.filter((fav) => typeof fav === "string" && fav.trim() !== "").slice(0, STORAGE_QUOTA.MAX_FAVORITES)
+  }
+
+  saveFavorites(favorites: string[]): boolean {
+    const validFavorites = favorites
+      .filter((fav) => typeof fav === "string" && fav.trim() !== "")
+      .slice(0, STORAGE_QUOTA.MAX_FAVORITES)
+    return this.safeSetItem(STORAGE_KEYS.FAVORITES, this.safeJsonStringify(validFavorites))
+  }
+
+  addFavorite(imageId: string | number): boolean {
+    if (!imageId) return false
+
+    const favorites = this.getFavorites()
+    const id = imageId.toString()
+
+    if (favorites.includes(id)) return true
+
+    favorites.unshift(id) // Add to beginning
+    return this.saveFavorites(favorites)
+  }
+
+  removeFavorite(imageId: string | number): boolean {
+    if (!imageId) return false
+
+    const favorites = this.getFavorites()
+    const id = imageId.toString()
+    const filtered = favorites.filter((fav) => fav !== id)
+    return this.saveFavorites(filtered)
   }
 
   isFavorite(imageId: string | number): boolean {
     if (!imageId) return false
 
     try {
-      const id = imageId.toString()
       const favorites = this.getFavorites()
+      const id = imageId.toString()
       return favorites.includes(id)
     } catch (error) {
       console.error("Failed to check favorite status:", error)
@@ -289,227 +279,232 @@ class LocalStorageManager {
     }
   }
 
-  addFavorite(imageId: string | number): boolean {
-    if (!imageId) return false
-
-    try {
-      const id = imageId.toString()
-      const favorites = this.getFavorites()
-
-      if (favorites.includes(id)) {
-        return true // Already a favorite
-      }
-
-      favorites.push(id)
-      return this.saveStorageData({ favorites })
-    } catch (error) {
-      console.error("Failed to add favorite:", error)
-      return false
-    }
-  }
-
-  removeFavorite(imageId: string | number): boolean {
-    if (!imageId) return false
-
-    try {
-      const id = imageId.toString()
-      const favorites = this.getFavorites()
-      const filteredFavorites = favorites.filter((favId) => favId !== id)
-
-      return this.saveStorageData({ favorites: filteredFavorites })
-    } catch (error) {
-      console.error("Failed to remove favorite:", error)
-      return false
-    }
-  }
-
   toggleFavorite(imageId: string | number): boolean {
     if (!imageId) return false
 
-    try {
-      const id = imageId.toString()
-      return this.isFavorite(id) ? this.removeFavorite(id) : this.addFavorite(id)
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error)
-      return false
+    const id = imageId.toString()
+    if (this.isFavorite(id)) {
+      return this.removeFavorite(id)
+    } else {
+      return this.addFavorite(id)
     }
   }
 
   // Collections management
-  getCollections(): any {
-    const data = this.getStorageData()
-    return data.collections || {}
+  getCollections(): Collections {
+    const data = this.safeGetItem(STORAGE_KEYS.COLLECTIONS)
+    return this.safeJsonParse<Collections>(data, {})
+  }
+
+  saveCollections(collections: Collections): boolean {
+    // Ensure collections don't exceed quota
+    const collectionEntries = Object.entries(collections)
+    if (collectionEntries.length > STORAGE_QUOTA.MAX_COLLECTIONS) {
+      const trimmed = Object.fromEntries(collectionEntries.slice(0, STORAGE_QUOTA.MAX_COLLECTIONS))
+      return this.safeSetItem(STORAGE_KEYS.COLLECTIONS, this.safeJsonStringify(trimmed))
+    }
+
+    return this.safeSetItem(STORAGE_KEYS.COLLECTIONS, this.safeJsonStringify(collections))
   }
 
   createCollection(name: string, description?: string): string | null {
     if (!name || typeof name !== "string") return null
 
-    try {
-      const collections = this.getCollections()
-      const collectionId = `collection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const collections = this.getCollections()
+    const id = `collection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
-      collections[collectionId] = {
-        id: collectionId,
-        name: name.trim(),
-        description: description || "",
-        images: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      return this.saveStorageData({ collections }) ? collectionId : null
-    } catch (error) {
-      console.error("Failed to create collection:", error)
-      return null
+    const newCollection: Collection = {
+      id,
+      name: name.trim(),
+      description: description || "",
+      imageIds: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tags: [],
     }
+
+    collections[id] = newCollection
+
+    if (this.saveCollections(collections)) {
+      return id
+    }
+
+    return null
   }
 
   deleteCollection(collectionId: string): boolean {
     if (!collectionId) return false
 
-    try {
-      const collections = this.getCollections()
-      if (!collections[collectionId]) return false
-
-      delete collections[collectionId]
-      return this.saveStorageData({ collections })
-    } catch (error) {
-      console.error("Failed to delete collection:", error)
-      return false
-    }
+    const collections = this.getCollections()
+    delete collections[collectionId]
+    return this.saveCollections(collections)
   }
 
-  updateCollection(collectionId: string, updates: any): boolean {
+  updateCollection(collectionId: string, updates: Partial<Collection>): boolean {
     if (!collectionId || !updates) return false
 
-    try {
-      const collections = this.getCollections()
-      if (!collections[collectionId]) return false
+    const collections = this.getCollections()
 
-      collections[collectionId] = {
-        ...collections[collectionId],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      }
+    if (!collections[collectionId]) return false
 
-      return this.saveStorageData({ collections })
-    } catch (error) {
-      console.error("Failed to update collection:", error)
-      return false
+    collections[collectionId] = {
+      ...collections[collectionId],
+      ...updates,
+      updated_at: new Date().toISOString(),
     }
+
+    return this.saveCollections(collections)
   }
 
   addToCollection(collectionId: string, imageId: string | number): boolean {
     if (!collectionId || !imageId) return false
 
-    try {
-      const id = imageId.toString()
-      const collections = this.getCollections()
-      const collection = collections[collectionId]
+    const collections = this.getCollections()
+    const collection = collections[collectionId]
 
-      if (!collection) return false
+    if (!collection) return false
 
-      if (!Array.isArray(collection.images)) {
-        collection.images = []
-      }
-
-      if (!collection.images.includes(id)) {
-        collection.images.push(id)
-        collection.updatedAt = new Date().toISOString()
-        return this.saveStorageData({ collections })
-      }
-
-      return true // Already in collection
-    } catch (error) {
-      console.error("Failed to add to collection:", error)
-      return false
+    const id = imageId.toString()
+    if (!collection.imageIds.includes(id)) {
+      collection.imageIds.push(id)
+      collection.updated_at = new Date().toISOString()
+      return this.saveCollections(collections)
     }
+
+    return true
   }
 
   removeFromCollection(collectionId: string, imageId: string | number): boolean {
     if (!collectionId || !imageId) return false
 
-    try {
-      const id = imageId.toString()
-      const collections = this.getCollections()
-      const collection = collections[collectionId]
+    const collections = this.getCollections()
+    const collection = collections[collectionId]
 
-      if (!collection || !Array.isArray(collection.images)) return false
+    if (!collection) return false
 
-      collection.images = collection.images.filter((imgId: string) => imgId !== id)
-      collection.updatedAt = new Date().toISOString()
+    const id = imageId.toString()
+    collection.imageIds = collection.imageIds.filter((imgId) => imgId !== id)
+    collection.updated_at = new Date().toISOString()
 
-      return this.saveStorageData({ collections })
-    } catch (error) {
-      console.error("Failed to remove from collection:", error)
-      return false
-    }
-  }
-
-  // Download history
-  getDownloadHistory(): any[] {
-    const data = this.getStorageData()
-    return Array.isArray(data.downloadHistory) ? data.downloadHistory : []
-  }
-
-  addDownloadRecord(record: any): boolean {
-    if (!record || typeof record !== "object") return false
-
-    try {
-      const history = this.getDownloadHistory()
-      const recordWithId = {
-        ...record,
-        id: record.id || `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: record.timestamp || new Date().toISOString(),
-      }
-
-      history.unshift(recordWithId) // Add to beginning
-
-      // Keep only last 1000 records
-      if (history.length > 1000) {
-        history.splice(1000)
-      }
-
-      return this.saveStorageData({ downloadHistory: history })
-    } catch (error) {
-      console.error("Failed to add download record:", error)
-      return false
-    }
-  }
-
-  clearDownloadHistory(): boolean {
-    try {
-      return this.saveStorageData({ downloadHistory: [] })
-    } catch (error) {
-      console.error("Failed to clear download history:", error)
-      return false
-    }
+    return this.saveCollections(collections)
   }
 
   // Settings management
-  getSettings(): any {
-    const data = this.getStorageData()
-    return data.settings || {}
+  getSettings(): Partial<Settings> {
+    const data = this.safeGetItem(STORAGE_KEYS.SETTINGS)
+    return this.safeJsonParse<Partial<Settings>>(data, {})
   }
 
-  saveSettings(settings: any): boolean {
+  saveSettings(settings: Partial<Settings>): boolean {
     if (!settings || typeof settings !== "object") return false
 
+    const settingsWithTimestamp = {
+      ...settings,
+      lastUpdated: new Date().toISOString(),
+    }
+    return this.safeSetItem(STORAGE_KEYS.SETTINGS, this.safeJsonStringify(settingsWithTimestamp))
+  }
+
+  updateSettings(updates: Partial<Settings>): boolean {
+    const currentSettings = this.getSettings()
+    const updatedSettings = { ...currentSettings, ...updates }
+    return this.saveSettings(updatedSettings)
+  }
+
+  // Download history management
+  getDownloadHistory(): any[] {
+    const data = this.safeGetItem(STORAGE_KEYS.DOWNLOAD_HISTORY)
+    const history = this.safeJsonParse<any[]>(data, [])
+
+    // Ensure history doesn't exceed quota
+    return history.slice(0, STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY)
+  }
+
+  saveDownloadHistory(history: any[]): boolean {
+    const trimmed = history.slice(0, STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY)
+    return this.safeSetItem(STORAGE_KEYS.DOWNLOAD_HISTORY, this.safeJsonStringify(trimmed))
+  }
+
+  addToDownloadHistory(item: any): boolean {
+    if (!item || typeof item !== "object") return false
+
+    const history = this.getDownloadHistory()
+
+    const historyItem = {
+      ...item,
+      id: item.id || `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+    }
+
+    history.unshift(historyItem) // Add to beginning
+    return this.saveDownloadHistory(history)
+  }
+
+  addDownloadRecord(record: any): boolean {
+    return this.addToDownloadHistory(record)
+  }
+
+  clearDownloadHistory(): boolean {
+    return this.safeSetItem(STORAGE_KEYS.DOWNLOAD_HISTORY, "[]")
+  }
+
+  // Cache management
+  getCacheItem(key: string): any {
+    const data = this.safeGetItem(`${STORAGE_KEYS.CACHE}-${key}`)
+    const cached = this.safeJsonParse<{ data: any; timestamp: number; ttl: number } | null>(data, null)
+
+    if (!cached) return null
+
+    // Check if cache has expired
+    if (Date.now() > cached.timestamp + cached.ttl) {
+      this.safeRemoveItem(`${STORAGE_KEYS.CACHE}-${key}`)
+      return null
+    }
+
+    return cached.data
+  }
+
+  setCacheItem(key: string, data: any, ttlMs = 3600000): boolean {
+    // 1 hour default
+    const cacheItem = {
+      data,
+      timestamp: Date.now(),
+      ttl: ttlMs,
+    }
+
+    return this.safeSetItem(`${STORAGE_KEYS.CACHE}-${key}`, this.safeJsonStringify(cacheItem))
+  }
+
+  clearCache(): boolean {
+    if (!this.isClient) return false
+
     try {
-      return this.saveStorageData({ settings })
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key?.startsWith(STORAGE_KEYS.CACHE)) {
+          keysToRemove.push(key)
+        }
+      }
+
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
+      return true
     } catch (error) {
-      console.error("Failed to save settings:", error)
+      console.error("Failed to clear cache:", error)
       return false
     }
   }
 
-  // Utility functions
+  // Bulk operations
   exportData(): any {
-    try {
-      return this.getStorageData()
-    } catch (error) {
-      console.error("Failed to export data:", error)
-      return null
+    return {
+      images: this.getImages(),
+      favorites: this.getFavorites(),
+      collections: this.getCollections(),
+      settings: this.getSettings(),
+      downloadHistory: this.getDownloadHistory(),
+      exportedAt: new Date().toISOString(),
+      version: "2.0",
     }
   }
 
@@ -517,35 +512,30 @@ class LocalStorageManager {
     if (!data || typeof data !== "object") return false
 
     try {
-      // Validate and sanitize imported data
-      const sanitizedData: Partial<StorageData> = {}
+      let success = true
 
+      // Import with validation
       if (Array.isArray(data.images)) {
-        sanitizedData.images = data.images.map((image: any, index: number) => ({
-          ...image,
-          id: image.id || `imported-${index}-${Date.now()}`,
-          createdAt: image.createdAt || new Date().toISOString(),
-          tags: Array.isArray(image.tags) ? image.tags : [],
-        }))
+        success = success && this.saveImages(data.images)
       }
 
       if (Array.isArray(data.favorites)) {
-        sanitizedData.favorites = data.favorites.filter((id: any) => typeof id === "string" && id.trim() !== "")
+        success = success && this.saveFavorites(data.favorites)
       }
 
       if (data.collections && typeof data.collections === "object") {
-        sanitizedData.collections = data.collections
-      }
-
-      if (Array.isArray(data.downloadHistory)) {
-        sanitizedData.downloadHistory = data.downloadHistory
+        success = success && this.saveCollections(data.collections)
       }
 
       if (data.settings && typeof data.settings === "object") {
-        sanitizedData.settings = data.settings
+        success = success && this.saveSettings(data.settings)
       }
 
-      return this.saveStorageData(sanitizedData)
+      if (Array.isArray(data.downloadHistory)) {
+        success = success && this.saveDownloadHistory(data.downloadHistory)
+      }
+
+      return success
     } catch (error) {
       console.error("Failed to import data:", error)
       return false
@@ -553,8 +543,16 @@ class LocalStorageManager {
   }
 
   clearAllData(): boolean {
+    if (!this.isClient) return false
+
     try {
-      localStorage.removeItem(this.STORAGE_KEY)
+      Object.values(STORAGE_KEYS).forEach((key) => {
+        this.safeRemoveItem(key)
+      })
+
+      // Clear cache items
+      this.clearCache()
+
       return true
     } catch (error) {
       console.error("Failed to clear all data:", error)
@@ -562,45 +560,117 @@ class LocalStorageManager {
     }
   }
 
-  getStorageStats(): any {
-    try {
-      const data = this.getStorageData()
-      const dataString = this.safeJsonStringify(data)
+  // Statistics and analytics
+  getStorageStats(): {
+    usage: { used: number; available: number; percentage: number }
+    counts: {
+      images: number
+      favorites: number
+      collections: number
+      downloadHistory: number
+    }
+    lastUpdated: string
+  } {
+    const usage = this.getStorageUsage()
 
-      return {
-        totalImages: data.images?.length || 0,
-        totalFavorites: data.favorites?.length || 0,
-        totalCollections: Object.keys(data.collections || {}).length,
-        totalDownloads: data.downloadHistory?.length || 0,
-        storageSize: new Blob([dataString]).size,
-        version: data.version,
-        lastUpdated: new Date().toISOString(),
-      }
-    } catch (error) {
-      console.error("Failed to get storage stats:", error)
-      return {
-        totalImages: 0,
-        totalFavorites: 0,
-        totalCollections: 0,
-        totalDownloads: 0,
-        storageSize: 0,
-        version: this.VERSION,
-        lastUpdated: new Date().toISOString(),
-      }
+    return {
+      usage,
+      counts: {
+        images: this.getImages().length,
+        favorites: this.getFavorites().length,
+        collections: Object.keys(this.getCollections()).length,
+        downloadHistory: this.getDownloadHistory().length,
+      },
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-  // Migration helper
+  // Migration utilities
   migrateFromOldVersion(): boolean {
     try {
-      const data = this.getStorageData()
-      // Migration is handled automatically in getStorageData
-      return true
+      // Check for old version data
+      const oldImages = this.safeGetItem("waifu-downloader-images")
+      const oldFavorites = this.safeGetItem("waifu-downloader-favorites")
+      const oldSettings = this.safeGetItem("waifu-downloader-settings")
+
+      let migrated = false
+
+      if (oldImages) {
+        const images = this.safeJsonParse<WaifuImage[]>(oldImages, [])
+        if (images.length > 0) {
+          this.saveImages(images)
+          this.safeRemoveItem("waifu-downloader-images")
+          migrated = true
+        }
+      }
+
+      if (oldFavorites) {
+        const favorites = this.safeJsonParse<string[]>(oldFavorites, [])
+        if (favorites.length > 0) {
+          this.saveFavorites(favorites)
+          this.safeRemoveItem("waifu-downloader-favorites")
+          migrated = true
+        }
+      }
+
+      if (oldSettings) {
+        const settings = this.safeJsonParse<Partial<Settings>>(oldSettings, {})
+        if (Object.keys(settings).length > 0) {
+          this.saveSettings(settings)
+          this.safeRemoveItem("waifu-downloader-settings")
+          migrated = true
+        }
+      }
+
+      if (migrated) {
+        console.log("Successfully migrated data from old version")
+      }
+
+      return migrated
     } catch (error) {
-      console.error("Migration failed:", error)
+      console.error("Failed to migrate from old version:", error)
       return false
     }
   }
 }
 
+// Create singleton instance
 export const storage = new LocalStorageManager()
+
+// Export individual functions for convenience
+export const {
+  getImages,
+  saveImages,
+  addImage,
+  removeImage,
+  updateImage,
+  getFavorites,
+  saveFavorites,
+  addFavorite,
+  removeFavorite,
+  isFavorite,
+  toggleFavorite,
+  getCollections,
+  saveCollections,
+  createCollection,
+  deleteCollection,
+  updateCollection,
+  addToCollection,
+  removeFromCollection,
+  getSettings,
+  saveSettings,
+  updateSettings,
+  getDownloadHistory,
+  saveDownloadHistory,
+  addToDownloadHistory,
+  clearDownloadHistory,
+  getCacheItem,
+  setCacheItem,
+  clearCache,
+  exportData,
+  importData,
+  clearAllData,
+  getStorageStats,
+} = storage
+
+export default storage
