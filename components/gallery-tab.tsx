@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,16 +34,29 @@ export function GalleryTab({
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
-  // Use prop images or storage images, with safe fallback
-  const allImages = propImages || storageImages || []
+  // Use prop images or storage images, with safe fallback and ensure all images have IDs
+  const allImages = useMemo(() => {
+    const rawImages = propImages || storageImages || []
+    return rawImages.map((image, index) => ({
+      ...image,
+      id: image.id || `image-${index}-${Date.now()}`, // Ensure every image has an ID
+      filename: image.filename || `image-${index + 1}`,
+      createdAt: image.createdAt || new Date().toISOString(),
+      tags: Array.isArray(image.tags) ? image.tags : [],
+      source: image.source || "unknown",
+    }))
+  }, [propImages, storageImages])
 
   // Filter images based on showFavoritesOnly
   const baseImages = useMemo(() => {
     if (showFavoritesOnly) {
-      return allImages.filter((image) => isFavorite(image.id))
+      return allImages.filter((image) => {
+        // Safe check for image ID before calling isFavorite
+        return image.id && isFavorite(image.id)
+      })
     }
     return allImages
-  }, [allImages, showFavoritesOnly, favorites])
+  }, [allImages, showFavoritesOnly, favorites, isFavorite])
 
   // Apply search and sort filters
   const filteredImages = useMemo(() => {
@@ -56,7 +68,8 @@ export function GalleryTab({
         (image) =>
           image.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
           image.source?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          image.category?.toLowerCase().includes(searchTerm.toLowerCase()),
+          image.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          image.filename?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -94,14 +107,14 @@ export function GalleryTab({
   }, [baseImages, searchTerm, sortBy, sortOrder])
 
   const handleImageClick = (image: any) => {
-    if (onImageSelect) {
+    if (onImageSelect && image) {
       onImageSelect(image)
     }
   }
 
   const handleDownload = (image: any, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (onImageDownload) {
+    if (onImageDownload && image) {
       onImageDownload(image)
     }
     toast.success(`Downloading ${image.filename || "image"}...`)
@@ -109,12 +122,23 @@ export function GalleryTab({
 
   const handleFavoriteToggle = (image: any, e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!image?.id) {
+      toast.error("Cannot favorite image: Invalid image ID")
+      return
+    }
+
+    const wasAlreadyFavorite = isFavorite(image.id)
     toggleFavorite(image.id)
-    toast.success(isFavorite(image.id) ? "Removed from favorites" : "Added to favorites")
+    toast.success(wasAlreadyFavorite ? "Removed from favorites" : "Added to favorites")
   }
 
   const handleDelete = (image: any, e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!image?.id) {
+      toast.error("Cannot delete image: Invalid image ID")
+      return
+    }
+
     removeImage(image.id)
     toast.success("Image removed from gallery")
   }
@@ -125,48 +149,58 @@ export function GalleryTab({
       return
     }
 
+    const validImageIds = selectedImages.filter((id) => id && id.trim() !== "")
+    if (validImageIds.length === 0) {
+      toast.error("No valid images selected")
+      return
+    }
+
     switch (action) {
       case "favorite":
-        selectedImages.forEach((id) => {
+        validImageIds.forEach((id) => {
           if (!isFavorite(id)) toggleFavorite(id)
         })
-        toast.success(`Added ${selectedImages.length} images to favorites`)
+        toast.success(`Added ${validImageIds.length} images to favorites`)
         break
       case "unfavorite":
-        selectedImages.forEach((id) => {
+        validImageIds.forEach((id) => {
           if (isFavorite(id)) toggleFavorite(id)
         })
-        toast.success(`Removed ${selectedImages.length} images from favorites`)
+        toast.success(`Removed ${validImageIds.length} images from favorites`)
         break
       case "download":
-        selectedImages.forEach((id) => {
+        validImageIds.forEach((id) => {
           const image = allImages.find((img) => img.id === id)
           if (image && onImageDownload) onImageDownload(image)
         })
-        toast.success(`Downloading ${selectedImages.length} images...`)
+        toast.success(`Downloading ${validImageIds.length} images...`)
         break
       case "delete":
-        selectedImages.forEach((id) => removeImage(id))
-        toast.success(`Deleted ${selectedImages.length} images`)
+        validImageIds.forEach((id) => removeImage(id))
+        toast.success(`Deleted ${validImageIds.length} images`)
         break
     }
     setSelectedImages([])
   }
 
   const toggleImageSelection = (imageId: string) => {
+    if (!imageId) return
+
     setSelectedImages((prev) => (prev.includes(imageId) ? prev.filter((id) => id !== imageId) : [...prev, imageId]))
   }
 
   const selectAllImages = () => {
-    if (selectedImages.length === filteredImages.length) {
+    const validImageIds = filteredImages.map((img) => img.id).filter((id) => id && id.trim() !== "")
+
+    if (selectedImages.length === validImageIds.length) {
       setSelectedImages([])
     } else {
-      setSelectedImages(filteredImages.map((img) => img.id))
+      setSelectedImages(validImageIds)
     }
   }
 
   const formatFileSize = (bytes: number) => {
-    if (!bytes) return "Unknown"
+    if (!bytes || bytes === 0) return "Unknown"
     const sizes = ["Bytes", "KB", "MB", "GB"]
     const i = Math.floor(Math.log(bytes) / Math.log(1024))
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i]
@@ -175,6 +209,17 @@ export function GalleryTab({
   const formatResolution = (width: number, height: number) => {
     if (!width || !height) return "Unknown"
     return `${width} × ${height}`
+  }
+
+  // Safe check for favorites
+  const isImageFavorite = (imageId: string | undefined) => {
+    if (!imageId) return false
+    try {
+      return isFavorite(imageId)
+    } catch (error) {
+      console.warn("Error checking favorite status:", error)
+      return false
+    }
   }
 
   if (!allImages || allImages.length === 0) {
@@ -277,186 +322,198 @@ export function GalleryTab({
         <div
           className="grid gap-4"
           style={{
-            gridTemplateColumns: `repeat(${settings.gridColumns || 4}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${settings?.gridColumns || 4}, minmax(0, 1fr))`,
           }}
         >
-          {filteredImages.map((image) => (
-            <Card
-              key={image.id}
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 ${
-                selectedImages.includes(image.id) ? "ring-2 ring-primary" : ""
-              }`}
-              onClick={() => handleImageClick(image)}
-            >
-              <CardContent className="p-0">
-                <div className="relative">
-                  <img
-                    src={image.preview || image.url || `/placeholder.svg?height=200&width=300`}
-                    alt={image.filename || "Image"}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                    loading="lazy"
-                  />
+          {filteredImages.map((image) => {
+            const imageId = image.id || `fallback-${Math.random()}`
+            const isSelected = selectedImages.includes(imageId)
+            const isFav = isImageFavorite(imageId)
 
-                  {/* Overlay Controls */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-lg">
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="w-8 h-8"
-                        onClick={(e) => handleFavoriteToggle(image, e)}
-                      >
-                        <Heart className={`w-4 h-4 ${isFavorite(image.id) ? "fill-red-500 text-red-500" : ""}`} />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="w-8 h-8"
-                        onClick={(e) => handleDownload(image, e)}
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="w-8 h-8"
-                        onClick={(e) => handleDelete(image, e)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+            return (
+              <Card
+                key={imageId}
+                className={`group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                  isSelected ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => handleImageClick(image)}
+              >
+                <CardContent className="p-0">
+                  <div className="relative">
+                    <img
+                      src={image.preview || image.url || `/placeholder.svg?height=200&width=300`}
+                      alt={image.filename || "Image"}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                      loading="lazy"
+                    />
 
-                    <div className="absolute bottom-2 left-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedImages.includes(image.id)}
-                        onChange={() => toggleImageSelection(image.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-4 h-4"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Image Info */}
-                {settings.showImageDetails && (
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium truncate">{image.filename || `Image ${image.id}`}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {image.source || "Unknown"}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatResolution(image.width, image.height)}</span>
-                      <span>{formatFileSize(image.fileSize)}</span>
-                    </div>
-
-                    {image.tags && image.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {image.tags.slice(0, 3).map((tag: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {image.tags.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{image.tags.length - 3}
-                          </Badge>
-                        )}
+                    {/* Overlay Controls */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-lg">
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="w-8 h-8"
+                          onClick={(e) => handleFavoriteToggle(image, e)}
+                        >
+                          <Heart className={`w-4 h-4 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="w-8 h-8"
+                          onClick={(e) => handleDownload(image, e)}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          className="w-8 h-8"
+                          onClick={(e) => handleDelete(image, e)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                    )}
+
+                      <div className="absolute bottom-2 left-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleImageSelection(imageId)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4"
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Image Info */}
+                  {settings?.showImageDetails && (
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium truncate">{image.filename}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {image.source}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{formatResolution(image.width, image.height)}</span>
+                        <span>{formatFileSize(image.fileSize)}</span>
+                      </div>
+
+                      {image.tags && image.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {image.tags.slice(0, 3).map((tag: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {image.tags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{image.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredImages.map((image) => (
-            <Card
-              key={image.id}
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-md ${
-                selectedImages.includes(image.id) ? "ring-2 ring-primary" : ""
-              }`}
-              onClick={() => handleImageClick(image)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedImages.includes(image.id)}
-                    onChange={() => toggleImageSelection(image.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4"
-                  />
+          {filteredImages.map((image) => {
+            const imageId = image.id || `fallback-${Math.random()}`
+            const isSelected = selectedImages.includes(imageId)
+            const isFav = isImageFavorite(imageId)
 
-                  <img
-                    src={image.preview || image.url || `/placeholder.svg?height=60&width=80`}
-                    alt={image.filename || "Image"}
-                    className="w-16 h-12 object-cover rounded"
-                    loading="lazy"
-                  />
+            return (
+              <Card
+                key={imageId}
+                className={`group cursor-pointer transition-all duration-300 hover:shadow-md ${
+                  isSelected ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => handleImageClick(image)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleImageSelection(imageId)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4"
+                    />
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium truncate">{image.filename || `Image ${image.id}`}</span>
-                      <div className="flex gap-1">
-                        <Badge variant="outline" className="text-xs">
-                          {image.source || "Unknown"}
-                        </Badge>
-                        {image.category && (
-                          <Badge variant="secondary" className="text-xs">
-                            {image.category}
+                    <img
+                      src={image.preview || image.url || `/placeholder.svg?height=60&width=80`}
+                      alt={image.filename || "Image"}
+                      className="w-16 h-12 object-cover rounded"
+                      loading="lazy"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium truncate">{image.filename}</span>
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {image.source}
                           </Badge>
-                        )}
+                          {image.category && (
+                            <Badge variant="secondary" className="text-xs">
+                              {image.category}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
+
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>{formatResolution(image.width, image.height)}</span>
+                        <span>{formatFileSize(image.fileSize)}</span>
+                        <span>{new Date(image.createdAt || Date.now()).toLocaleDateString()}</span>
+                      </div>
+
+                      {image.tags && image.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {image.tags.slice(0, 5).map((tag: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {image.tags.length > 5 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{image.tags.length - 5}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{formatResolution(image.width, image.height)}</span>
-                      <span>{formatFileSize(image.fileSize)}</span>
-                      <span>{new Date(image.createdAt || Date.now()).toLocaleDateString()}</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="w-8 h-8"
+                        onClick={(e) => handleFavoriteToggle(image, e)}
+                      >
+                        <Heart className={`w-4 h-4 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDownload(image, e)}>
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDelete(image, e)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-
-                    {image.tags && image.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {image.tags.slice(0, 5).map((tag: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {image.tags.length > 5 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{image.tags.length - 5}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
                   </div>
-
-                  <div className="flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="w-8 h-8"
-                      onClick={(e) => handleFavoriteToggle(image, e)}
-                    >
-                      <Heart className={`w-4 h-4 ${isFavorite(image.id) ? "fill-red-500 text-red-500" : ""}`} />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDownload(image, e)}>
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="w-8 h-8" onClick={(e) => handleDelete(image, e)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
