@@ -2,358 +2,331 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Github, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react"
 import { WaifuDownloaderLogo } from "@/components/waifu-downloader-logo"
-import Link from "next/link"
+import { Eye, EyeOff, Key, Shield, User, Lock, CheckCircle, AlertCircle } from "lucide-react"
+import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-interface LoginForm {
-  email: string
-  password: string
-}
-
-interface RegisterForm {
-  username: string
-  email: string
-  password: string
-  confirmPassword: string
+interface ApiKey {
+  name: string
+  key: string
+  status: "valid" | "invalid" | "checking"
+  description: string
+  required: boolean
 }
 
 export default function LoginPage() {
   const router = useRouter()
-  const [isLogin, setIsLogin] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([
+    {
+      name: "Wallhaven",
+      key: "",
+      status: "checking",
+      description: "High-quality wallpapers and anime images",
+      required: true,
+    },
+    {
+      name: "Waifu.im",
+      key: "",
+      status: "checking",
+      description: "Curated anime character images",
+      required: false,
+    },
+    {
+      name: "Waifu.pics",
+      key: "",
+      status: "checking",
+      description: "SFW and NSFW anime images",
+      required: false,
+    },
+    {
+      name: "Nekos.best",
+      key: "",
+      status: "checking",
+      description: "Neko and anime character images",
+      required: false,
+    },
+  ])
 
-  const [loginForm, setLoginForm] = useState<LoginForm>({
-    email: "",
-    password: "",
-  })
-
-  const [registerForm, setRegisterForm] = useState<RegisterForm>({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    setSuccess("")
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock validation
-      if (loginForm.email === "demo@example.com" && loginForm.password === "demo123") {
-        setSuccess("Login successful! Redirecting...")
-        toast.success("Welcome back!")
-        setTimeout(() => {
-          router.push("/")
-        }, 1000)
-      } else {
-        throw new Error("Invalid email or password")
+  useEffect(() => {
+    // Load saved API keys from localStorage
+    const savedKeys = localStorage.getItem("waifu-downloader-api-keys")
+    if (savedKeys) {
+      try {
+        const parsed = JSON.parse(savedKeys)
+        setApiKeys((prev) =>
+          prev.map((api) => ({
+            ...api,
+            key: parsed[api.name.toLowerCase()] || "",
+            status: parsed[api.name.toLowerCase()] ? "valid" : "checking",
+          })),
+        )
+      } catch (error) {
+        console.error("Failed to load saved API keys:", error)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-      toast.error("Login failed")
-    } finally {
-      setIsLoading(false)
     }
+
+    // Set Wallhaven key from environment if available
+    if (process.env.NEXT_PUBLIC_WALLHAVEN_API_KEY) {
+      setApiKeys((prev) =>
+        prev.map((api) =>
+          api.name === "Wallhaven" ? { ...api, key: process.env.NEXT_PUBLIC_WALLHAVEN_API_KEY!, status: "valid" } : api,
+        ),
+      )
+    }
+  }, [])
+
+  const togglePasswordVisibility = (apiName: string) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [apiName]: !prev[apiName],
+    }))
   }
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const updateApiKey = (apiName: string, key: string) => {
+    setApiKeys((prev) =>
+      prev.map((api) => (api.name === apiName ? { ...api, key, status: key ? "valid" : "checking" } : api)),
+    )
+  }
+
+  const validateApiKey = async (api: ApiKey): Promise<boolean> => {
+    if (!api.key) return !api.required
+
+    // Simulate API validation
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Simple validation - just check if key is not empty
+        resolve(api.key.length > 10)
+      }, 1000)
+    })
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError("")
-    setSuccess("")
 
     try {
-      // Validation
-      if (registerForm.password !== registerForm.confirmPassword) {
-        throw new Error("Passwords do not match")
-      }
-
-      if (registerForm.password.length < 6) {
-        throw new Error("Password must be at least 6 characters")
-      }
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      setSuccess("Account created successfully! Please log in.")
-      toast.success("Account created successfully!")
-      setIsLogin(true)
-      setRegisterForm({
-        username: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
+      // Validate all API keys
+      const validationPromises = apiKeys.map(async (api) => {
+        const isValid = await validateApiKey(api)
+        return { ...api, status: isValid ? "valid" : ("invalid" as const) }
       })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed")
-      toast.error("Registration failed")
+
+      const validatedKeys = await Promise.all(validationPromises)
+      setApiKeys(validatedKeys)
+
+      // Check if required keys are valid
+      const requiredKeysValid = validatedKeys.filter((api) => api.required).every((api) => api.status === "valid")
+
+      if (!requiredKeysValid) {
+        toast.error("Please provide valid required API keys")
+        return
+      }
+
+      // Save API keys to localStorage
+      const keysToSave = validatedKeys.reduce(
+        (acc, api) => {
+          if (api.key) {
+            acc[api.name.toLowerCase()] = api.key
+          }
+          return acc
+        },
+        {} as Record<string, string>,
+      )
+
+      localStorage.setItem("waifu-downloader-api-keys", JSON.stringify(keysToSave))
+      localStorage.setItem("waifu-downloader-authenticated", "true")
+
+      toast.success("Authentication successful!")
+
+      // Redirect to main app
+      setTimeout(() => {
+        router.push("/")
+      }, 1000)
+    } catch (error) {
+      console.error("Login error:", error)
+      toast.error("Authentication failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSocialLogin = (provider: string) => {
-    toast.info(`${provider} login coming soon!`)
-  }
-
-  const handleGuestAccess = () => {
-    toast.success("Accessing as guest...")
+  const handleSkip = () => {
+    localStorage.setItem("waifu-downloader-authenticated", "true")
+    toast.info("Skipped authentication - some features may be limited")
     router.push("/")
   }
 
+  const getStatusIcon = (status: ApiKey["status"]) => {
+    switch (status) {
+      case "valid":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "invalid":
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <Key className="h-4 w-4 text-muted-foreground" />
+    }
+  }
+
+  const getStatusColor = (status: ApiKey["status"]) => {
+    switch (status) {
+      case "valid":
+        return "border-green-500"
+      case "invalid":
+        return "border-red-500"
+      default:
+        return "border-muted"
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Logo */}
-        <div className="text-center">
-          <WaifuDownloaderLogo className="mx-auto mb-4" />
-          <h1 className="text-2xl font-bold">Waifu Downloader</h1>
-          <p className="text-muted-foreground">AI-Enhanced Anime Collection</p>
-        </div>
-
-        {/* Main Card */}
-        <Card className="material-card">
-          <CardHeader className="text-center">
-            <CardTitle>{isLogin ? "Welcome Back" : "Create Account"}</CardTitle>
-            <CardDescription>
-              {isLogin ? "Sign in to your account to continue" : "Join us to start building your collection"}
-            </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <Card className="shadow-2xl border-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <CardHeader className="text-center space-y-4 pb-8">
+            <div className="flex justify-center">
+              <WaifuDownloaderLogo className="h-12 w-12" />
+            </div>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Welcome Back
+              </CardTitle>
+              <CardDescription className="text-lg">Sign in to your Waifu Downloader account</CardDescription>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Error/Success Messages */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
 
-            {success && (
-              <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800 dark:text-green-200">{success}</AlertDescription>
-              </Alert>
-            )}
+          <CardContent className="space-y-6">
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Your API keys are stored locally and never transmitted to our servers. They are only used to
+                authenticate with the respective image APIs.
+              </AlertDescription>
+            </Alert>
 
-            {/* Login Form */}
-            {isLogin ? (
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="demo@example.com"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="Enter your email" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" placeholder="Enter your password" required />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="demo123"
-                      value={loginForm.password}
-                      onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                      className="pl-10 pr-10"
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            ) : (
-              /* Register Form */
-              <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="Enter username"
-                      value={registerForm.username}
-                      onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="Enter email"
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create password"
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                      className="pl-10 pr-10"
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="Confirm password"
-                      value={registerForm.confirmPassword}
-                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
-              </form>
-            )}
-
-            {/* Social Login */}
             <div className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
+              {apiKeys.map((api, index) => (
+                <motion.div
+                  key={api.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`p-4 rounded-lg border-2 transition-colors ${getStatusColor(api.status)}`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Label className="font-medium">{api.name}</Label>
+                        {api.required && (
+                          <Badge variant="destructive" className="text-xs">
+                            Required
+                          </Badge>
+                        )}
+                        {getStatusIcon(api.status)}
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" onClick={() => handleSocialLogin("Google")} disabled={isLoading}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Google
-                </Button>
-                <Button variant="outline" onClick={() => handleSocialLogin("GitHub")} disabled={isLoading}>
-                  <Github className="mr-2 h-4 w-4" />
-                  GitHub
-                </Button>
-              </div>
+                    <p className="text-sm text-muted-foreground">{api.description}</p>
+
+                    <div className="relative">
+                      <Input
+                        type={showPasswords[api.name] ? "text" : "password"}
+                        placeholder={`Enter ${api.name} API key...`}
+                        value={api.key}
+                        onChange={(e) => updateApiKey(api.name, e.target.value)}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => togglePasswordVisibility(api.name)}
+                      >
+                        {showPasswords[api.name] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
 
-            {/* Toggle Login/Register */}
-            <div className="text-center">
+            <Separator />
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={handleLogin} disabled={isLoading} className="flex-1 h-12 text-base font-medium">
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Authenticating...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Continue with API Keys
+                  </div>
+                )}
+              </Button>
+
               <Button
-                variant="link"
-                onClick={() => {
-                  setIsLogin(!isLogin)
-                  setError("")
-                  setSuccess("")
-                }}
+                variant="outline"
+                onClick={handleSkip}
                 disabled={isLoading}
+                className="flex-1 h-12 text-base font-medium bg-transparent"
               >
-                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Skip for Now
+                </div>
               </Button>
             </div>
 
-            {/* Guest Access */}
-            <div className="text-center">
-              <Button variant="ghost" onClick={handleGuestAccess} disabled={isLoading} className="text-sm">
-                Continue as Guest
-              </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              <p>
+                Don't have API keys?{" "}
+                <a
+                  href="https://wallhaven.cc/settings/account"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Get Wallhaven API key
+                </a>
+              </p>
             </div>
-
-            {/* Demo Credentials */}
-            {isLogin && (
-              <div className="text-center text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <p className="font-medium mb-1">Demo Credentials:</p>
-                <p>Email: demo@example.com</p>
-                <p>Password: demo123</p>
-              </div>
-            )}
           </CardContent>
         </Card>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>
-            By continuing, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-foreground">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy Policy
-            </Link>
-          </p>
-        </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

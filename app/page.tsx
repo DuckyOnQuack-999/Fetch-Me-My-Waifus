@@ -12,17 +12,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HomeDashboard } from "@/components/home-dashboard"
-import { SimpleDownloadTab } from "@/components/simple-download-tab"
-import { GalleryTab } from "@/components/gallery-tab"
-import { SettingsTab } from "@/components/settings-tab"
-import { ApiStatusIndicator } from "@/components/api-status-indicator"
 import { useSearchParams } from "next/navigation"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Download, ImageIcon, Settings, TrendingUp } from "lucide-react"
 
 function LoadingSkeleton() {
   return (
@@ -98,75 +92,19 @@ function HomePageContent() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/">Waifu Downloader</BreadcrumbLink>
+                  <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="capitalize">
-                    {activeTab === "dashboard" ? "Home" : activeTab}
-                  </BreadcrumbPage>
+                  <BreadcrumbPage>Home</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="ml-auto px-4">
-            <ApiStatusIndicator />
-          </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Dashboard</span>
-                <span className="sm:hidden">Home</span>
-              </TabsTrigger>
-              <TabsTrigger value="download" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Download</span>
-                <span className="sm:hidden">DL</span>
-              </TabsTrigger>
-              <TabsTrigger value="gallery" className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Gallery</span>
-                <span className="sm:hidden">Gallery</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Settings</span>
-                <span className="sm:hidden">Config</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="mt-6">
-              <ErrorBoundary>
-                <TabsContent value="dashboard" className="space-y-4">
-                  <Suspense fallback={<LoadingSkeleton />}>
-                    <HomeDashboard />
-                  </Suspense>
-                </TabsContent>
-
-                <TabsContent value="download" className="space-y-4">
-                  <Suspense fallback={<LoadingSkeleton />}>
-                    <SimpleDownloadTab />
-                  </Suspense>
-                </TabsContent>
-
-                <TabsContent value="gallery" className="space-y-4">
-                  <Suspense fallback={<LoadingSkeleton />}>
-                    <GalleryTab />
-                  </Suspense>
-                </TabsContent>
-
-                <TabsContent value="settings" className="space-y-4">
-                  <Suspense fallback={<LoadingSkeleton />}>
-                    <SettingsTab />
-                  </Suspense>
-                </TabsContent>
-              </ErrorBoundary>
-            </div>
-          </Tabs>
+          <HomeDashboard />
         </div>
       </SidebarInset>
     </>

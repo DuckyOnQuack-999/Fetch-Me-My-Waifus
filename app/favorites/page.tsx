@@ -1,8 +1,8 @@
 "use client"
-
-import { Suspense } from "react"
+import { Card } from "@/components/ui/card"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Suspense } from "react"
 import { Separator } from "@/components/ui/separator"
 import {
   Breadcrumb,
@@ -12,31 +12,38 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { FavoritesPage as FavoritesContent } from "@/components/favorites-page"
-import { ErrorBoundary } from "@/components/error-boundary"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FavoritesPage } from "@/components/favorites-page"
 
 function FavoritesLoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
         </div>
+        <Skeleton className="h-10 w-32" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {Array.from({ length: 15 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-lg" />
+          <Card key={i} className="overflow-hidden">
+            <Skeleton className="aspect-[3/4] w-full" />
+            <div className="p-3 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </Card>
         ))}
       </div>
     </div>
   )
 }
 
-export default function FavoritesPage() {
+export default function Favorites() {
   return (
-    <ErrorBoundary>
+    <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
@@ -46,7 +53,7 @@ export default function FavoritesPage() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/">Waifu Downloader</BreadcrumbLink>
+                  <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
@@ -56,13 +63,12 @@ export default function FavoritesPage() {
             </Breadcrumb>
           </div>
         </header>
-
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <Suspense fallback={<FavoritesLoadingSkeleton />}>
-            <FavoritesContent />
+            <FavoritesPage />
           </Suspense>
         </div>
       </SidebarInset>
-    </ErrorBoundary>
+    </SidebarProvider>
   )
 }

@@ -1,101 +1,60 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WaifuDownloaderLogo } from "@/components/waifu-downloader-logo"
+import { motion } from "framer-motion"
 
 export default function Loading() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-4xl space-y-8 p-4">
-        {/* Logo and Title */}
-        <div className="text-center space-y-4">
-          <WaifuDownloaderLogo className="mx-auto animate-pulse" />
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64 mx-auto" />
-            <Skeleton className="h-4 w-96 mx-auto" />
+    <div className="flex flex-1 flex-col gap-4 p-4 min-h-screen bg-background">
+      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+        <Skeleton className="aspect-video rounded-xl" />
+        <Skeleton className="aspect-video rounded-xl" />
+        <Skeleton className="aspect-video rounded-xl" />
+      </div>
+      <div className="min-h-[100vh] flex-1 rounded-xl">
+        <Skeleton className="h-full w-full" />
+      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md mt-auto"
+      >
+        <Card className="p-8 text-center space-y-6">
+          <div className="flex justify-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+            >
+              <WaifuDownloaderLogo className="h-16 w-16" />
+            </motion.div>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-4 rounded" />
-                </div>
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-3 w-12" />
-              </div>
-            </Card>
-          ))}
-        </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">Loading Waifu Downloader</h2>
+            <p className="text-muted-foreground">Preparing your anime collection...</p>
+          </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-5" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-2 w-full" />
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-5" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-              <Skeleton className="h-4 w-full" />
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Gallery Preview */}
-        <Card className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-5" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-              <Skeleton className="h-10 w-24" />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-square rounded-lg" />
+          <div className="flex justify-center">
+            <div className="flex space-x-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2 h-2 bg-primary rounded-full"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Number.POSITIVE_INFINITY,
+                    delay: i * 0.2,
+                  }}
+                />
               ))}
             </div>
           </div>
         </Card>
-
-        {/* Loading Text */}
-        <div className="text-center">
-          <div className="inline-flex items-center gap-2 text-muted-foreground">
-            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            <span>Loading your anime collection...</span>
-          </div>
-        </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -87,7 +87,19 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.waifu.im",
+      },
+      {
+        protocol: "https",
+        hostname: "*.waifu.pics",
+      },
+      {
+        protocol: "https",
+        hostname: "*.nekos.best",
+      },
+      {
+        protocol: "https",
+        hostname: "*.wallhaven.cc",
       },
     ],
     formats: ["image/webp", "image/avif"],
@@ -162,6 +174,27 @@ const nextConfig = {
           {
             key: "Referrer-Policy",
             value: "origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+      {
+        source: "/api/(.*)",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, DELETE, OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization",
           },
         ],
       },

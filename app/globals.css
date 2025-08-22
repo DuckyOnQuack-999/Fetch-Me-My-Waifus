@@ -350,13 +350,6 @@
     transform: translate3d(0, -30px, 0);
   }
   70% {
-    transform: translate3d(0, -15px0, 0);
-  }
-  40%,
-  43% {
-    transform: translate3d(0, -30px, 0);
-  }
-  70% {
     transform: translate3d(0, -15px, 0);
   }
   90% {
