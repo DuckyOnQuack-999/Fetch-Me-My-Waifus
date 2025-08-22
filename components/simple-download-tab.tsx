@@ -1,23 +1,38 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import { Download, Pause, Zap, ImageIcon, AlertCircle } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useSettings } from "@/context/settingsContext"
-import { useDownload } from "@/context/downloadContext"
-import { useStorage } from "@/context/storageContext"
-import { fetchImagesFromMultipleSources } from "@/services/waifuApi"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Download, Loader2, CheckCircle, AlertCircle, ImageIcon } from "lucide-react"
+import { getImages, setImages, addToDownloadHistory } from "@/utils/localStorage"
 import { toast } from "sonner"
-import type { ImageCategory, ApiSource, WaifuImage } from "@/types/waifu"
+import { useSettings } from "@/hooks/useSettings"
+import { useDownload } from "@/hooks/useDownload"
+import { useStorage } from "@/hooks/useStorage"
+import { fetchImagesFromMultipleSources } from "@/utils/fetchImages"
+import { AnimatePresence, motion } from "framer-motion"
+import { Pause, Zap } from "lucide-react"
+import type { ImageCategory, ApiSource, WaifuImage } from "@/types"
+
+const API_ENDPOINTS = {
+  "waifu.im": "https://api.waifu.im/search",
+  "waifu.pics": "https://api.waifu.pics/sfw/waifu",
+  "nekos.best": "https://nekos.best/api/v2/waifu",
+  wallhaven: "https://wallhaven.cc/api/v1/search",
+}
+
+const CATEGORIES = {
+  "waifu.im": ["waifu", "maid", "marin-kitagawa", "mori-calliope", "raiden-shogun"],
+  "waifu.pics": ["waifu", "neko", "shinobu", "megumin", "bully"],
+  "nekos.best": ["waifu", "neko", "kitsune", "husbando"],
+  wallhaven: ["anime", "general", "people"],
+}
 
 export function SimpleDownloadTab() {
   const { settings } = useSettings()
@@ -36,6 +51,16 @@ export function SimpleDownloadTab() {
   const [isLoading, setIsLoading] = useState(false)
   const [previewImages, setPreviewImages] = useState<WaifuImage[]>([])
   const [showPreview, setShowPreview] = useState(false)
+
+  const [selectedApi, setSelectedApi] = useState<string>("waifu.pics")
+  const [selectedCategory, setSelectedCategory] = useState<string>("waifu")
+  const [customUrl, setCustomUrl] = useState<string>("")
+  const [downloadState, setDownloadState] = useState<DownloadState>({
+    isDownloading: false,
+    progress: 0,
+    status: "idle",
+    message: "",
+  })
 
   const categories: ImageCategory[] = [
     "waifu",
@@ -84,6 +109,237 @@ export function SimpleDownloadTab() {
     { value: "wallhaven", label: "Wallhaven", description: "High-resolution wallpapers" },
     { value: "femboyfinder", label: "FemboyFinder", description: "Specialized collection" },
   ]
+
+  const updateDownloadState = useCallback((updates: Partial<DownloadState>) => {
+    setDownloadState((prev) => ({ ...prev, ...updates }))
+  }, [])
+
+  const fetchFromWaifuPics = async (): Promise<any> => {
+    const response = await fetch(`https://api.waifu.pics/sfw/${selectedCategory}`)
+    if (!response.ok) throw new Error("Failed to fetch from waifu.pics")
+    const data = await response.json()
+    return {
+      url: data.url,
+      source: "waifu.pics",
+      category: selectedCategory,
+      tags: [selectedCategory],
+    }
+  }
+
+  const fetchFromWaifuIm = async (): Promise<any> => {
+    const params = new URLSearchParams({
+      included_tags: selectedCategory,
+      height: ">=2000",
+      is_nsfw: "false",
+    })
+
+    const response = await fetch(`https://api.waifu.im/search?${params}`)
+    if (!response.ok) throw new Error("Failed to fetch from waifu.im")
+    const data = await response.json()
+
+    if (!data.images || data.images.length === 0) {
+      throw new Error("No images found")
+    }
+
+    const image = data.images[0]
+    return {
+      url: image.url,
+      source: "waifu.im",
+      category: selectedCategory,
+      tags: image.tags || [selectedCategory],
+      width: image.width,
+      height: image.height,
+    }
+  }
+
+  const fetchFromNekosBest = async (): Promise<any> => {
+    const response = await fetch(`https://nekos.best/api/v2/${selectedCategory}`)
+    if (!response.ok) throw new Error("Failed to fetch from nekos.best")
+    const data = await response.json()
+
+    if (!data.results || data.results.length === 0) {
+      throw new Error("No images found")
+    }
+
+    const image = data.results[0]
+    return {
+      url: image.url,
+      source: "nekos.best",
+      category: selectedCategory,
+      tags: [selectedCategory],
+      artist: image.artist_name,
+      href: image.artist_href,
+    }
+  }
+
+  const fetchFromWallhaven = async (): Promise<any> => {
+    const apiKey = process.env.WALLHAVEN_API_KEY || "RhVlota4CWLtHGJ0yX5vQMHqmJ3SZQFk"
+    const params = new URLSearchParams({
+      categories: "010", // Anime only
+      purity: "100", // SFW only
+      sorting: "random",
+      apikey: apiKey,
+    })
+
+    const response = await fetch(`https://wallhaven.cc/api/v1/search?${params}`)
+    if (!response.ok) throw new Error("Failed to fetch from Wallhaven")
+    const data = await response.json()
+
+    if (!data.data || data.data.length === 0) {
+      throw new Error("No images found")
+    }
+
+    const image = data.data[0]
+    return {
+      url: image.path,
+      source: "wallhaven",
+      category: "anime",
+      tags: image.tags || ["anime"],
+      resolution: image.resolution,
+      colors: image.colors,
+    }
+  }
+
+  const fetchFromCustomUrl = async (): Promise<any> => {
+    if (!customUrl.trim()) {
+      throw new Error("Please enter a valid URL")
+    }
+
+    // Basic URL validation
+    try {
+      new URL(customUrl)
+    } catch {
+      throw new Error("Invalid URL format")
+    }
+
+    return {
+      url: customUrl,
+      source: "custom",
+      category: "custom",
+      tags: ["custom"],
+    }
+  }
+
+  const downloadImage = async () => {
+    try {
+      updateDownloadState({
+        isDownloading: true,
+        progress: 0,
+        status: "downloading",
+        message: "Fetching image...",
+      })
+
+      let imageData: any
+
+      // Fetch image data based on selected API
+      updateDownloadState({ progress: 25, message: "Connecting to API..." })
+
+      switch (selectedApi) {
+        case "waifu.pics":
+          imageData = await fetchFromWaifuPics()
+          break
+        case "waifu.im":
+          imageData = await fetchFromWaifuIm()
+          break
+        case "nekos.best":
+          imageData = await fetchFromNekosBest()
+          break
+        case "wallhaven":
+          imageData = await fetchFromWallhaven()
+          break
+        case "custom":
+          imageData = await fetchFromCustomUrl()
+          break
+        default:
+          throw new Error("Invalid API selection")
+      }
+
+      updateDownloadState({ progress: 50, message: "Processing image..." })
+
+      // Create image object
+      const newImage = {
+        id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        url: imageData.url,
+        title: `${imageData.source} - ${imageData.category}`,
+        source: imageData.source,
+        tags: imageData.tags || [],
+        category: imageData.category,
+        downloadedAt: new Date().toISOString(),
+        width: imageData.width,
+        height: imageData.height,
+        artist: imageData.artist,
+        colors: imageData.colors,
+        resolution: imageData.resolution,
+      }
+
+      updateDownloadState({ progress: 75, message: "Saving to gallery..." })
+
+      // Add to gallery
+      const existingImages = getImages()
+      const updatedImages = [newImage, ...existingImages]
+      setImages(updatedImages)
+
+      // Add to download history
+      addToDownloadHistory({
+        id: newImage.id,
+        title: newImage.title,
+        source: newImage.source,
+        url: newImage.url,
+        timestamp: newImage.downloadedAt,
+      })
+
+      updateDownloadState({
+        progress: 100,
+        status: "success",
+        message: "Image downloaded successfully!",
+        downloadedImage: newImage,
+      })
+
+      toast.success("Image downloaded successfully!")
+
+      // Reset after 3 seconds
+      setTimeout(() => {
+        updateDownloadState({
+          isDownloading: false,
+          progress: 0,
+          status: "idle",
+          message: "",
+          downloadedImage: undefined,
+        })
+      }, 3000)
+    } catch (error) {
+      console.error("Download error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to download image"
+
+      updateDownloadState({
+        isDownloading: false,
+        progress: 0,
+        status: "error",
+        message: errorMessage,
+      })
+
+      toast.error(errorMessage)
+
+      // Reset error after 5 seconds
+      setTimeout(() => {
+        updateDownloadState({
+          status: "idle",
+          message: "",
+        })
+      }, 5000)
+    }
+  }
+
+  const handleApiChange = (value: string) => {
+    setSelectedApi(value)
+    // Reset category when API changes
+    const categories = CATEGORIES[value as keyof typeof CATEGORIES]
+    if (categories && categories.length > 0) {
+      setSelectedCategory(categories[0])
+    }
+  }
+
+  const availableCategories = CATEGORIES[selectedApi as keyof typeof CATEGORIES] || []
 
   const handlePreview = async () => {
     setIsLoading(true)
@@ -154,7 +410,7 @@ export function SimpleDownloadTab() {
   return (
     <div className="space-y-6">
       {/* Download Configuration */}
-      <Card>
+      <Card className="material-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5 text-primary" />
@@ -162,7 +418,7 @@ export function SimpleDownloadTab() {
           </CardTitle>
           <CardDescription>Configure your image download preferences</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
@@ -247,18 +503,23 @@ export function SimpleDownloadTab() {
               />
             </div>
 
+            {/* Include NSFW Content */}
             <div className="flex items-center space-x-2">
-              <Switch
+              <input
                 id="nsfw"
+                type="checkbox"
                 checked={downloadConfig.isNsfw}
-                onCheckedChange={(checked) => setDownloadConfig((prev) => ({ ...prev, isNsfw: checked }))}
+                onChange={(e) => setDownloadConfig((prev) => ({ ...prev, isNsfw: e.target.checked }))}
+                className="h-4 w-4 text-primary rounded border border-input focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
               />
               <Label htmlFor="nsfw">Include NSFW Content</Label>
             </div>
           </div>
 
-          <Separator />
+          {/* Separator */}
+          <div className="h-px bg-border my-4" />
 
+          {/* Download Configuration Summary */}
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="flex items-center gap-1">
               <ImageIcon className="h-3 w-3" />
@@ -273,6 +534,111 @@ export function SimpleDownloadTab() {
               {downloadConfig.minWidth}×{downloadConfig.minHeight}+
             </Badge>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Download */}
+      <Card className="material-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Quick Download
+          </CardTitle>
+          <CardDescription>Download random images from various anime APIs</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="api-select">API Source</Label>
+              <Select value={selectedApi} onValueChange={handleApiChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select API" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="waifu.pics">Waifu.pics</SelectItem>
+                  <SelectItem value="waifu.im">Waifu.im</SelectItem>
+                  <SelectItem value="nekos.best">Nekos.best</SelectItem>
+                  <SelectItem value="wallhaven">Wallhaven</SelectItem>
+                  <SelectItem value="custom">Custom URL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedApi !== "custom" ? (
+              <div className="space-y-2">
+                <Label htmlFor="category-select">Category</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCategories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="custom-url">Image URL</Label>
+                <Input
+                  id="custom-url"
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <Button
+            onClick={downloadImage}
+            disabled={downloadState.isDownloading || (selectedApi === "custom" && !customUrl.trim())}
+            className="w-full"
+          >
+            {downloadState.isDownloading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Download Random Image
+              </>
+            )}
+          </Button>
+
+          {downloadState.isDownloading && (
+            <div className="space-y-2">
+              <Progress value={downloadState.progress} className="w-full" />
+              <p className="text-sm text-muted-foreground text-center">{downloadState.message}</p>
+            </div>
+          )}
+
+          {downloadState.status === "success" && downloadState.downloadedImage && (
+            <Alert className="border-green-200 bg-green-50 dark:bg-green-950">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                <div className="flex items-center justify-between">
+                  <span>{downloadState.message}</span>
+                  <Badge variant="secondary" className="ml-2">
+                    {downloadState.downloadedImage.source}
+                  </Badge>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {downloadState.status === "error" && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{downloadState.message}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -428,6 +794,47 @@ export function SimpleDownloadTab() {
         )}
       </AnimatePresence>
 
+      {/* Downloaded Image */}
+      {downloadState.downloadedImage && (
+        <Card className="material-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Downloaded Image
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <img
+                src={downloadState.downloadedImage.url || "/placeholder.svg"}
+                alt={downloadState.downloadedImage.title}
+                className="w-full sm:w-32 h-32 object-cover rounded-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.src = "/placeholder.svg?height=128&width=128"
+                }}
+              />
+              <div className="flex-1 space-y-2">
+                <h3 className="font-medium">{downloadState.downloadedImage.title}</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{downloadState.downloadedImage.source}</Badge>
+                  {downloadState.downloadedImage.tags?.map((tag: string, index: number) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                {downloadState.downloadedImage.resolution && (
+                  <p className="text-sm text-muted-foreground">
+                    Resolution: {downloadState.downloadedImage.resolution}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recent Downloads Summary */}
       {downloads.length > 0 && (
         <Card>
@@ -466,4 +873,12 @@ export function SimpleDownloadTab() {
       )}
     </div>
   )
+}
+
+interface DownloadState {
+  isDownloading: boolean
+  progress: number
+  status: "idle" | "downloading" | "success" | "error"
+  message: string
+  downloadedImage?: any
 }
