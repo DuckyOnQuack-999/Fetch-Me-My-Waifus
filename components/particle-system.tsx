@@ -1,209 +1,273 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useCallback } from "react"
 
 interface Particle {
   x: number
   y: number
   vx: number
   vy: number
-  size: number
-  color: string
-  opacity: number
   life: number
   maxLife: number
-  type: "heart" | "star" | "sparkle" | "circle"
+  size: number
+  color: string
+  type: "heart" | "star" | "sparkle" | "dot"
+  opacity: number
 }
 
 interface ParticleSystemProps {
-  particleCount?: number
   className?: string
+  particleCount?: number
+  interactive?: boolean
 }
 
-export function ParticleSystem({ particleCount = 50, className = "" }: ParticleSystemProps) {
+export function ParticleSystem({ className = "", particleCount = 50, interactive = true }: ParticleSystemProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const particlesRef = useRef<Particle[]>([])
   const animationRef = useRef<number>()
-  const mouseRef = useRef({ x: 0, y: 0 })
+  const particlesRef = useRef<Particle[]>([])
+  const mouseRef = useRef({ x: 0, y: 0, isMoving: false })
 
-  const colors = ["#ff0066", "#ff3399", "#ff66cc", "#ff99e6", "#ffccf2"]
-  const particleTypes: Particle["type"][] = ["heart", "star", "sparkle", "circle"]
+  const colors = [
+    "#ff0066", // neon-primary
+    "#ff3399", // neon-secondary
+    "#ff66cc", // neon-accent
+    "#ff1a8c", // variant 1
+    "#ff4db3", // variant 2
+  ]
+
+  const createParticle = useCallback(
+    (x?: number, y?: number): Particle => {
+      const canvas = canvasRef.current
+      if (!canvas) return {} as Particle
+
+      return {
+        x: x ?? Math.random() * canvas.width,
+        y: y ?? canvas.height + 10,
+        vx: (Math.random() - 0.5) * 2,
+        vy: -Math.random() * 3 - 1,
+        life: 0,
+        maxLife: 120 + Math.random() * 60,
+        size: Math.random() * 4 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        type: ["heart", "star", "sparkle", "dot"][Math.floor(Math.random() * 4)] as Particle["type"],
+        opacity: 1,
+      }
+    },
+    [colors],
+  )
+
+  const drawParticle = useCallback((ctx: CanvasRenderingContext2D, particle: Particle) => {
+    ctx.save()
+    ctx.globalAlpha = particle.opacity
+    ctx.fillStyle = particle.color
+    ctx.shadowColor = particle.color
+    ctx.shadowBlur = 10
+
+    const x = particle.x
+    const y = particle.y
+    const size = particle.size
+
+    switch (particle.type) {
+      case "heart":
+        // Draw heart shape
+        ctx.beginPath()
+        ctx.moveTo(x, y + size / 4)
+        ctx.bezierCurveTo(x, y - size / 2, x - size, y - size / 2, x - size, y + size / 4)
+        ctx.bezierCurveTo(x - size, y + size, x, y + size * 1.5, x, y + size * 1.5)
+        ctx.bezierCurveTo(x, y + size * 1.5, x + size, y + size, x + size, y + size / 4)
+        ctx.bezierCurveTo(x + size, y - size / 2, x, y - size / 2, x, y + size / 4)
+        ctx.fill()
+        break
+
+      case "star":
+        // Draw star shape
+        ctx.beginPath()
+        for (let i = 0; i < 5; i++) {
+          const angle = ((i * 144 - 90) * Math.PI) / 180
+          const x1 = x + Math.cos(angle) * size
+          const y1 = y + Math.sin(angle) * size
+          if (i === 0) ctx.moveTo(x1, y1)
+          else ctx.lineTo(x1, y1)
+
+          const innerAngle = (((i + 0.5) * 144 - 90) * Math.PI) / 180
+          const x2 = x + Math.cos(innerAngle) * (size / 2)
+          const y2 = y + Math.sin(innerAngle) * (size / 2)
+          ctx.lineTo(x2, y2)
+        }
+        ctx.closePath()
+        ctx.fill()
+        break
+
+      case "sparkle":
+        // Draw sparkle (diamond)
+        ctx.beginPath()
+        ctx.moveTo(x, y - size)
+        ctx.lineTo(x + size / 2, y)
+        ctx.lineTo(x, y + size)
+        ctx.lineTo(x - size / 2, y)
+        ctx.closePath()
+        ctx.fill()
+        break
+
+      default:
+        // Draw dot
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fill()
+        break
+    }
+
+    ctx.restore()
+  }, [])
+
+  const updateParticles = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const particles = particlesRef.current
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const particle = particles[i]
+
+      // Update position
+      particle.x += particle.vx
+      particle.y += particle.vy
+      particle.life++
+
+      // Add some drift
+      particle.vx += (Math.random() - 0.5) * 0.1
+      particle.vy += 0.05 // gravity
+
+      // Update opacity based on life
+      particle.opacity = 1 - particle.life / particle.maxLife
+
+      // Remove dead particles
+      if (particle.life >= particle.maxLife || particle.y > canvas.height + 50) {
+        particles.splice(i, 1)
+      }
+    }
+
+    // Add new particles
+    while (particles.length < particleCount) {
+      particles.push(createParticle())
+    }
+
+    // Add mouse interaction particles
+    if (interactive && mouseRef.current.isMoving) {
+      for (let i = 0; i < 3; i++) {
+        particles.push(
+          createParticle(
+            mouseRef.current.x + (Math.random() - 0.5) * 50,
+            mouseRef.current.y + (Math.random() - 0.5) * 50,
+          ),
+        )
+      }
+    }
+  }, [createParticle, particleCount, interactive])
+
+  const render = useCallback(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+    if (!canvas || !ctx) return
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // Update and draw particles
+    updateParticles()
+
+    particlesRef.current.forEach((particle) => {
+      drawParticle(ctx, particle)
+    })
+
+    animationRef.current = requestAnimationFrame(render)
+  }, [updateParticles, drawParticle])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    mouseRef.current.x = e.clientX - rect.left
+    mouseRef.current.y = e.clientY - rect.top
+    mouseRef.current.isMoving = true
+
+    // Reset moving flag after a delay
+    setTimeout(() => {
+      mouseRef.current.isMoving = false
+    }, 100)
+  }, [])
+
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      // Create burst effect
+      for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2
+        const speed = Math.random() * 5 + 2
+        const particle = createParticle(x, y)
+        particle.vx = Math.cos(angle) * speed
+        particle.vy = Math.sin(angle) * speed
+        particle.maxLife = 60
+        particlesRef.current.push(particle)
+      }
+    },
+    [createParticle],
+  )
+
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-
-    const createParticle = (): Particle => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 2,
-      vy: (Math.random() - 0.5) * 2,
-      size: Math.random() * 4 + 1,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      opacity: Math.random() * 0.8 + 0.2,
-      life: 0,
-      maxLife: Math.random() * 300 + 200,
-      type: particleTypes[Math.floor(Math.random() * particleTypes.length)],
-    })
-
-    const initParticles = () => {
-      particlesRef.current = Array.from({ length: particleCount }, createParticle)
-    }
-
-    const drawParticle = (particle: Particle) => {
-      ctx.save()
-      ctx.globalAlpha = particle.opacity * (1 - particle.life / particle.maxLife)
-      ctx.fillStyle = particle.color
-      ctx.shadowColor = particle.color
-      ctx.shadowBlur = 10
-
-      ctx.translate(particle.x, particle.y)
-
-      switch (particle.type) {
-        case "heart":
-          drawHeart(ctx, particle.size)
-          break
-        case "star":
-          drawStar(ctx, particle.size)
-          break
-        case "sparkle":
-          drawSparkle(ctx, particle.size)
-          break
-        case "circle":
-        default:
-          ctx.beginPath()
-          ctx.arc(0, 0, particle.size, 0, Math.PI * 2)
-          ctx.fill()
-          break
-      }
-
-      ctx.restore()
-    }
-
-    const drawHeart = (ctx: CanvasRenderingContext2D, size: number) => {
-      ctx.beginPath()
-      const x = 0,
-        y = 0
-      ctx.moveTo(x, y + size / 4)
-      ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + size / 4)
-      ctx.bezierCurveTo(x - size / 2, y + size / 2, x, y + (size * 3) / 4, x, y + size)
-      ctx.bezierCurveTo(x, y + (size * 3) / 4, x + size / 2, y + size / 2, x + size / 2, y + size / 4)
-      ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 4)
-      ctx.fill()
-    }
-
-    const drawStar = (ctx: CanvasRenderingContext2D, size: number) => {
-      ctx.beginPath()
-      for (let i = 0; i < 5; i++) {
-        const angle = (i * Math.PI * 2) / 5 - Math.PI / 2
-        const x = Math.cos(angle) * size
-        const y = Math.sin(angle) * size
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-
-        const innerAngle = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2
-        const innerX = Math.cos(innerAngle) * (size * 0.5)
-        const innerY = Math.sin(innerAngle) * (size * 0.5)
-        ctx.lineTo(innerX, innerY)
-      }
-      ctx.closePath()
-      ctx.fill()
-    }
-
-    const drawSparkle = (ctx: CanvasRenderingContext2D, size: number) => {
-      ctx.beginPath()
-      ctx.moveTo(0, -size)
-      ctx.lineTo(size * 0.2, -size * 0.2)
-      ctx.lineTo(size, 0)
-      ctx.lineTo(size * 0.2, size * 0.2)
-      ctx.lineTo(0, size)
-      ctx.lineTo(-size * 0.2, size * 0.2)
-      ctx.lineTo(-size, 0)
-      ctx.lineTo(-size * 0.2, -size * 0.2)
-      ctx.closePath()
-      ctx.fill()
-    }
-
-    const updateParticle = (particle: Particle) => {
-      particle.x += particle.vx
-      particle.y += particle.vy
-      particle.life++
-
-      // Mouse interaction
-      const dx = mouseRef.current.x - particle.x
-      const dy = mouseRef.current.y - particle.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-
-      if (distance < 100) {
-        const force = (100 - distance) / 100
-        particle.vx += (dx / distance) * force * 0.1
-        particle.vy += (dy / distance) * force * 0.1
-      }
-
-      // Boundary wrapping
-      if (particle.x < 0) particle.x = canvas.width
-      if (particle.x > canvas.width) particle.x = 0
-      if (particle.y < 0) particle.y = canvas.height
-      if (particle.y > canvas.height) particle.y = 0
-
-      // Reset particle if it's too old
-      if (particle.life > particle.maxLife) {
-        Object.assign(particle, createParticle())
-      }
-    }
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      particlesRef.current.forEach((particle) => {
-        updateParticle(particle)
-        drawParticle(particle)
-      })
-
-      animationRef.current = requestAnimationFrame(animate)
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect()
-      mouseRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      }
-    }
-
-    const handleResize = () => {
-      resizeCanvas()
-      initParticles()
-    }
-
+    // Initial setup
     resizeCanvas()
-    initParticles()
-    animate()
 
-    window.addEventListener("resize", handleResize)
-    canvas.addEventListener("mousemove", handleMouseMove)
+    // Initialize particles
+    particlesRef.current = []
+    for (let i = 0; i < particleCount; i++) {
+      particlesRef.current.push(createParticle())
+    }
+
+    // Event listeners
+    window.addEventListener("resize", resizeCanvas)
+    if (interactive) {
+      canvas.addEventListener("mousemove", handleMouseMove)
+      canvas.addEventListener("click", handleClick)
+    }
+
+    // Start animation
+    render()
 
     return () => {
-      window.removeEventListener("resize", handleResize)
-      canvas.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("resize", resizeCanvas)
+      if (interactive) {
+        canvas.removeEventListener("mousemove", handleMouseMove)
+        canvas.removeEventListener("click", handleClick)
+      }
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [particleCount])
+  }, [resizeCanvas, createParticle, particleCount, interactive, handleMouseMove, handleClick, render])
 
   return (
     <canvas
       ref={canvasRef}
-      className={`fixed inset-0 pointer-events-none z-[-1] ${className}`}
+      className={`fixed inset-0 pointer-events-${interactive ? "auto" : "none"} z-0 ${className}`}
       style={{ mixBlendMode: "screen" }}
     />
   )

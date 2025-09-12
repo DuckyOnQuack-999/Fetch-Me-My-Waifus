@@ -9,7 +9,9 @@ import { StorageProvider } from "@/context/storageContext"
 import { DownloadProvider } from "@/context/downloadContext"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { SidebarProvider } from "@/components/ui/sidebar"
-import { AnimatedBackground } from "@/components/animated-background"
+import { ParticleSystem } from "@/components/particle-system"
+import { AuroraBackground } from "@/components/aurora-background"
+import { InteractiveBackground } from "@/components/interactive-background"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -35,21 +37,26 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <SettingsProvider>
               <StorageProvider>
                 <DownloadProvider>
                   <SidebarProvider>
-                    <AnimatedBackground />
+                    {/* Background Effects */}
+                    <AuroraBackground />
+                    <InteractiveBackground />
+                    <ParticleSystem particleCount={75} interactive={true} />
+
                     <div className="min-h-screen bg-background relative z-10">{children}</div>
                     <Toaster
                       position="bottom-right"
                       toastOptions={{
                         style: {
-                          background: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))",
+                          background: "rgba(255, 105, 180, 0.1)",
+                          backdropFilter: "blur(10px)",
+                          border: "1px solid rgba(255, 105, 180, 0.3)",
                           color: "hsl(var(--foreground))",
-                          boxShadow: "0 0 20px hsl(var(--neon-primary) / 0.3)",
+                          boxShadow: "0 0 20px rgba(255, 105, 180, 0.3)",
                         },
                       }}
                     />

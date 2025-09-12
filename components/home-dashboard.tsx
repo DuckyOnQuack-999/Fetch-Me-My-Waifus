@@ -1,180 +1,245 @@
 "use client"
-
 import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Heart, Download, Sparkles, Zap } from "lucide-react"
 import { SimpleDownloadTab } from "./simple-download-tab"
 import { GalleryTab } from "./gallery-tab"
 import { SettingsTab } from "./settings-tab"
-import { EnhancedCard, CardContent, CardDescription, CardHeader, CardTitle } from "./enhanced-card"
-import { NeonButton } from "./neon-button"
+import { Heart, Download, ImageIcon, Settings, Sparkles, Zap, Activity } from "lucide-react"
+import { useStorage } from "@/context/storageContext"
+import { useDownload } from "@/context/downloadContext"
+import { useSettings } from "@/context/settingsContext"
+import { SumptuousHeart } from "@/components/sumptuous-heart"
+import { cn } from "@/lib/utils"
+
+interface StorageStats {
+  usage: {
+    used: number
+    available: number
+    percentage: number
+  }
+  counts: {
+    images: number
+    favorites: number
+    collections: number
+    downloadHistory: number
+  }
+  lastUpdated: string
+}
 
 export function HomeDashboard() {
-  const [activeTab, setActiveTab] = useState("download")
-  const [stats, setStats] = useState({
-    totalDownloads: 0,
-    favoriteImages: 0,
-    collectionsCount: 0,
-  })
+  const { images, favorites, getStorageStats } = useStorage()
+  const { downloads, activeDownloads, completedDownloads, totalProgress } = useDownload()
+  const { settings } = useSettings()
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null)
 
   useEffect(() => {
-    // Load stats from localStorage
-    const savedStats = localStorage.getItem("waifuDownloaderStats")
-    if (savedStats) {
-      setStats(JSON.parse(savedStats))
+    try {
+      const stats = getStorageStats()
+      setStorageStats(stats)
+    } catch (error) {
+      console.error("Failed to get storage stats:", error)
+      setStorageStats({
+        usage: { used: 0, available: 100 * 1024 * 1024, percentage: 0 },
+        counts: {
+          images: images?.length || 0,
+          favorites: favorites?.length || 0,
+          collections: 0,
+          downloadHistory: 0,
+        },
+        lastUpdated: new Date().toISOString(),
+      })
     }
-  }, [])
+  }, [images, favorites, getStorageStats])
+
+  const quickStats = [
+    {
+      title: "Total Images",
+      value: images?.length || 0,
+      change: "+12%",
+      icon: ImageIcon,
+      color: "text-[var(--neon-primary)]",
+      bgColor: "bg-[var(--neon-primary)]/10",
+      glowColor: "var(--neon-primary)",
+    },
+    {
+      title: "Favorites",
+      value: favorites?.length || 0,
+      change: "+8%",
+      icon: Heart,
+      color: "text-[var(--neon-secondary)]",
+      bgColor: "bg-[var(--neon-secondary)]/10",
+      glowColor: "var(--neon-secondary)",
+    },
+    {
+      title: "Downloads",
+      value: completedDownloads?.length || 0,
+      change: "+23%",
+      icon: Download,
+      color: "text-[var(--neon-accent)]",
+      bgColor: "bg-[var(--neon-accent)]/10",
+      glowColor: "var(--neon-accent)",
+    },
+    {
+      title: "Active",
+      value: activeDownloads?.length || 0,
+      change: "Live",
+      icon: Activity,
+      color: "text-orange-400",
+      bgColor: "bg-orange-400/10",
+      glowColor: "#fb923c",
+    },
+  ]
+
+  const recentActivity = [
+    { action: "Downloaded", item: "anime_girl_001.jpg", time: "2 minutes ago", type: "download" },
+    { action: "Added to favorites", item: "waifu_collection_42.png", time: "5 minutes ago", type: "favorite" },
+    { action: "Created collection", item: "Summer Waifus", time: "10 minutes ago", type: "collection" },
+    { action: "Downloaded", item: "neko_art_15.jpg", time: "15 minutes ago", type: "download" },
+    { action: "Updated settings", item: "API Configuration", time: "1 hour ago", type: "settings" },
+  ]
+
+  const getActivityIcon = (type: string) => {
+    const iconProps = { className: "h-4 w-4 drop-shadow-[0_0_6px_currentColor]" }
+    switch (type) {
+      case "download":
+        return <Download {...iconProps} className={cn(iconProps.className, "text-[var(--neon-accent)]")} />
+      case "favorite":
+        return <SumptuousHeart size={16} glowing />
+      case "collection":
+        return <ImageIcon {...iconProps} className={cn(iconProps.className, "text-[var(--neon-primary)]")} />
+      case "settings":
+        return <Zap {...iconProps} className={cn(iconProps.className, "text-purple-400")} />
+      default:
+        return <Activity {...iconProps} className={cn(iconProps.className, "text-gray-400")} />
+    }
+  }
+
+  const safeProgress = {
+    downloaded: totalProgress?.downloaded || 0,
+    total: totalProgress?.total || 0,
+    speed: totalProgress?.speed || 0,
+    currentFile: totalProgress?.currentFile || null,
+  }
+
+  const progressPercentage = safeProgress.total > 0 ? (safeProgress.downloaded / safeProgress.total) * 100 : 0
 
   return (
-    <div className="container mx-auto p-6 space-y-6 animate-fade-in">
-      {/* Hero Section with Neon Effects */}
-      <div className="text-center space-y-4 mb-8">
-        <h1 className="text-4xl md:text-6xl font-bold text-gradient neon-text animate-float" data-text="Waifu Fetcher">
-          Waifu Fetcher ✨
-        </h1>
-        <p className="text-xl md:text-2xl text-muted-foreground animate-slide-up kawaii-heart">
-          Your magical anime image companion! 💖
-        </p>
-        <div className="flex flex-wrap justify-center gap-4 mt-6">
-          <Badge variant="secondary" className="px-4 py-2 text-lg glass-effect glow-pulse">
-            <Heart className="w-5 h-5 mr-2 kawaii-heart" />
-            {stats.favoriteImages} Favorites
-          </Badge>
-          <Badge variant="secondary" className="px-4 py-2 text-lg glass-effect glow-pulse">
-            <Download className="w-5 h-5 mr-2" />
-            {stats.totalDownloads} Downloads
-          </Badge>
-          <Badge variant="secondary" className="px-4 py-2 text-lg glass-effect glow-pulse">
-            <Sparkles className="w-5 h-5 mr-2" />
-            {stats.collectionsCount} Collections
-          </Badge>
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 relative">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <Heart className="w-8 h-8 kawaii-heart animate-pulse-slow" />
+          <h1 className="text-4xl font-bold text-gradient">Waifu Fetcher</h1>
+          <Sparkles className="w-6 h-6 kawaii-heart" />
         </div>
+        <p className="text-muted-foreground neon-text">
+          Your kawaii cyber companion for collecting beautiful anime art ✨
+        </p>
       </div>
 
-      {/* Quick Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <EnhancedCard variant="glass" className="group cursor-pointer" onClick={() => setActiveTab("download")}>
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <Download className="w-8 h-8 text-white" />
-            </div>
-            <CardTitle className="text-gradient">Quick Download</CardTitle>
-            <CardDescription>Start downloading your favorite waifus instantly!</CardDescription>
-          </CardHeader>
-        </EnhancedCard>
-
-        <EnhancedCard variant="holographic" className="group cursor-pointer" onClick={() => setActiveTab("gallery")}>
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <Heart className="w-8 h-8 text-white kawaii-heart" />
-            </div>
-            <CardTitle className="text-gradient">Gallery</CardTitle>
-            <CardDescription>Browse and manage your kawaii collection!</CardDescription>
-          </CardHeader>
-        </EnhancedCard>
-
-        <EnhancedCard variant="cyber" className="group cursor-pointer" onClick={() => setActiveTab("settings")}>
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-pink-600 to-purple-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <Zap className="w-8 h-8 text-white" />
-            </div>
-            <CardTitle className="text-gradient">Settings</CardTitle>
-            <CardDescription>Customize your waifu experience!</CardDescription>
-          </CardHeader>
-        </EnhancedCard>
-      </div>
-
-      {/* Main Tabs Interface */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full mb-8 glass-effect border border-pink-500/30">
-          <TabsTrigger
-            value="download"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-purple-600 data-[state=active]:text-white transition-all duration-300 energy-wave"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Download ✨
+      {/* Main Content */}
+      <Tabs defaultValue="download" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-8 cyber-button">
+          <TabsTrigger value="download" className="flex items-center gap-2">
+            <Download className="w-4 h-4 kawaii-heart" />
+            Download
           </TabsTrigger>
-          <TabsTrigger
-            value="gallery"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300 energy-wave"
-          >
-            <Heart className="w-4 h-4 mr-2 kawaii-heart" />
-            Gallery 💖
+          <TabsTrigger value="gallery" className="flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 kawaii-heart" />
+            Gallery
           </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-600 data-[state=active]:to-purple-500 data-[state=active]:text-white transition-all duration-300 energy-wave"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Settings ⚡
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="w-4 h-4 kawaii-heart" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="download" className="animate-fade-in">
-          <EnhancedCard variant="glass" animated glowOnHover>
+          <Card className="material-card kawaii-element">
             <CardHeader>
-              <CardTitle className="text-2xl neon-text flex items-center gap-2">
-                <Download className="w-6 h-6" />
-                Download Magical Waifus ✨
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 kawaii-heart" />
+                Download Images
               </CardTitle>
-              <CardDescription>Choose your API source and start collecting adorable anime images!</CardDescription>
+              <CardDescription className="neon-text">
+                Fetch beautiful anime images from various APIs with advanced filtering
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <SimpleDownloadTab />
             </CardContent>
-          </EnhancedCard>
+          </Card>
         </TabsContent>
 
         <TabsContent value="gallery" className="animate-fade-in">
-          <EnhancedCard variant="holographic" animated glowOnHover>
+          <Card className="material-card">
             <CardHeader>
-              <CardTitle className="text-2xl neon-text flex items-center gap-2">
-                <Heart className="w-6 h-6 kawaii-heart" />
-                Your Kawaii Gallery 💖
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 kawaii-heart" />
+                Image Gallery
               </CardTitle>
-              <CardDescription>Browse, organize, and manage your adorable waifu collection!</CardDescription>
+              <CardDescription className="neon-text">Browse and manage your downloaded images</CardDescription>
             </CardHeader>
             <CardContent>
               <GalleryTab />
             </CardContent>
-          </EnhancedCard>
+          </Card>
         </TabsContent>
 
         <TabsContent value="settings" className="animate-fade-in">
-          <EnhancedCard variant="cyber" animated glowOnHover>
+          <Card className="material-card">
             <CardHeader>
-              <CardTitle className="text-2xl neon-text flex items-center gap-2">
-                <Sparkles className="w-6 h-6" />
-                Cyber Settings ⚡
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5 kawaii-heart" />
+                Settings & Configuration
               </CardTitle>
-              <CardDescription>Customize your waifu downloading experience with advanced options!</CardDescription>
+              <CardDescription className="neon-text">Customize your waifu downloading experience</CardDescription>
             </CardHeader>
             <CardContent>
               <SettingsTab />
             </CardContent>
-          </EnhancedCard>
+          </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-8 right-8 space-y-4 z-50">
-        <NeonButton
-          variant="kawaii"
-          size="lg"
-          className="rounded-full w-16 h-16 shadow-2xl animate-bounce-slow"
-          onClick={() => setActiveTab("download")}
-        >
-          <Download className="w-6 h-6" />
-        </NeonButton>
-        <NeonButton
-          variant="holographic"
-          size="lg"
-          className="rounded-full w-16 h-16 shadow-2xl animate-pulse-slow"
-          onClick={() => setActiveTab("gallery")}
-        >
-          <Heart className="w-6 h-6 kawaii-heart" />
-        </NeonButton>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <Card className="material-card pulse-node">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Downloads</p>
+                <p className="text-3xl font-bold neon-text">{completedDownloads?.length || 0}</p>
+              </div>
+              <Download className="w-8 h-8 kawaii-heart" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="material-card pulse-node">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Favorites</p>
+                <p className="text-3xl font-bold neon-text">{favorites?.length || 0}</p>
+              </div>
+              <Heart className="w-8 h-8 kawaii-heart animate-pulse-slow" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="material-card pulse-node">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Collections</p>
+                <p className="text-3xl font-bold neon-text">{storageStats?.counts.collections || 0}</p>
+              </div>
+              <Sparkles className="w-8 h-8 kawaii-heart" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
