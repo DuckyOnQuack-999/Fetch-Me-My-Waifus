@@ -635,7 +635,7 @@ class LocalStorageManager {
 }
 
 // Create singleton instance
-export const storage = new LocalStorageManager()
+const storageInstance = new LocalStorageManager()
 
 // Export individual functions for convenience
 export const {
@@ -671,6 +671,63 @@ export const {
   importData,
   clearAllData,
   getStorageStats,
-} = storage
+} = storageInstance
 
-export default storage
+export const storage = {
+  getItem: (key: string): string | null => {
+    if (typeof window === "undefined") return null
+    try {
+      return localStorage.getItem(key)
+    } catch (error) {
+      console.error("localStorage getItem error:", error)
+      return null
+    }
+  },
+
+  setItem: (key: string, value: string): void => {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.setItem(key, value)
+    } catch (error) {
+      console.error("localStorage setItem error:", error)
+    }
+  },
+
+  removeItem: (key: string): void => {
+    if (typeof window === "undefined") return
+    try {
+      localStorage.removeItem(key)
+    } catch (error) {
+      console.error("localStorage removeItem error:", error)
+    }
+  },
+
+  getSettings: () => {
+    const settings = storage.getItem("waifu-downloader-settings")
+    return settings ? JSON.parse(settings) : {}
+  },
+
+  saveSettings: (settings: any) => {
+    storage.setItem("waifu-downloader-settings", JSON.stringify(settings))
+  },
+
+  getImages: () => {
+    const images = storage.getItem("waifu-downloader-images")
+    return images ? JSON.parse(images) : []
+  },
+
+  saveImages: (images: any[]) => {
+    storage.setItem("waifu-downloader-images", JSON.stringify(images))
+  },
+
+  getFavorites: () => {
+    const favorites = storage.getItem("waifu-downloader-favorites")
+    return favorites ? JSON.parse(favorites) : []
+  },
+
+  saveFavorites: (favorites: any[]) => {
+    storage.setItem("waifu-downloader-favorites", JSON.stringify(favorites))
+  },
+}
+
+export default storageInstance

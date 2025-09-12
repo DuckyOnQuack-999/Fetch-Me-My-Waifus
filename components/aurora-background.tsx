@@ -1,64 +1,69 @@
 "use client"
 
+import { useEffect, useRef } from "react"
+
 export function AuroraBackground() {
-  return (
-    <>
-      {/* Aurora layers - reduced opacity */}
-      <div className="aurora-bg opacity-30" />
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-      {/* Circuit pattern overlay - reduced opacity */}
-      <div className="circuit-pattern opacity-20" />
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-      {/* Floating orbs - reduced size and opacity */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div
-          className="absolute w-64 h-64 rounded-full opacity-5 animate-pulse-slow"
-          style={{
-            background: "radial-gradient(circle, #ff0066 0%, transparent 70%)",
-            top: "10%",
-            left: "20%",
-            animationDelay: "0s",
-          }}
-        />
-        <div
-          className="absolute w-48 h-48 rounded-full opacity-8 animate-pulse-slow"
-          style={{
-            background: "radial-gradient(circle, #ff3399 0%, transparent 70%)",
-            top: "60%",
-            right: "15%",
-            animationDelay: "2s",
-          }}
-        />
-        <div
-          className="absolute w-56 h-56 rounded-full opacity-4 animate-pulse-slow"
-          style={{
-            background: "radial-gradient(circle, #ff66cc 0%, transparent 70%)",
-            bottom: "20%",
-            left: "30%",
-            animationDelay: "4s",
-          }}
-        />
-      </div>
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
 
-      {/* Energy streams - reduced opacity */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div
-          className="absolute w-1 h-full opacity-10 energy-wave"
-          style={{
-            background: "linear-gradient(to bottom, transparent, #ff0066, transparent)",
-            left: "25%",
-            animationDelay: "1s",
-          }}
-        />
-        <div
-          className="absolute w-1 h-full opacity-8 energy-wave"
-          style={{
-            background: "linear-gradient(to bottom, transparent, #ff3399, transparent)",
-            right: "35%",
-            animationDelay: "3s",
-          }}
-        />
-      </div>
-    </>
-  )
+    let animationId: number
+    let time = 0
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    const drawAurora = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      const gradient1 = ctx.createRadialGradient(
+        canvas.width * 0.2 + Math.sin(time * 0.01) * 100,
+        canvas.height * 0.3 + Math.cos(time * 0.008) * 50,
+        0,
+        canvas.width * 0.2,
+        canvas.height * 0.3,
+        canvas.width * 0.6,
+      )
+      gradient1.addColorStop(0, "rgba(255, 0, 102, 0.1)")
+      gradient1.addColorStop(1, "transparent")
+
+      const gradient2 = ctx.createRadialGradient(
+        canvas.width * 0.8 + Math.cos(time * 0.012) * 80,
+        canvas.height * 0.7 + Math.sin(time * 0.01) * 60,
+        0,
+        canvas.width * 0.8,
+        canvas.height * 0.7,
+        canvas.width * 0.5,
+      )
+      gradient2.addColorStop(0, "rgba(255, 105, 180, 0.08)")
+      gradient2.addColorStop(1, "transparent")
+
+      ctx.fillStyle = gradient1
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.fillStyle = gradient2
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      time++
+      animationId = requestAnimationFrame(drawAurora)
+    }
+
+    resizeCanvas()
+    window.addEventListener("resize", resizeCanvas)
+    drawAurora()
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas)
+      cancelAnimationFrame(animationId)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" style={{ opacity: 0.6 }} />
 }

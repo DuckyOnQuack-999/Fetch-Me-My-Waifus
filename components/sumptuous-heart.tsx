@@ -1,77 +1,47 @@
 "use client"
-
-import { motion } from "framer-motion"
-import { Heart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SumptuousHeartProps {
-  className?: string
   size?: number
-  fill?: boolean
-  animated?: boolean
+  className?: string
   glowing?: boolean
+  animated?: boolean
 }
 
-export function SumptuousHeart({
-  className,
-  size = 24,
-  fill = false,
-  animated = true,
-  glowing = true,
-}: SumptuousHeartProps) {
-  const heartVariants = {
-    initial: { scale: 0, rotate: -180 },
-    animate: {
-      scale: 1,
-      rotate: 0,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 15,
-      },
-    },
-    hover: {
-      scale: 1.2,
-      rotate: [0, -10, 10, 0],
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 10,
-        rotate: {
-          duration: 0.5,
-          ease: "easeInOut",
-        },
-      },
-    },
-    pulse: {
-      scale: [1, 1.1, 1],
-      transition: {
-        duration: 1.5,
-        repeat: Number.POSITIVE_INFINITY,
-        ease: "easeInOut",
-      },
-    },
-  }
-
-  const HeartComponent = animated ? motion.div : "div"
-
+export function SumptuousHeart({ size = 24, className, glowing = false, animated = true }: SumptuousHeartProps) {
   return (
-    <HeartComponent
-      className={cn("inline-flex items-center justify-center cursor-pointer", glowing && "kawaii-heart", className)}
-      variants={animated ? heartVariants : undefined}
-      initial={animated ? "initial" : undefined}
-      animate={animated ? ["animate", "pulse"] : undefined}
-      whileHover={animated ? "hover" : undefined}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn(
+        "kawaii-heart",
+        animated && "animate-pulse-slow",
+        glowing && "drop-shadow-[0_0_10px_var(--neon-primary)]",
+        className,
+      )}
     >
-      <Heart
-        size={size}
-        fill={fill ? "currentColor" : "none"}
-        className={cn(
-          "transition-all duration-300",
-          glowing && "drop-shadow-[0_0_8px_var(--neon-primary)]",
-          fill && "text-[var(--neon-primary)]",
-        )}
+      <defs>
+        <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--neon-primary)" />
+          <stop offset="50%" stopColor="var(--neon-secondary)" />
+          <stop offset="100%" stopColor="var(--neon-accent)" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <path
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+        fill="url(#heartGradient)"
+        filter={glowing ? "url(#glow)" : undefined}
       />
-    </HeartComponent>
+    </svg>
   )
 }

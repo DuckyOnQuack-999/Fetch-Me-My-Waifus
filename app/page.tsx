@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Download, Heart, ImageIcon, Settings, Zap, TrendingUp } from "lucide-react"
 import { motion } from "framer-motion"
-import { SidebarInset } from "@/components/ui/sidebar"
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { ApiStatusIndicator } from "@/components/api-status-indicator"
@@ -16,6 +16,20 @@ import { GalleryTab } from "@/components/gallery-tab"
 import { SettingsTab } from "@/components/settings-tab"
 import { useStorage } from "@/context/storageContext"
 import { useDownload } from "@/context/downloadContext"
+import { Suspense } from "react"
+import { Separator } from "@/components/ui/separator"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
+
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground neon-text">Loading your kawaii experience...</p>
+      </div>
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { images, favorites } = useStorage()
@@ -57,7 +71,21 @@ export default function HomePage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-pink-500/20 px-4 glass-effect">
+          <SidebarTrigger className="-ml-1 kawaii-heart" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage className="neon-text">Dashboard</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <Suspense fallback={<LoadingFallback />}>
+            <HomeDashboard />
+          </Suspense>
           <div className="w-full">
             <ApiStatusIndicator />
           </div>
