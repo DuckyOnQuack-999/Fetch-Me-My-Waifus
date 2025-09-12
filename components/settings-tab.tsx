@@ -15,6 +15,7 @@ import { Download, Upload, RefreshCw, Key, Folder, Palette, Bell, Database, Sett
 import { useSettings } from "@/context/settingsContext"
 import { toast } from "sonner"
 import type { ApiSource, ThemeMode, Language } from "@/types/waifu"
+import { SumptuousHeart } from "@/components/sumptuous-heart"
 
 export function SettingsTab() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings } = useSettings()
@@ -76,17 +77,29 @@ export function SettingsTab() {
 
       <Tabs defaultValue="api" className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="api">API</TabsTrigger>
-          <TabsTrigger value="download">Download</TabsTrigger>
-          <TabsTrigger value="appearance">UI</TabsTrigger>
-          <TabsTrigger value="notifications">Alerts</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-          <TabsTrigger value="backup">Backup</TabsTrigger>
+          <TabsTrigger value="api">
+            API <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
+          <TabsTrigger value="download">
+            Download <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
+          <TabsTrigger value="appearance">
+            UI <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            Alerts <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
+          <TabsTrigger value="advanced">
+            Advanced <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
+          <TabsTrigger value="backup">
+            Backup <SumptuousHeart size={16} className="ml-1" />
+          </TabsTrigger>
         </TabsList>
 
         {/* API Settings */}
         <TabsContent value="api" className="space-y-6">
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
@@ -170,7 +183,7 @@ export function SettingsTab() {
 
         {/* Download Settings */}
         <TabsContent value="download" className="space-y-6">
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="h-5 w-5" />
@@ -300,7 +313,7 @@ export function SettingsTab() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle>Image Quality & Format</CardTitle>
               <CardDescription>Set preferences for image quality and file formats</CardDescription>
@@ -377,7 +390,7 @@ export function SettingsTab() {
 
         {/* Appearance Settings */}
         <TabsContent value="appearance" className="space-y-6">
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />
@@ -493,7 +506,7 @@ export function SettingsTab() {
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-6">
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -574,7 +587,7 @@ export function SettingsTab() {
         </TabsContent>
 
         {/* Advanced Settings */}
-        <TabsContent value="advanced" className="space-y-6">
+        <TabsContent value="advanced" className="material-card space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -661,7 +674,7 @@ export function SettingsTab() {
 
         {/* Backup & Import */}
         <TabsContent value="backup" className="space-y-6">
-          <Card>
+          <Card className="material-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />

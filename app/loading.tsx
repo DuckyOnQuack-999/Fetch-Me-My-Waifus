@@ -1,60 +1,61 @@
-"use client"
-
-import { Card } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { WaifuDownloaderLogo } from "@/components/waifu-downloader-logo"
-import { motion } from "framer-motion"
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 min-h-screen bg-background">
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        <Skeleton className="aspect-video rounded-xl" />
-        <Skeleton className="aspect-video rounded-xl" />
-        <Skeleton className="aspect-video rounded-xl" />
-      </div>
-      <div className="min-h-[100vh] flex-1 rounded-xl">
-        <Skeleton className="h-full w-full" />
-      </div>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md mt-auto"
-      >
-        <Card className="p-8 text-center space-y-6">
-          <div className="flex justify-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-            >
-              <WaifuDownloaderLogo className="h-16 w-16" />
-            </motion.div>
-          </div>
-
+    <div className="min-h-screen bg-background">
+      <div className="flex">
+        {/* Sidebar Skeleton */}
+        <div className="w-64 border-r bg-muted/10 p-4 space-y-4">
+          <Skeleton className="h-8 w-32" />
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">Loading Waifu Downloader</h2>
-            <p className="text-muted-foreground">Preparing your anime collection...</p>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content Skeleton */}
+        <div className="flex-1 p-8 space-y-6">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96" />
           </div>
 
-          <div className="flex justify-center">
-            <div className="flex space-x-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 bg-primary rounded-full"
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: Number.POSITIVE_INFINITY,
-                    delay: i * 0.2,
-                  }}
-                />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-6 w-12" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-0">
+                    <Skeleton className="aspect-square w-full" />
+                    <div className="p-3 space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
-        </Card>
-      </motion.div>
+        </div>
+      </div>
     </div>
   )
 }

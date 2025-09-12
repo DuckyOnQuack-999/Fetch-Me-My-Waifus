@@ -20,6 +20,7 @@ import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+import { SumptuousHeart } from "@/components/sumptuous-heart"
 
 // This is sample data.
 const data = {
@@ -168,6 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
+        <SumptuousHeart size={30} className="ml-2" />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

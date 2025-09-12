@@ -124,25 +124,18 @@ const DEFAULT_SETTINGS: Settings = {
 
 interface SettingsContextType {
   settings: Settings
+  updateSettings: (updates: Partial<Settings>) => void
+  resetSettings: () => void
+  exportSettings: () => string
+  importSettings: (settingsJson: string) => boolean
   isLoading: boolean
-  error: string | null
-  saveSettings: (newSettings: Partial<Settings>) => boolean
-  updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => boolean
-  resetSettings: () => boolean
-  exportSettings: () => boolean
-  importSettings: (file: File) => Promise<boolean>
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
-interface SettingsProviderProps {
-  children: ReactNode
-}
-
-export function SettingsProvider({ children }: SettingsProviderProps) {
+export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -153,7 +146,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         setSettings(mergedSettings)
       } catch (error) {
         console.error("Failed to load settings:", error)
-        setError("Failed to load settings")
         setSettings(DEFAULT_SETTINGS)
       } finally {
         setIsLoading(false)
@@ -163,118 +155,78 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     loadSettings()
   }, [])
 
-  // Save settings to localStorage
-  const saveSettings = (newSettings: Partial<Settings>): boolean => {
+  // Update settings
+  const updateSettings = (updates: Partial<Settings>) => {
+    const newSettings = { ...settings, ...updates }
+    setSettings(newSettings)
+
+    // Save to localStorage
     try {
-      const updatedSettings = { ...settings, ...newSettings }
-      setSettings(updatedSettings)
-      storage.saveSettings(updatedSettings)
-      return true
+      storage.saveSettings(newSettings)
     } catch (error) {
       console.error("Failed to save settings:", error)
-      setError("Failed to save settings")
-      return false
-    }
-  }
-
-  // Update a specific setting
-  const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]): boolean => {
-    try {
-      const updatedSettings = { ...settings, [key]: value }
-      setSettings(updatedSettings)
-      storage.saveSettings(updatedSettings)
-      return true
-    } catch (error) {
-      console.error("Failed to update setting:", error)
-      setError("Failed to update setting")
-      return false
     }
   }
 
   // Reset to defaults
-  const resetSettings = (): boolean => {
+  const resetSettings = () => {
+    setSettings(DEFAULT_SETTINGS)
     try {
-      setSettings(DEFAULT_SETTINGS)
       storage.saveSettings(DEFAULT_SETTINGS)
-      return true
     } catch (error) {
       console.error("Failed to reset settings:", error)
-      setError("Failed to reset settings")
-      return false
     }
   }
 
   // Export settings as JSON string
-  const exportSettings = (): boolean => {
+  const exportSettings = (): string => {
     try {
-      const settingsJson = JSON.stringify(settings, null, 2)
-      const blob = new Blob([settingsJson], { type: "application/json" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "settings.json"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      return true
+      return JSON.stringify(settings, null, 2)
     } catch (error) {
       console.error("Failed to export settings:", error)
-      setError("Failed to export settings")
-      return false
+      return "{}"
     }
   }
 
-  // Import settings from JSON file
-  const importSettings = async (file: File): Promise<boolean> => {
+  // Import settings from JSON string
+  const importSettings = (settingsJson: string): boolean => {
     try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const settingsJson = e.target?.result as string
-        const importedSettings = JSON.parse(settingsJson)
+      const importedSettings = JSON.parse(settingsJson)
 
-        // Validate imported settings
-        if (typeof importedSettings !== "object" || importedSettings === null) {
-          setError("Invalid settings format")
-          return false
-        }
-
-        // Merge with defaults to ensure all required fields exist
-        const validatedSettings = { ...DEFAULT_SETTINGS, ...importedSettings }
-
-        setSettings(validatedSettings)
-        storage.saveSettings(validatedSettings)
+      // Validate imported settings
+      if (typeof importedSettings !== "object" || importedSettings === null) {
+        return false
       }
-      reader.readAsText(file)
+
+      // Merge with defaults to ensure all required fields exist
+      const validatedSettings = { ...DEFAULT_SETTINGS, ...importedSettings }
+
+      setSettings(validatedSettings)
+      storage.saveSettings(validatedSettings)
+
       return true
     } catch (error) {
       console.error("Failed to import settings:", error)
-      setError("Failed to import settings")
       return false
     }
   }
 
   const contextValue: SettingsContextType = {
     settings,
-    isLoading,
-    error,
-    saveSettings,
-    updateSetting,
+    updateSettings,
     resetSettings,
     exportSettings,
     importSettings,
+    isLoading,
   }
 
   return <SettingsContext.Provider value={contextValue}>{children}</SettingsContext.Provider>
 }
 
-export function useSettingsContext() {
+export function useSettings() {
   const context = useContext(SettingsContext)
   if (context === undefined) {
-    throw new Error("useSettingsContext must be used within a SettingsProvider")
+    throw new Error("useSettings must be used within a SettingsProvider")
   }
   return context
 }
-
-// Export for backward compatibility
-export { useSettingsContext as useSettings }
