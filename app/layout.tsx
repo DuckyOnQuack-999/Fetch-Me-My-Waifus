@@ -1,71 +1,37 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import { Analytics } from "@vercel/analytics/next"
+import { UnifiedBackground } from "@/components/unified-background"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/sonner"
-import { SettingsProvider } from "@/context/settingsContext"
-import { StorageProvider } from "@/context/storageContext"
-import { DownloadProvider } from "@/context/downloadContext"
-import { ErrorBoundary } from "@/components/error-boundary"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { ParticleSystem } from "@/components/particle-system"
-import { AuroraBackground } from "@/components/aurora-background"
-import { InteractiveBackground } from "@/components/interactive-background"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Waifu Downloader - AI-Powered Anime Image Fetcher",
-  description: "Download high-quality anime images from multiple APIs with advanced filtering and management features",
-  keywords: ["anime", "waifu", "images", "downloader", "gallery", "collection"],
-  authors: [{ name: "Waifu Downloader Team" }],
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ec4899" },
-    { media: "(prefers-color-scheme: dark)", color: "#ec4899" },
-  ],
-    generator: 'v0.app'
+  title: "v0 App",
+  description: "Created with v0",
+  generator: "v0.app",
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-            <SettingsProvider>
-              <StorageProvider>
-                <DownloadProvider>
-                  <SidebarProvider>
-                    {/* Background Effects */}
-                    <AuroraBackground />
-                    <InteractiveBackground />
-                    <ParticleSystem particleCount={75} interactive={true} />
-
-                    <div className="min-h-screen bg-background relative z-10">{children}</div>
-                    <Toaster
-                      position="bottom-right"
-                      toastOptions={{
-                        style: {
-                          background: "rgba(255, 105, 180, 0.1)",
-                          backdropFilter: "blur(10px)",
-                          border: "1px solid rgba(255, 105, 180, 0.3)",
-                          color: "hsl(var(--foreground))",
-                          boxShadow: "0 0 20px rgba(255, 105, 180, 0.3)",
-                        },
-                      }}
-                    />
-                  </SidebarProvider>
-                </DownloadProvider>
-              </StorageProvider>
-            </SettingsProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
+    <html lang="en">
+      <head>
+        <style>{`
+html {
+  font-family: ${GeistSans.style.fontFamily};
+  --font-sans: ${GeistSans.variable};
+  --font-mono: ${GeistMono.variable};
+}
+        `}</style>
+      </head>
+      <body>
+        <UnifiedBackground enableParticles={true} enableAurora={true} enableInteractive={false} intensity="medium" />
+        {children}
+        <Analytics />
       </body>
     </html>
   )

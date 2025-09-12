@@ -268,7 +268,7 @@ export function ParticleSystem({ className = "", particleCount = 50, interactive
     <canvas
       ref={canvasRef}
       className={`fixed inset-0 pointer-events-${interactive ? "auto" : "none"} z-0 ${className}`}
-      style={{ mixBlendMode: "screen" }}
+      style={{ mixBlendMode: "normal", opacity: 0.7 }}
     />
   )
 }

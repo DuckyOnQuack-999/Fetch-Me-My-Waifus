@@ -95,7 +95,7 @@ export function InteractiveBackground() {
       ctx.shadowBlur = 10
 
       nodes.forEach((node) => {
-        ctx.globalAlpha = 0.6
+        ctx.globalAlpha = 0.3 // Reduced opacity
         ctx.beginPath()
         ctx.arc(node.x, node.y, 2, 0, Math.PI * 2)
         ctx.fill()
@@ -119,5 +119,5 @@ export function InteractiveBackground() {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" style={{ mixBlendMode: "screen" }} />
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-30" />
 }
