@@ -1,127 +1,37 @@
 "use client"
+import { ParticleSystem } from "./particle-system"
 
 export function AnimatedBackground() {
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {/* Matrix Rain Effect */}
+    <div className="fixed inset-0 pointer-events-none z-[-10] overflow-hidden">
+      {/* Matrix rain effect */}
       <div className="matrix-rain" />
 
-      {/* Circuit Pattern */}
-      <div className="circuit-pattern absolute inset-0" />
+      {/* Floating hearts */}
+      <div className="floating-hearts" />
 
-      {/* Floating Geometric Shapes */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`,
-            }}
-          >
-            <div
-              className="w-2 h-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full opacity-30"
-              style={{
-                boxShadow: "0 0 10px currentColor",
-              }}
-            />
-          </div>
-        ))}
-      </div>
+      {/* Circuit pattern */}
+      <div className="circuit-pattern" />
 
-      {/* Pulsing Orbs */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse-slow"
-            style={{
-              left: `${20 + i * 15}%`,
-              top: `${30 + Math.sin(i) * 40}%`,
-              animationDelay: `${i * 0.5}s`,
-            }}
-          >
-            <div
-              className="w-32 h-32 rounded-full opacity-10"
-              style={{
-                background: `radial-gradient(circle, var(--neon-primary) 0%, transparent 70%)`,
-              }}
-            />
-          </div>
-        ))}
-      </div>
+      {/* Cyber grid */}
+      <div className="cyber-grid" />
 
-      {/* Scan Lines */}
-      <div className="scan-lines absolute inset-0" />
+      {/* Particle system */}
+      <ParticleSystem particleCount={30} />
 
-      {/* Energy Waves */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-full h-px opacity-20"
-            style={{
-              top: `${20 + i * 20}%`,
-              background: `linear-gradient(90deg, transparent, var(--neon-primary), transparent)`,
-              animation: `slideRight ${4 + i}s ease-in-out infinite`,
-              animationDelay: `${i * 0.8}s`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Additional animated layers */}
+      <div className="absolute inset-0 quantum-particles" />
 
-      {/* Floating Hearts */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 15 }).map((_, i) => (
-          <div
-            key={i}
-            className="floating-heart"
-            style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 8}s`,
-              fontSize: `${0.8 + Math.random() * 1}rem`,
-            }}
-          >
-            ♡
-          </div>
-        ))}
-      </div>
-
-      {/* Holographic Grid */}
+      {/* Gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 blur-3xl animate-pulse-slow" />
       <div
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255, 105, 180, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 105, 180, 0.3) 1px, transparent 1px)
-          `,
-          backgroundSize: "50px 50px",
-          animation: "gridPulse 8s ease-in-out infinite",
-        }}
+        className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10 blur-3xl animate-pulse-slow"
+        style={{ animationDelay: "-1s" }}
       />
-
-      <style jsx>{`
-        @keyframes slideRight {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100vw);
-          }
-        }
-
-        @keyframes gridPulse {
-          0%, 100% {
-            opacity: 0.05;
-          }
-          50% {
-            opacity: 0.15;
-          }
-        }
-      `}</style>
+      <div
+        className="absolute top-1/2 right-1/3 w-32 h-32 rounded-full bg-gradient-to-r from-blue-500/10 to-pink-500/10 blur-2xl animate-bounce-slow"
+        style={{ animationDelay: "-2s" }}
+      />
     </div>
   )
 }

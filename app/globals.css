@@ -105,7 +105,7 @@
     overflow-x: hidden;
   }
 
-  /* Advanced Particle System */
+  /* Advanced Multi-Layer Particle Background */
   body::before {
     content: "";
     position: fixed;
@@ -113,15 +113,20 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at 20% 80%, rgba(255, 102, 204, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 0, 102, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(255, 51, 153, 0.1) 0%, transparent 50%);
+    background: radial-gradient(2px 2px at 20px 30px, var(--neon-primary), transparent),
+      radial-gradient(2px 2px at 40px 70px, var(--neon-secondary), transparent),
+      radial-gradient(1px 1px at 90px 40px, var(--neon-accent), transparent),
+      radial-gradient(1px 1px at 130px 80px, var(--neon-primary), transparent),
+      radial-gradient(2px 2px at 160px 30px, var(--neon-secondary), transparent);
+    background-repeat: repeat;
+    background-size: 200px 100px, 150px 120px, 180px 90px, 220px 110px, 170px 95px;
+    animation: particleField 25s linear infinite, particleGlow 8s ease-in-out infinite;
     pointer-events: none;
     z-index: -1;
-    animation: particleFloat 20s ease-in-out infinite;
+    opacity: 0.4;
   }
 
-  /* Floating Hearts Background */
+  /* Secondary particle layer */
   body::after {
     content: "";
     position: fixed;
@@ -129,41 +134,57 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: radial-gradient(2px 2px at 20px 30px, var(--neon-primary), transparent),
-      radial-gradient(2px 2px at 40px 70px, var(--neon-secondary), transparent),
-      radial-gradient(1px 1px at 90px 40px, var(--neon-accent), transparent),
-      radial-gradient(1px 1px at 130px 80px, var(--neon-primary), transparent),
-      radial-gradient(2px 2px at 160px 30px, var(--neon-secondary), transparent);
-    background-repeat: repeat;
-    background-size: 200px 100px;
+    background: radial-gradient(circle at 10% 20%, rgba(255, 102, 204, 0.15) 0%, transparent 30%),
+      radial-gradient(circle at 80% 80%, rgba(255, 0, 102, 0.1) 0%, transparent 40%),
+      radial-gradient(circle at 40% 40%, rgba(255, 51, 153, 0.08) 0%, transparent 35%),
+      radial-gradient(circle at 70% 20%, rgba(255, 105, 180, 0.12) 0%, transparent 25%),
+      radial-gradient(circle at 30% 70%, rgba(255, 20, 147, 0.1) 0%, transparent 30%);
     pointer-events: none;
-    z-index: -1;
-    opacity: 0.3;
-    animation: starField 60s linear infinite;
+    z-index: -2;
+    animation: nebulaDrift 30s ease-in-out infinite;
   }
 
-  @keyframes particleFloat {
+  @keyframes particleField {
+    0% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+      transform: translate(-50px, -100px) rotate(90deg);
+    }
+    50% {
+      transform: translate(-100px, -50px) rotate(180deg);
+    }
+    75% {
+      transform: translate(-50px, -200px) rotate(270deg);
+    }
+    100% {
+      transform: translate(0, 0) rotate(360deg);
+    }
+  }
+
+  @keyframes particleGlow {
     0%,
     100% {
-      transform: translateY(0px) rotate(0deg);
       opacity: 0.3;
     }
-    33% {
-      transform: translateY(-20px) rotate(120deg);
-      opacity: 0.6;
-    }
-    66% {
-      transform: translateY(-10px) rotate(240deg);
-      opacity: 0.4;
+    50% {
+      opacity: 0.7;
     }
   }
 
-  @keyframes starField {
-    0% {
-      transform: translateY(0);
-    }
+  @keyframes nebulaDrift {
+    0%,
     100% {
-      transform: translateY(-100px);
+      transform: scale(1) rotate(0deg);
+      filter: hue-rotate(0deg);
+    }
+    33% {
+      transform: scale(1.1) rotate(120deg);
+      filter: hue-rotate(60deg);
+    }
+    66% {
+      transform: scale(0.9) rotate(240deg);
+      filter: hue-rotate(180deg);
     }
   }
 }
@@ -182,121 +203,40 @@
   .material-card::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
-    transition: left 0.5s ease;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--neon-primary) 90deg,
+      transparent 180deg,
+      var(--neon-secondary) 270deg,
+      transparent 360deg
+    );
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    animation: cardGlow 3s linear infinite;
   }
 
   .material-card:hover::before {
-    left: 100%;
+    opacity: 0.1;
   }
 
   .material-card:hover {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 20px
       hsl(var(--neon-primary)) / 0.3;
     border-color: hsl(var(--neon-primary)) / 0.6;
+    transform: translateY(-2px) scale(1.01);
   }
 
-  /* Advanced Particle Effects */
-  .particle-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-    overflow: hidden;
-  }
-
-  .floating-heart {
-    position: absolute;
-    color: var(--neon-primary);
-    font-size: 1.5rem;
-    opacity: 0.7;
-    animation: floatUp 8s linear infinite;
-    filter: drop-shadow(0 0 10px var(--neon-primary));
-  }
-
-  .floating-heart:nth-child(2n) {
-    animation-delay: -2s;
-    color: var(--neon-secondary);
-    filter: drop-shadow(0 0 10px var(--neon-secondary));
-  }
-
-  .floating-heart:nth-child(3n) {
-    animation-delay: -4s;
-    color: var(--neon-accent);
-    filter: drop-shadow(0 0 10px var(--neon-accent));
-  }
-
-  .floating-heart:nth-child(4n) {
-    animation-delay: -6s;
-    font-size: 1rem;
-  }
-
-  @keyframes floatUp {
+  @keyframes cardGlow {
     0% {
-      transform: translateY(100vh) rotate(0deg);
-      opacity: 0;
-    }
-    10% {
-      opacity: 0.7;
-    }
-    90% {
-      opacity: 0.7;
+      transform: rotate(0deg);
     }
     100% {
-      transform: translateY(-100px) rotate(360deg);
-      opacity: 0;
-    }
-  }
-
-  .sparkle-effect {
-    position: relative;
-    overflow: visible;
-  }
-
-  .sparkle-effect::before,
-  .sparkle-effect::after {
-    content: "✨";
-    position: absolute;
-    color: var(--neon-accent);
-    font-size: 0.8rem;
-    opacity: 0;
-    pointer-events: none;
-    animation: sparkle 2s ease-in-out infinite;
-  }
-
-  .sparkle-effect::before {
-    top: -10px;
-    left: -10px;
-    animation-delay: 0s;
-  }
-
-  .sparkle-effect::after {
-    bottom: -10px;
-    right: -10px;
-    animation-delay: 1s;
-  }
-
-  .sparkle-effect:hover::before,
-  .sparkle-effect:hover::after {
-    opacity: 1;
-  }
-
-  @keyframes sparkle {
-    0%,
-    100% {
-      transform: scale(0) rotate(0deg);
-      opacity: 0;
-    }
-    50% {
-      transform: scale(1) rotate(180deg);
-      opacity: 1;
+      transform: rotate(360deg);
     }
   }
 
@@ -308,96 +248,336 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: -1;
-    background: linear-gradient(180deg, transparent 0%, rgba(255, 105, 180, 0.03) 50%, transparent 100%);
-    animation: matrixScroll 20s linear infinite;
+    z-index: -3;
+    overflow: hidden;
   }
 
-  @keyframes matrixScroll {
+  .matrix-rain::before {
+    content: "♡ ♥ ❤ 💖 💕 ✨ ⭐ 🌟 💫 🎀 🎈 🌸 🌺 🦄 🌙 ⚡";
+    position: absolute;
+    top: -100%;
+    left: 0;
+    width: 100%;
+    height: 200%;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--neon-primary);
+    opacity: 0.3;
+    white-space: pre-wrap;
+    animation: matrixFall 15s linear infinite;
+  }
+
+  @keyframes matrixFall {
     0% {
-      background-position: 0% 0%;
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.3;
+    }
+    90% {
+      opacity: 0.3;
     }
     100% {
-      background-position: 0% 100%;
+      transform: translateY(100vh);
+      opacity: 0;
     }
   }
 
-  /* Circuit Board Pattern */
-  .circuit-pattern {
-    position: relative;
-  }
-
-  .circuit-pattern::before {
-    content: "";
-    position: absolute;
+  /* Floating Hearts Animation */
+  .floating-hearts {
+    position: fixed;
+    width: 100%;
+    height: 100%;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: linear-gradient(90deg, var(--neon-primary) 1px, transparent 1px),
-      linear-gradient(180deg, var(--neon-primary) 1px, transparent 1px);
-    background-size: 20px 20px;
-    opacity: 0.1;
     pointer-events: none;
-    animation: circuitPulse 4s ease-in-out infinite;
+    z-index: -1;
+  }
+
+  .floating-hearts::before,
+  .floating-hearts::after {
+    content: "♡";
+    position: absolute;
+    font-size: 20px;
+    color: var(--neon-primary);
+    text-shadow: 0 0 10px var(--neon-primary);
+    animation: floatHeart 12s infinite linear;
+  }
+
+  .floating-hearts::before {
+    left: 10%;
+    animation-delay: -2s;
+  }
+
+  .floating-hearts::after {
+    left: 80%;
+    animation-delay: -8s;
+    font-size: 16px;
+  }
+
+  @keyframes floatHeart {
+    0% {
+      transform: translateY(100vh) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-100px) rotate(360deg);
+      opacity: 0;
+    }
+  }
+
+  /* Circuit Pattern Background */
+  .circuit-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+        90deg,
+        transparent 79px,
+        var(--neon-primary) 81px,
+        var(--neon-primary) 82px,
+        transparent 84px
+      ), linear-gradient(var(--neon-secondary) 0.5px, transparent 0.5px),
+      linear-gradient(90deg, var(--neon-accent) 0.5px, transparent 0.5px);
+    background-size: 80px 80px, 20px 20px, 20px 20px;
+    opacity: 0.05;
+    animation: circuitPulse 8s ease-in-out infinite;
+    pointer-events: none;
   }
 
   @keyframes circuitPulse {
     0%,
     100% {
-      opacity: 0.1;
+      opacity: 0.03;
     }
     50% {
-      opacity: 0.3;
+      opacity: 0.08;
     }
   }
 
-  /* Holographic Scan Lines */
-  .scan-lines {
+  /* Sparkle Trail Effect */
+  .sparkle-trail {
+    position: relative;
+  }
+
+  .sparkle-trail::after {
+    content: "✨";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    animation: sparkleTrail 2s ease-out;
+  }
+
+  .sparkle-trail:hover::after {
+    animation: sparkleExplode 0.6s ease-out;
+  }
+
+  @keyframes sparkleTrail {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+    }
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
+  }
+
+  @keyframes sparkleExplode {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(3) rotate(180deg);
+    }
+  }
+
+  /* Glow Pulse Animation */
+  .glow-pulse {
+    position: relative;
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%,
+    100% {
+      box-shadow: 0 0 5px var(--neon-primary);
+    }
+    50% {
+      box-shadow: 0 0 20px var(--neon-primary), 0 0 30px var(--neon-secondary);
+    }
+  }
+
+  /* Energy Wave Effect */
+  .energy-wave {
     position: relative;
     overflow: hidden;
   }
 
-  .scan-lines::after {
+  .energy-wave::before {
     content: "";
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 105, 180, 0.1) 2px,
-      rgba(255, 105, 180, 0.1) 4px
-    );
-    pointer-events: none;
-    animation: scanMove 2s linear infinite;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.4), transparent);
+    animation: energyWave 3s ease-in-out infinite;
   }
 
-  @keyframes scanMove {
+  @keyframes energyWave {
     0% {
-      transform: translateY(-100%);
+      left: -100%;
+    }
+    50% {
+      left: 100%;
     }
     100% {
-      transform: translateY(100%);
+      left: 100%;
     }
   }
 
-  .glow {
-    @apply relative overflow-hidden;
+  /* Holographic Shimmer */
+  .holographic-shimmer {
+    background: linear-gradient(
+      45deg,
+      var(--neon-primary) 0%,
+      var(--neon-secondary) 25%,
+      var(--neon-accent) 50%,
+      var(--neon-secondary) 75%,
+      var(--neon-primary) 100%
+    );
+    background-size: 400% 400%;
+    animation: holographicShimmer 4s ease infinite;
+    position: relative;
   }
 
-  .glow::before {
+  .holographic-shimmer::after {
     content: "";
-    @apply absolute inset-0 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-blue-500/20 opacity-0 transition-opacity duration-300;
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    filter: blur(2px);
+    opacity: 0.5;
+    z-index: -1;
   }
 
-  .glow:hover::before {
-    @apply opacity-100;
+  @keyframes holographicShimmer {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
+  /* Cyber Grid */
+  .cyber-grid {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255, 105, 180, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 105, 180, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: cyberGrid 10s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes cyberGrid {
+    0% {
+      transform: translate(0, 0);
+    }
+    100% {
+      transform: translate(50px, 50px);
+    }
+  }
+
+  /* DNA Helix Effect */
+  .dna-helix {
+    position: relative;
+  }
+
+  .dna-helix::before,
+  .dna-helix::after {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(var(--neon-primary), var(--neon-secondary));
+    left: 50%;
+    top: 0;
+    transform-origin: center;
+  }
+
+  .dna-helix::before {
+    animation: dnaRotate 4s linear infinite;
+  }
+
+  .dna-helix::after {
+    animation: dnaRotate 4s linear infinite reverse;
+  }
+
+  @keyframes dnaRotate {
+    0% {
+      transform: translateX(-50%) rotateY(0deg);
+    }
+    100% {
+      transform: translateX(-50%) rotateY(360deg);
+    }
+  }
+
+  /* Quantum Particles */
+  .quantum-particles {
+    position: relative;
+  }
+
+  .quantum-particles::before {
+    content: "⚛ 🔬 🧬 💫 ⭐ ✨";
+    position: absolute;
+    inset: 0;
+    font-size: 12px;
+    color: var(--neon-accent);
+    white-space: pre;
+    animation: quantumFloat 8s ease-in-out infinite;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  @keyframes quantumFloat {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-10px) rotate(90deg);
+    }
+    50% {
+      transform: translateY(0) rotate(180deg);
+    }
+    75% {
+      transform: translateY(-5px) rotate(270deg);
+    }
+  }
+
+  /* Existing styles with enhancements... */
   .text-gradient {
     background: linear-gradient(45deg, var(--neon-primary), var(--neon-secondary), var(--neon-accent));
     background-size: 200% 200%;
@@ -405,6 +585,20 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: gradientShift 3s ease infinite;
+    position: relative;
+  }
+
+  .text-gradient::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: blur(2px);
+    opacity: 0.5;
+    z-index: -1;
   }
 
   @keyframes gradientShift {
@@ -419,7 +613,6 @@
     }
   }
 
-  /* Enhanced Animations */
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
@@ -448,45 +641,28 @@
     animation: scaleIn 0.2s ease-out;
   }
 
-  .animate-wiggle {
-    animation: wiggle 1s ease-in-out infinite;
-  }
-
-  @keyframes wiggle {
-    0%,
-    100% {
-      transform: rotate(-3deg);
-    }
-    50% {
-      transform: rotate(3deg);
-    }
-  }
-
-  .animate-heartbeat {
-    animation: heartbeat 1.5s ease-in-out infinite;
-  }
-
-  @keyframes heartbeat {
-    0%,
-    100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.1);
-    }
-  }
-
-  /* Glass Effects */
   .glass-effect {
     background: rgba(255, 105, 180, 0.1);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(15px) saturate(180%);
     border: 1px solid rgba(255, 105, 180, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+  }
+
+  .glass-effect::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(45deg, var(--neon-primary), transparent, var(--neon-secondary));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: subtract;
   }
 
   .dark .glass-effect {
     background: rgba(255, 105, 180, 0.05);
-    backdrop-filter: blur(15px);
+    backdrop-filter: blur(20px) saturate(200%);
     border: 1px solid rgba(255, 105, 180, 0.1);
   }
 
@@ -496,9 +672,18 @@
       linear-gradient(45deg, var(--neon-primary), var(--neon-secondary), var(--neon-accent)) border-box;
     border: 2px solid transparent;
     border-radius: 0.75rem;
+    animation: gradientBorderRotate 6s linear infinite;
   }
 
-  /* Cyber Button Effects */
+  @keyframes gradientBorderRotate {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(360deg);
+    }
+  }
+
   .cyber-button {
     background: linear-gradient(135deg, var(--neon-primary), var(--neon-secondary));
     border: 2px solid var(--neon-accent);
@@ -521,8 +706,17 @@
     transition: transform 0.5s ease-out;
   }
 
+  .cyber-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+
   .cyber-button:hover {
-    box-shadow: 0 0 20px var(--neon-glow);
+    box-shadow: 0 0 30px var(--neon-glow), inset 0 0 20px rgba(255, 105, 180, 0.1);
     transform: translateY(-2px) scale(1.02);
   }
 
@@ -530,10 +724,26 @@
     transform: scale(1);
   }
 
+  .cyber-button:hover::after {
+    transform: translateX(100%);
+  }
+
   .neon-text {
     color: var(--neon-primary);
     text-shadow: 0 0 5px var(--neon-primary), 0 0 10px var(--neon-primary), 0 0 15px var(--neon-primary);
     transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .neon-text::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    color: var(--neon-primary);
+    text-shadow: 0 0 20px var(--neon-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
   }
 
   .neon-text:hover {
@@ -541,7 +751,10 @@
       var(--neon-primary);
   }
 
-  /* Scrollbar Styling */
+  .neon-text:hover::before {
+    opacity: 1;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--neon-primary) hsl(var(--muted));
@@ -554,33 +767,76 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: hsl(var(--background));
     box-shadow: inset 0 0 5px hsl(var(--muted));
+    border-radius: 4px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: linear-gradient(var(--neon-primary), var(--neon-secondary));
     border-radius: 4px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     box-shadow: 0 0 10px var(--neon-primary);
   }
 
-  /* Kawaii Elements */
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    box-shadow: 0 0 20px var(--neon-primary);
+    background: linear-gradient(var(--neon-secondary), var(--neon-accent));
+  }
+
   .kawaii-heart {
     color: var(--neon-primary);
     filter: drop-shadow(0 0 5px var(--neon-primary));
     transition: all 0.3s ease;
+    animation: heartBeat 2s ease-in-out infinite;
   }
 
   .kawaii-heart:hover {
-    filter: drop-shadow(0 0 15px var(--neon-primary));
-    transform: scale(1.1);
+    filter: drop-shadow(0 0 15px var(--neon-primary)) drop-shadow(0 0 25px var(--neon-secondary));
+    transform: scale(1.2);
+    animation: heartBeatFast 0.5s ease-in-out infinite;
+  }
+
+  @keyframes heartBeat {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes heartBeatFast {
+    0%,
+    100% {
+      transform: scale(1.2);
+    }
+    50% {
+      transform: scale(1.3);
+    }
   }
 
   .glitch-effect {
     animation: glitch 0.3s infinite;
     text-shadow: 3px 3px var(--neon-primary), -3px -3px var(--neon-secondary);
     position: relative;
+  }
+
+  .glitch-effect::before,
+  .glitch-effect::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+  }
+
+  .glitch-effect::before {
+    animation: glitch1 0.3s infinite;
+    color: var(--neon-primary);
+    z-index: -1;
+  }
+
+  .glitch-effect::after {
+    animation: glitch2 0.3s infinite;
+    color: var(--neon-secondary);
+    z-index: -2;
   }
 
   @keyframes glitch {
@@ -604,96 +860,50 @@
     }
   }
 
-  .holographic {
-    background: linear-gradient(
-      45deg,
-      var(--neon-primary) 0%,
-      var(--neon-secondary) 25%,
-      var(--neon-accent) 50%,
-      var(--neon-secondary) 75%,
-      var(--neon-primary) 100%
-    );
-    background-size: 400% 400%;
-    animation: holographicShift 4s ease infinite;
-  }
-
-  @keyframes holographicShift {
+  @keyframes glitch1 {
     0% {
-      background-position: 0% 50%;
+      transform: translate(0);
     }
-    50% {
-      background-position: 100% 50%;
+    20% {
+      transform: translate(-3px, 3px);
+    }
+    40% {
+      transform: translate(-3px, -3px);
+    }
+    60% {
+      transform: translate(3px, 3px);
+    }
+    80% {
+      transform: translate(3px, -3px);
     }
     100% {
-      background-position: 0% 50%;
+      transform: translate(0);
     }
   }
 
-  /* Bubble Effects */
-  .bubble-effect {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .bubble-effect::before {
-    content: "";
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: radial-gradient(circle, var(--neon-accent), transparent);
-    border-radius: 50%;
-    animation: bubbleFloat 6s ease-in-out infinite;
-    opacity: 0.6;
-  }
-
-  @keyframes bubbleFloat {
+  @keyframes glitch2 {
     0% {
-      transform: translateY(100%) scale(0);
-      opacity: 0;
+      transform: translate(0);
     }
-    50% {
-      opacity: 0.6;
-      transform: translateY(50%) scale(1);
+    20% {
+      transform: translate(3px, -3px);
+    }
+    40% {
+      transform: translate(3px, 3px);
+    }
+    60% {
+      transform: translate(-3px, -3px);
+    }
+    80% {
+      transform: translate(-3px, 3px);
     }
     100% {
-      transform: translateY(0%) scale(0);
-      opacity: 0;
-    }
-  }
-
-  /* Energy Pulse Effect */
-  .energy-pulse {
-    position: relative;
-  }
-
-  .energy-pulse::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--neon-primary), transparent);
-    transform: translate(-50%, -50%);
-    animation: energyPulse 2s ease-out infinite;
-  }
-
-  @keyframes energyPulse {
-    0% {
-      width: 0;
-      height: 0;
-      opacity: 1;
-    }
-    100% {
-      width: 200px;
-      height: 200px;
-      opacity: 0;
+      transform: translate(0);
     }
   }
 }
 
-/* Base Animations */
+/* Standard keyframes... */
 @keyframes float {
   0%,
   100% {
@@ -735,7 +945,7 @@
   }
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Enhanced scrollbar */
 ::-webkit-scrollbar {
   width: 12px;
 }
@@ -743,38 +953,39 @@
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
   box-shadow: inset 0 0 5px hsl(var(--muted));
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(var(--neon-primary), var(--neon-secondary));
   border-radius: 6px;
-}
-
-::-webkit-scrollbar-thumb:hover {
   box-shadow: 0 0 10px var(--neon-primary);
 }
 
-/* Focus styles */
+::-webkit-scrollbar-thumb:hover {
+  box-shadow: 0 0 20px var(--neon-primary), 0 0 30px var(--neon-secondary);
+}
+
+/* Focus and interaction styles */
 .focus-visible {
   @apply outline-none ring-2 ring-offset-2 ring-offset-background;
   ring-color: var(--neon-primary);
-  box-shadow: 0 0 0 2px var(--neon-primary);
+  box-shadow: 0 0 0 2px var(--neon-primary), 0 0 20px var(--neon-primary);
 }
 
-/* Selection styles */
 ::selection {
   background: rgba(255, 105, 180, 0.3);
   color: hsl(var(--foreground));
+  text-shadow: 0 0 10px var(--neon-primary);
 }
 
-/* Print styles */
+/* Accessibility and performance */
 @media print {
   .no-print {
     display: none !important;
   }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
   .material-card {
     @apply border-2;
@@ -782,24 +993,24 @@
   }
 }
 
-/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .animate-float,
   .animate-pulse-slow,
   .animate-bounce-slow,
   .animate-spin-slow,
-  .holographic,
+  .holographic-shimmer,
   .text-gradient,
-  .floating-heart,
-  .sparkle-effect::before,
-  .sparkle-effect::after,
   .matrix-rain,
-  .scan-lines::after,
-  .bubble-effect::before,
-  .energy-pulse::after {
+  .floating-hearts,
+  .circuit-pattern,
+  .energy-wave,
+  .cyber-grid,
+  .dna-helix,
+  .quantum-particles,
+  .kawaii-heart,
+  .glitch-effect {
     animation: none;
   }
-
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
@@ -807,20 +1018,33 @@
   }
 }
 
-/* Dark mode image adjustments */
+/* Enhanced image effects */
 .dark img {
-  filter: brightness(0.9) contrast(1.1);
+  filter: brightness(0.9) contrast(1.1) saturate(1.2);
+  transition: filter 0.3s ease;
 }
 
 .dark img:hover {
-  filter: brightness(1) contrast(1.2);
+  filter: brightness(1) contrast(1.2) saturate(1.4) drop-shadow(0 0 10px var(--neon-primary));
 }
 
-/* Loading states */
+/* Loading shimmer with particles */
 .loading-shimmer {
   background: linear-gradient(90deg, hsl(var(--muted)) 25%, var(--neon-primary) / 0.1 50%, hsl(var(--muted)) 75%);
   background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+  animation: shimmer 2s infinite, shimmerGlow 4s ease-in-out infinite;
+  position: relative;
+}
+
+.loading-shimmer::after {
+  content: "✨";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  animation: sparkleMove 2s linear infinite;
+  font-size: 12px;
+  color: var(--neon-primary);
 }
 
 @keyframes shimmer {
@@ -832,20 +1056,31 @@
   }
 }
 
-/* Accessibility improvements */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+@keyframes shimmerGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px var(--neon-primary);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--neon-primary), 0 0 30px var(--neon-secondary);
+  }
 }
 
-/* Focus indicators for keyboard navigation */
+@keyframes sparkleMove {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+/* Enhanced focus indicators */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -855,18 +1090,21 @@ select:focus-visible {
   ring: 2px solid var(--neon-primary);
   ring-offset: 2px;
   ring-offset-color: hsl(var(--background));
-  box-shadow: 0 0 0 2px var(--neon-primary);
+  box-shadow: 0 0 0 2px var(--neon-primary), 0 0 20px var(--neon-primary);
+  animation: focusPulse 2s ease-in-out infinite;
 }
 
-/* High DPI display optimizations */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .crisp-edges {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
+@keyframes focusPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--neon-primary), 0 0 10px var(--neon-primary);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--neon-primary), 0 0 30px var(--neon-primary);
   }
 }
 
-/* Neon heading effects */
+/* Neon heading effects with particles */
 h1,
 h2,
 h3,
@@ -875,6 +1113,7 @@ h5,
 h6 {
   text-shadow: 0 0 10px var(--neon-primary), 0 0 20px var(--neon-secondary);
   transition: text-shadow 0.3s ease;
+  position: relative;
 }
 
 h1:hover,
@@ -886,38 +1125,36 @@ h6:hover {
   text-shadow: 0 0 20px var(--neon-primary), 0 0 30px var(--neon-secondary), 0 0 40px var(--neon-accent);
 }
 
-/* Enhanced button animations */
-.btn-cyber {
-  background: linear-gradient(135deg, var(--neon-primary), var(--neon-secondary));
-  border: 2px solid var(--neon-accent);
-  color: white;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
-}
-
-.btn-cyber::before {
-  content: "";
+h1::after,
+h2::after,
+h3::after {
+  content: "✨ 💫";
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
+  top: -10px;
+  right: -30px;
+  font-size: 0.5em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: titleSparkle 3s ease-in-out infinite;
 }
 
-.btn-cyber:hover {
-  box-shadow: 0 0 20px var(--neon-glow);
-  transform: translateY(-2px);
+h1:hover::after,
+h2:hover::after,
+h3:hover::after {
+  opacity: 1;
 }
 
-.btn-cyber:hover::before {
-  left: 100%;
+@keyframes titleSparkle {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
 }
 
-/* Kawaii elements */
+/* Kawaii element enhancements */
 .kawaii-element {
   position: relative;
 }
@@ -932,19 +1169,26 @@ h6:hover {
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
+  filter: drop-shadow(0 0 5px var(--neon-primary));
 }
 
 .kawaii-element:hover::after {
   opacity: 1;
-  animation: heartBeat 1s ease infinite;
+  animation: kawaiiPulse 1s ease infinite;
 }
 
-@keyframes heartBeat {
+@keyframes kawaiiPulse {
   0%,
   100% {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.2) rotate(90deg);
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1) rotate(180deg);
+  }
+  75% {
+    transform: scale(1.2) rotate(270deg);
   }
 }
