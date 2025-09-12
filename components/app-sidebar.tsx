@@ -1,144 +1,173 @@
 "use client"
 
 import type * as React from "react"
-import { Download, ImageIcon, Settings, BarChart3, Heart, FolderOpen, Shield, Cpu } from "lucide-react"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-import { TeamSwitcher } from "@/components/team-switcher"
-import { NavUser } from "@/components/nav-user"
-import { ApiStatusIndicator } from "@/components/api-status-indicator"
+  AudioWaveform,
+  Command,
+  Frame,
+  GalleryVerticalEnd,
+  Map,
+  PieChart,
+  Settings2,
+  Heart,
+  Download,
+  FolderOpen,
+  Home,
+  ImageIcon,
+} from "lucide-react"
 
-// Simplified navigation data
-const navigationData = {
-  main: [
+import { NavMain } from "@/components/nav-main"
+import { NavUser } from "@/components/nav-user"
+import { TeamSwitcher } from "@/components/team-switcher"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+
+// This is sample data.
+const data = {
+  user: {
+    name: "Waifu Collector",
+    email: "collector@waifudownloader.com",
+    avatar: "/placeholder.svg?height=32&width=32",
+  },
+  teams: [
+    {
+      name: "Waifu Downloader",
+      logo: GalleryVerticalEnd,
+      plan: "Enterprise",
+    },
+    {
+      name: "Personal Collection",
+      logo: AudioWaveform,
+      plan: "Free",
+    },
+    {
+      name: "Shared Gallery",
+      logo: Command,
+      plan: "Pro",
+    },
+  ],
+  navMain: [
     {
       title: "Dashboard",
-      url: "#dashboard",
-      icon: BarChart3,
+      url: "/",
+      icon: Home,
       isActive: true,
     },
     {
-      title: "Download Center",
-      url: "#download",
+      title: "Download",
+      url: "#",
       icon: Download,
+      items: [
+        {
+          title: "Simple Download",
+          url: "/?tab=download",
+        },
+        {
+          title: "Batch Download",
+          url: "/batch",
+        },
+        {
+          title: "Queue Manager",
+          url: "/queue",
+        },
+      ],
     },
-  ],
-  content: [
     {
       title: "Gallery",
-      url: "#gallery",
+      url: "/gallery",
       icon: ImageIcon,
+      items: [
+        {
+          title: "All Images",
+          url: "/gallery",
+        },
+        {
+          title: "Recent",
+          url: "/gallery?filter=recent",
+        },
+        {
+          title: "High Quality",
+          url: "/gallery?filter=hq",
+        },
+      ],
     },
     {
       title: "Favorites",
-      url: "#favorites",
+      url: "/favorites",
       icon: Heart,
     },
     {
       title: "Collections",
-      url: "#collections",
+      url: "/collections",
       icon: FolderOpen,
+      items: [
+        {
+          title: "My Collections",
+          url: "/collections",
+        },
+        {
+          title: "Shared",
+          url: "/collections?filter=shared",
+        },
+        {
+          title: "Public",
+          url: "/collections?filter=public",
+        },
+      ],
     },
-  ],
-  system: [
     {
       title: "Settings",
-      url: "#settings",
-      icon: Settings,
+      url: "/settings",
+      icon: Settings2,
+      items: [
+        {
+          title: "General",
+          url: "/settings",
+        },
+        {
+          title: "API Keys",
+          url: "/settings?tab=api",
+        },
+        {
+          title: "Downloads",
+          url: "/settings?tab=download",
+        },
+        {
+          title: "Appearance",
+          url: "/settings?tab=appearance",
+        },
+      ],
+    },
+  ],
+  projects: [
+    {
+      name: "Anime Collection",
+      url: "#",
+      icon: Frame,
     },
     {
-      title: "Performance",
-      url: "#performance",
-      icon: Cpu,
+      name: "Waifu Archive",
+      url: "#",
+      icon: PieChart,
     },
     {
-      title: "Security",
-      url: "#security",
-      icon: Shield,
+      name: "Favorites Backup",
+      url: "#",
+      icon: Map,
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar variant="inset" {...props} className="border-r-2 border-primary/20">
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher />
-        <ApiStatusIndicator />
+        <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
-
       <SidebarContent>
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="neon-text">Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationData.main.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={item.isActive} className="cyber-button">
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Content Management */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="neon-text">Content</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationData.content.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="cyber-button">
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* System & Configuration */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="neon-text">System</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationData.system.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="cyber-button">
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavMain items={data.navMain} />
       </SidebarContent>
-
       <SidebarFooter>
-        <NavUser />
+        <NavUser user={data.user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

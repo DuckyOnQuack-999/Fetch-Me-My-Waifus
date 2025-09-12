@@ -1,126 +1,152 @@
 "use client"
 
 import { useState } from "react"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Download, ImageIcon, Settings, BarChart3, Heart, FolderOpen } from "lucide-react"
+import { Download, Heart, ImageIcon, Settings, Zap, TrendingUp } from "lucide-react"
+import { motion } from "framer-motion"
+import { SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { ApiStatusIndicator } from "@/components/api-status-indicator"
 import { HomeDashboard } from "@/components/home-dashboard"
 import { SimpleDownloadTab } from "@/components/simple-download-tab"
-import { EnhancedImageGallery } from "@/components/enhanced-image-gallery"
+import { GalleryTab } from "@/components/gallery-tab"
 import { SettingsTab } from "@/components/settings-tab"
-import { FavoritesPage } from "@/components/favorites-page"
-import { CollectionsPage } from "@/components/collections-page"
+import { useStorage } from "@/context/storageContext"
+import { useDownload } from "@/context/downloadContext"
 
 export default function HomePage() {
+  const { images, favorites } = useStorage()
+  const { downloads, activeDownloads, completedDownloads } = useDownload()
   const [activeTab, setActiveTab] = useState("dashboard")
 
-  const tabs = [
+  const stats = [
     {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: BarChart3,
-      component: HomeDashboard,
-      description: "Overview and statistics",
-    },
-    {
-      id: "download",
-      label: "Download Center",
-      icon: Download,
-      component: SimpleDownloadTab,
-      description: "Download anime images",
-    },
-    {
-      id: "gallery",
-      label: "Gallery",
+      title: "Total Images",
+      value: images.length,
       icon: ImageIcon,
-      component: EnhancedImageGallery,
-      description: "Browse downloaded images",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
     },
     {
-      id: "favorites",
-      label: "Favorites",
+      title: "Favorites",
+      value: favorites.length,
       icon: Heart,
-      component: FavoritesPage,
-      description: "Your favorite images",
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
     },
     {
-      id: "collections",
-      label: "Collections",
-      icon: FolderOpen,
-      component: CollectionsPage,
-      description: "Organized image collections",
+      title: "Downloads",
+      value: completedDownloads.length,
+      icon: Download,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
     },
     {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-      component: SettingsTab,
-      description: "Application settings",
+      title: "Active",
+      value: activeDownloads.length,
+      icon: TrendingUp,
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10",
     },
   ]
 
-  const currentTab = tabs.find((tab) => tab.id === activeTab)
-  const ActiveComponent = currentTab?.component || HomeDashboard
-
   return (
-    <div className="flex min-h-screen bg-gradient cyberpunk">
+    <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex-1">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-card/50 backdrop-blur-sm">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage className="neon-text">{currentTab?.label || "Waifu Downloader"}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="ml-auto flex items-center gap-2">
-            <Badge variant="outline" className="pulse-animation">
-              v2.0.0
-            </Badge>
+      <SidebarInset>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="w-full">
+            <ApiStatusIndicator />
           </div>
-        </header>
 
-        <div className="flex-1 p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 mb-6 bg-card/50 backdrop-blur-sm">
-              {tabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2 cyber-button">
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </TabsTrigger>
-                )
-              })}
-            </TabsList>
+          <div className="space-y-6">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+            >
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Waifu Downloader</h1>
+                <p className="text-muted-foreground">AI-powered anime image downloader and manager</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <Zap className="h-3 w-3" />
+                  AI Enhanced
+                </Badge>
+              </div>
+            </motion.div>
 
-            {tabs.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id} className="mt-0">
-                <Card className="border-2 border-primary/20 bg-card/50 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 neon-text">
-                      <tab.icon className="h-5 w-5" />
-                      {tab.label}
-                    </CardTitle>
-                    <CardDescription>{tab.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <tab.component />
+            {/* Quick Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+            >
+              {stats.map((stat, index) => (
+                <Card key={stat.title}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                        <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-xs text-muted-foreground">{stat.title}</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-            ))}
-          </Tabs>
+              ))}
+            </motion.div>
+
+            {/* Main Content Tabs */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="dashboard" className="gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Dashboard
+                  </TabsTrigger>
+                  <TabsTrigger value="download" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Download
+                  </TabsTrigger>
+                  <TabsTrigger value="gallery" className="gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Gallery
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="dashboard" className="space-y-6">
+                  <HomeDashboard />
+                </TabsContent>
+
+                <TabsContent value="download" className="space-y-6">
+                  <SimpleDownloadTab />
+                </TabsContent>
+
+                <TabsContent value="gallery" className="space-y-6">
+                  <GalleryTab />
+                </TabsContent>
+
+                <TabsContent value="settings" className="space-y-6">
+                  <SettingsTab />
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          </div>
         </div>
       </SidebarInset>
-    </div>
+    </SidebarProvider>
   )
 }
