@@ -9,6 +9,9 @@ import { StorageProvider } from "@/context/storageContext"
 import { DownloadProvider } from "@/context/downloadContext"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { ParticleSystem } from "@/components/particle-system"
+import { AnimatedBackground } from "@/components/animated-background"
+import { InteractiveParticles } from "@/components/interactive-particles"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -39,7 +42,12 @@ export default function RootLayout({
               <StorageProvider>
                 <DownloadProvider>
                   <SidebarProvider>
-                    <div className="min-h-screen bg-background">{children}</div>
+                    {/* Background Effects */}
+                    <AnimatedBackground />
+                    <ParticleSystem particleCount={30} />
+                    <InteractiveParticles />
+
+                    <div className="min-h-screen bg-background relative z-20">{children}</div>
                     <Toaster
                       position="bottom-right"
                       toastOptions={{
