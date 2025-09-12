@@ -95,4 +95,13 @@ export class ApiService {
   }
 }
 
+// Export the singleton instance and circuit breaker
 export const apiService = new ApiService()
+export const circuitBreaker = new CircuitBreaker({
+  failureThreshold: 3,
+  resetTimeout: 30000,
+  monitoringPeriod: 60000,
+})
+
+// Export the enum for use in other files
+export { CircuitState }

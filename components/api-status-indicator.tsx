@@ -2,169 +2,80 @@
 
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Wifi, WifiOff, AlertTriangle, CheckCircle } from "lucide-react"
-import { enhancedWaifuApi } from "@/services/enhanced-waifu-api"
-import type { ApiSource } from "@/types/waifu"
+import { Card, CardContent } from "@/components/ui/card"
+import { Wifi, WifiOff, AlertTriangle } from "lucide-react"
+import { apiService, CircuitState } from "@/services/api-circuit-breaker"
 
-interface ApiStatus {
-  source: ApiSource
-  status: "online" | "offline" | "degraded"
-  responseTime: number
-  lastChecked: Date
-}
+const API_SOURCES = [
+  { name: "waifu.im", url: "https://api.waifu.im" },
+  { name: "waifu.pics", url: "https://api.waifu.pics" },
+  { name: "nekos.best", url: "https://nekos.best/api" },
+  { name: "wallhaven", url: "https://wallhaven.cc/api" },
+]
 
-interface ApiStatusIndicatorProps {
-  detailed?: boolean
-}
-
-export function ApiStatusIndicator({ detailed = false }: ApiStatusIndicatorProps) {
-  const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  const checkApiStatuses = async () => {
-    const sources: ApiSource[] = ["waifu.pics", "waifu.im", "nekos.best", "wallhaven"]
-    const statuses: ApiStatus[] = []
-
-    for (const source of sources) {
-      try {
-        const status = await enhancedWaifuApi.getApiStatus(source)
-        statuses.push({
-          source,
-          ...status,
-          lastChecked: new Date(),
-        })
-      } catch (error) {
-        statuses.push({
-          source,
-          status: "offline",
-          responseTime: -1,
-          lastChecked: new Date(),
-        })
-      }
-    }
-
-    setApiStatuses(statuses)
-    setIsLoading(false)
-  }
+export function ApiStatusIndicator() {
+  const [apiStatuses, setApiStatuses] = useState<Record<string, CircuitState>>({})
 
   useEffect(() => {
+    const checkApiStatuses = () => {
+      const statuses: Record<string, CircuitState> = {}
+      API_SOURCES.forEach((api) => {
+        statuses[api.name] = apiService.getApiStatus(api.name)
+      })
+      setApiStatuses(statuses)
+    }
+
+    // Check initially
     checkApiStatuses()
-    const interval = setInterval(checkApiStatuses, 30000) // Check every 30 seconds
+
+    // Check every 30 seconds
+    const interval = setInterval(checkApiStatuses, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: CircuitState) => {
     switch (status) {
-      case "online":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "degraded":
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case "offline":
-        return <WifiOff className="h-4 w-4 text-red-500" />
+      case CircuitState.CLOSED:
+        return <Wifi className="h-3 w-3 text-green-500" />
+      case CircuitState.OPEN:
+        return <WifiOff className="h-3 w-3 text-red-500" />
+      case CircuitState.HALF_OPEN:
+        return <AlertTriangle className="h-3 w-3 text-yellow-500" />
       default:
-        return <Wifi className="h-4 w-4 text-gray-500" />
+        return <Wifi className="h-3 w-3 text-gray-500" />
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: CircuitState) => {
     switch (status) {
-      case "online":
-        return "bg-green-500"
-      case "degraded":
-        return "bg-yellow-500"
-      case "offline":
-        return "bg-red-500"
+      case CircuitState.CLOSED:
+        return "bg-green-500/20 text-green-400 border-green-500/50"
+      case CircuitState.OPEN:
+        return "bg-red-500/20 text-red-400 border-red-500/50"
+      case CircuitState.HALF_OPEN:
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/50"
       default:
-        return "bg-gray-500"
+        return "bg-gray-500/20 text-gray-400 border-gray-500/50"
     }
-  }
-
-  const overallStatus =
-    apiStatuses.length > 0
-      ? apiStatuses.every((api) => api.status === "online")
-        ? "online"
-        : apiStatuses.some((api) => api.status === "online")
-          ? "degraded"
-          : "offline"
-      : "unknown"
-
-  if (!detailed) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${getStatusColor(overallStatus)} animate-pulse`} />
-        <Badge variant={overallStatus === "online" ? "default" : "destructive"} className="cyberpunk-btn">
-          {isLoading ? "Checking..." : `APIs ${overallStatus.toUpperCase()}`}
-        </Badge>
-      </div>
-    )
   }
 
   return (
-    <Card className="material-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 neon-text">
-          <Wifi className="h-5 w-5" />
-          API Status Monitor
-        </CardTitle>
-        <CardDescription>Real-time status of all connected APIs</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <div className="loading-shimmer h-4 w-24 rounded" />
-                <div className="loading-shimmer h-6 w-16 rounded" />
+    <Card className="border-primary/20 bg-card/50 backdrop-blur-sm">
+      <CardContent className="p-3">
+        <div className="text-xs font-medium mb-2 neon-text">API Status</div>
+        <div className="space-y-1">
+          {API_SOURCES.map((api) => {
+            const status = apiStatuses[api.name] || CircuitState.CLOSED
+            return (
+              <div key={api.name} className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{api.name}</span>
+                <Badge variant="outline" className={`text-xs px-1 py-0 ${getStatusColor(status)}`}>
+                  {getStatusIcon(status)}
+                  <span className="ml-1 capitalize">{status.toLowerCase()}</span>
+                </Badge>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {apiStatuses.map((api) => (
-              <div
-                key={api.source}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(api.status)}
-                  <div>
-                    <p className="font-medium">{api.source}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Last checked: {api.lastChecked.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Badge variant={api.status === "online" ? "default" : "destructive"} className="cyberpunk-btn">
-                    {api.status.toUpperCase()}
-                  </Badge>
-                  {api.responseTime > 0 && <p className="text-xs text-muted-foreground mt-1">{api.responseTime}ms</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="pt-4 border-t">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Overall Health</span>
-            <Badge variant={overallStatus === "online" ? "default" : "destructive"} className="cyberpunk-btn">
-              {overallStatus.toUpperCase()}
-            </Badge>
-          </div>
-          <Progress
-            value={
-              apiStatuses.length > 0
-                ? (apiStatuses.filter((api) => api.status === "online").length / apiStatuses.length) * 100
-                : 0
-            }
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            {apiStatuses.filter((api) => api.status === "online").length} of {apiStatuses.length} APIs operational
-          </p>
+            )
+          })}
         </div>
       </CardContent>
     </Card>

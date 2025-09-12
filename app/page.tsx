@@ -1,197 +1,126 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState } from "react"
+import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Download, ImageIcon, Settings, BarChart3, Heart, FolderOpen } from "lucide-react"
 import { HomeDashboard } from "@/components/home-dashboard"
 import { SimpleDownloadTab } from "@/components/simple-download-tab"
 import { EnhancedImageGallery } from "@/components/enhanced-image-gallery"
 import { SettingsTab } from "@/components/settings-tab"
-import { QuantumPerformanceMonitor } from "@/components/quantum-performance-monitor"
-import { AnimatedStats } from "@/components/animated-stats"
-import { DownloadQueue } from "@/components/download-queue"
-import { DownloadHistory } from "@/components/download-history"
-import { BatchOperationsPanel } from "@/components/batch-operations-panel"
-import { ApiStatusIndicator } from "@/components/api-status-indicator"
-import { AppSidebar } from "@/components/app-sidebar"
+import { FavoritesPage } from "@/components/favorites-page"
+import { CollectionsPage } from "@/components/collections-page"
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState("dashboard")
 
-  // Handle URL parameters for tab switching
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const tab = urlParams.get("tab")
-    if (tab) {
-      setActiveTab(tab)
-    }
-  }, [])
+  const tabs = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: BarChart3,
+      component: HomeDashboard,
+      description: "Overview and statistics",
+    },
+    {
+      id: "download",
+      label: "Download Center",
+      icon: Download,
+      component: SimpleDownloadTab,
+      description: "Download anime images",
+    },
+    {
+      id: "gallery",
+      label: "Gallery",
+      icon: ImageIcon,
+      component: EnhancedImageGallery,
+      description: "Browse downloaded images",
+    },
+    {
+      id: "favorites",
+      label: "Favorites",
+      icon: Heart,
+      component: FavoritesPage,
+      description: "Your favorite images",
+    },
+    {
+      id: "collections",
+      label: "Collections",
+      icon: FolderOpen,
+      component: CollectionsPage,
+      description: "Organized image collections",
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Settings,
+      component: SettingsTab,
+      description: "Application settings",
+    },
+  ]
 
-  // Update URL when tab changes
-  const handleTabChange = (value: string) => {
-    setActiveTab(value)
-    const url = new URL(window.location.href)
-    if (value === "dashboard") {
-      url.searchParams.delete("tab")
-    } else {
-      url.searchParams.set("tab", value)
-    }
-    window.history.replaceState({}, "", url.toString())
-  }
-
-  const getBreadcrumbTitle = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return "Dashboard"
-      case "download":
-        return "Simple Download"
-      case "batch":
-        return "Batch Operations"
-      case "queue":
-        return "Download Queue"
-      case "history":
-        return "Download History"
-      case "gallery":
-        return "Image Gallery"
-      case "performance":
-        return "Performance Monitor"
-      case "storage":
-        return "Storage Usage"
-      case "api-status":
-        return "API Status"
-      case "stats":
-        return "Statistics"
-      case "settings":
-        return "Settings"
-      default:
-        return "Dashboard"
-    }
-  }
+  const currentTab = tabs.find((tab) => tab.id === activeTab)
+  const ActiveComponent = currentTab?.component || HomeDashboard
 
   return (
-    <>
+    <div className="flex min-h-screen bg-gradient cyberpunk">
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-gradient">
-          <SidebarTrigger className="-ml-1 cyberpunk-btn" />
+      <SidebarInset className="flex-1">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-card/50 backdrop-blur-sm">
+          <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/" className="neon-text">
-                  Waifu Downloader
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage className="neon-text">{getBreadcrumbTitle()}</BreadcrumbPage>
+                <BreadcrumbPage className="neon-text">{currentTab?.label || "Waifu Downloader"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto">
-            <ApiStatusIndicator />
+          <div className="ml-auto flex items-center gap-2">
+            <Badge variant="outline" className="pulse-animation">
+              v2.0.0
+            </Badge>
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-4 p-4 bg-gradient min-h-screen">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 material-card">
-              <TabsTrigger value="dashboard" className="cyberpunk-btn">
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="download" className="cyberpunk-btn">
-                Download
-              </TabsTrigger>
-              <TabsTrigger value="batch" className="cyberpunk-btn">
-                Batch
-              </TabsTrigger>
-              <TabsTrigger value="queue" className="cyberpunk-btn">
-                Queue
-              </TabsTrigger>
-              <TabsTrigger value="history" className="cyberpunk-btn">
-                History
-              </TabsTrigger>
-              <TabsTrigger value="gallery" className="cyberpunk-btn">
-                Gallery
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="cyberpunk-btn">
-                Performance
-              </TabsTrigger>
-              <TabsTrigger value="storage" className="cyberpunk-btn">
-                Storage
-              </TabsTrigger>
-              <TabsTrigger value="api-status" className="cyberpunk-btn">
-                API Status
-              </TabsTrigger>
-              <TabsTrigger value="stats" className="cyberpunk-btn">
-                Stats
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="cyberpunk-btn">
-                Settings
-              </TabsTrigger>
+        <div className="flex-1 p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-6 mb-6 bg-card/50 backdrop-blur-sm">
+              {tabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2 cyber-button">
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </TabsTrigger>
+                )
+              })}
             </TabsList>
 
-            <div className="mt-6">
-              <TabsContent value="dashboard" className="animate-fade-in">
-                <HomeDashboard />
+            {tabs.map((tab) => (
+              <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                <Card className="border-2 border-primary/20 bg-card/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 neon-text">
+                      <tab.icon className="h-5 w-5" />
+                      {tab.label}
+                    </CardTitle>
+                    <CardDescription>{tab.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <tab.component />
+                  </CardContent>
+                </Card>
               </TabsContent>
-
-              <TabsContent value="download" className="animate-fade-in">
-                <SimpleDownloadTab />
-              </TabsContent>
-
-              <TabsContent value="batch" className="animate-fade-in">
-                <BatchOperationsPanel />
-              </TabsContent>
-
-              <TabsContent value="queue" className="animate-fade-in">
-                <DownloadQueue />
-              </TabsContent>
-
-              <TabsContent value="history" className="animate-fade-in">
-                <DownloadHistory />
-              </TabsContent>
-
-              <TabsContent value="gallery" className="animate-fade-in">
-                <EnhancedImageGallery />
-              </TabsContent>
-
-              <TabsContent value="performance" className="animate-fade-in">
-                <QuantumPerformanceMonitor />
-              </TabsContent>
-
-              <TabsContent value="storage" className="animate-fade-in">
-                <div className="grid gap-6">
-                  <AnimatedStats />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="api-status" className="animate-fade-in">
-                <div className="grid gap-6">
-                  <ApiStatusIndicator detailed />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="stats" className="animate-fade-in">
-                <AnimatedStats />
-              </TabsContent>
-
-              <TabsContent value="settings" className="animate-fade-in">
-                <SettingsTab />
-              </TabsContent>
-            </div>
+            ))}
           </Tabs>
         </div>
       </SidebarInset>
-    </>
+    </div>
   )
 }

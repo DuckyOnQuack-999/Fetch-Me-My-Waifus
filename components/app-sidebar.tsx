@@ -1,139 +1,144 @@
 "use client"
 
 import type * as React from "react"
-import { Download, ImageIcon, Settings2, Home, Activity } from "lucide-react"
-
-import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { Download, ImageIcon, Settings, BarChart3, Heart, FolderOpen, Shield, Cpu } from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
 import { TeamSwitcher } from "@/components/team-switcher"
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail } from "@/components/ui/sidebar"
+import { NavUser } from "@/components/nav-user"
+import { ApiStatusIndicator } from "@/components/api-status-indicator"
 
-const data = {
-  user: {
-    name: "Waifu Collector",
-    email: "collector@waifudownloader.com",
-    avatar: "/placeholder.svg?height=32&width=32",
-  },
-  teams: [
-    {
-      name: "Waifu Downloader",
-      logo: ImageIcon,
-      plan: "Pro",
-    },
-  ],
-  navMain: [
+// Simplified navigation data
+const navigationData = {
+  main: [
     {
       title: "Dashboard",
-      url: "/",
-      icon: Home,
+      url: "#dashboard",
+      icon: BarChart3,
       isActive: true,
     },
     {
       title: "Download Center",
-      url: "#",
+      url: "#download",
       icon: Download,
-      items: [
-        {
-          title: "Simple Download",
-          url: "/?tab=download",
-        },
-        {
-          title: "Batch Operations",
-          url: "/?tab=batch",
-        },
-        {
-          title: "Queue Manager",
-          url: "/?tab=queue",
-        },
-        {
-          title: "Download History",
-          url: "/?tab=history",
-        },
-      ],
     },
+  ],
+  content: [
     {
-      title: "Gallery & Collections",
-      url: "/gallery",
+      title: "Gallery",
+      url: "#gallery",
       icon: ImageIcon,
-      items: [
-        {
-          title: "All Images",
-          url: "/gallery",
-        },
-        {
-          title: "Favorites",
-          url: "/favorites",
-        },
-        {
-          title: "Collections",
-          url: "/collections",
-        },
-        {
-          title: "Recent Downloads",
-          url: "/gallery?filter=recent",
-        },
-      ],
     },
     {
-      title: "System & Stats",
-      url: "#",
-      icon: Activity,
-      items: [
-        {
-          title: "Performance Monitor",
-          url: "/?tab=performance",
-        },
-        {
-          title: "Storage Usage",
-          url: "/?tab=storage",
-        },
-        {
-          title: "API Status",
-          url: "/?tab=api-status",
-        },
-        {
-          title: "Statistics",
-          url: "/?tab=stats",
-        },
-      ],
+      title: "Favorites",
+      url: "#favorites",
+      icon: Heart,
     },
+    {
+      title: "Collections",
+      url: "#collections",
+      icon: FolderOpen,
+    },
+  ],
+  system: [
     {
       title: "Settings",
-      url: "/settings",
-      icon: Settings2,
-      items: [
-        {
-          title: "General Settings",
-          url: "/settings",
-        },
-        {
-          title: "API Configuration",
-          url: "/settings?tab=api",
-        },
-        {
-          title: "Download Settings",
-          url: "/settings?tab=download",
-        },
-        {
-          title: "Appearance",
-          url: "/settings?tab=appearance",
-        },
-      ],
+      url: "#settings",
+      icon: Settings,
+    },
+    {
+      title: "Performance",
+      url: "#performance",
+      icon: Cpu,
+    },
+    {
+      title: "Security",
+      url: "#security",
+      icon: Shield,
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar variant="inset" {...props} className="border-r-2 border-primary/20">
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher />
+        <ApiStatusIndicator />
       </SidebarHeader>
+
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        {/* Main Navigation */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="neon-text">Main</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationData.main.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={item.isActive} className="cyber-button">
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Content Management */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="neon-text">Content</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationData.content.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className="cyber-button">
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* System & Configuration */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="neon-text">System</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationData.system.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className="cyber-button">
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
