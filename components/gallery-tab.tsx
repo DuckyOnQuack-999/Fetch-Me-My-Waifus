@@ -1,414 +1,372 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
-import { Search, Heart, Grid3X3, List, Eye, Download, SortAsc, SortDesc } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Search, Grid3X3, List, Heart, Calendar, ImageIcon, SortAsc, SortDesc } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
-import { EnhancedImagePreview } from "./enhanced-image-preview"
-import { toast } from "sonner"
+import { EnhancedImageGallery } from "@/components/enhanced-image-gallery"
+import { EnhancedImagePreview } from "@/components/enhanced-image-preview"
+import type { WaifuImage } from "@/types/waifu"
+
+interface GalleryFilters {
+  search: string
+  category: string
+  tags: string[]
+  dateRange: string
+  sortBy: string
+  sortOrder: "asc" | "desc"
+  viewMode: "grid" | "list"
+}
 
 export function GalleryTab() {
-  const { images, toggleFavorite, isFavorite } = useStorage()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedSource, setSelectedSource] = useState("all")
-  const [sortBy, setSortBy] = useState<"date" | "name" | "size">("date")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-  const [selectedImage, setSelectedImage] = useState<any>(null)
+  const { images, favorites, isFavorite, toggleFavorite } = useStorage()
+  const [filters, setFilters] = useState<GalleryFilters>({
+    search: "",
+    category: "all",
+    tags: [],
+    dateRange: "all",
+    sortBy: "date",
+    sortOrder: "desc",
+    viewMode: "grid",
+  })
+  const [selectedImage, setSelectedImage] = useState<WaifuImage | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
-  const categories = useMemo(() => {
-    const cats = new Set(
-      images.flatMap((img) => img.tags?.map((tag) => (typeof tag === "string" ? tag : tag.name)) || []),
-    )
-    return Array.from(cats).sort()
+  // Ensure all images have valid IDs
+  const safeImages = useMemo(() => {
+    return (images || []).map((image, index) => ({
+      ...image,
+      id: image.id || image.image_id || `image-${Date.now()}-${index}`,
+      image_id: image.image_id || image.id || `image-${Date.now()}-${index}`,
+      tags: Array.isArray(image.tags) ? image.tags : [],
+      created_at: image.created_at || new Date().toISOString(),
+    }))
   }, [images])
 
-  const sources = useMemo(() => {
-    const srcs = new Set(images.map((img) => img.source).filter(Boolean))
-    return Array.from(srcs).sort()
-  }, [images])
+  // Safe favorite checking function
+  const isImageFavorite = (image: WaifuImage): boolean => {
+    if (!image) return false
 
+    try {
+      const imageId = image.id || image.image_id
+      if (!imageId) return false
+
+      return isFavorite(imageId)
+    } catch (error) {
+      console.error("Error checking favorite status:", error)
+      return false
+    }
+  }
+
+  // Safe favorite toggle function
+  const handleToggleFavorite = (image: WaifuImage) => {
+    if (!image) return
+
+    try {
+      const imageId = image.id || image.image_id
+      if (!imageId) {
+        console.warn("Cannot toggle favorite: image has no valid ID")
+        return
+      }
+
+      toggleFavorite(imageId)
+    } catch (error) {
+      console.error("Error toggling favorite:", error)
+    }
+  }
+
+  // Filter and sort images
   const filteredImages = useMemo(() => {
-    const filtered = images.filter((image) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        image.filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (image.tags || []).some((tag) =>
-          (typeof tag === "string" ? tag : tag.name).toLowerCase().includes(searchTerm.toLowerCase()),
-        )
+    let filtered = [...safeImages]
 
-      const matchesCategory =
-        selectedCategory === "all" ||
-        (image.tags || []).some((tag) => (typeof tag === "string" ? tag : tag.name) === selectedCategory)
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      filtered = filtered.filter(
+        (image) =>
+          (image.tags && image.tags.some((tag) => tag.toLowerCase().includes(searchLower))) ||
+          (image.source && image.source.toLowerCase().includes(searchLower)) ||
+          (image.url && image.url.toLowerCase().includes(searchLower)),
+      )
+    }
 
-      const matchesSource = selectedSource === "all" || image.source === selectedSource
+    // Category filter
+    if (filters.category !== "all") {
+      if (filters.category === "favorites") {
+        filtered = filtered.filter((image) => isImageFavorite(image))
+      } else if (filters.category === "recent") {
+        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        filtered = filtered.filter((image) => image.created_at && new Date(image.created_at) > oneWeekAgo)
+      }
+    }
 
-      return matchesSearch && matchesCategory && matchesSource
-    })
+    // Date range filter
+    if (filters.dateRange !== "all") {
+      const now = new Date()
+      let cutoffDate: Date
+
+      switch (filters.dateRange) {
+        case "today":
+          cutoffDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          break
+        case "week":
+          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case "month":
+          cutoffDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          break
+        default:
+          cutoffDate = new Date(0)
+      }
+
+      filtered = filtered.filter((image) => image.created_at && new Date(image.created_at) >= cutoffDate)
+    }
 
     // Sort images
     filtered.sort((a, b) => {
       let comparison = 0
 
-      switch (sortBy) {
-        case "name":
-          comparison = (a.filename || "").localeCompare(b.filename || "")
-          break
-        case "size":
-          comparison = (a.file_size || 0) - (b.file_size || 0)
-          break
+      switch (filters.sortBy) {
         case "date":
-        default:
           comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
           break
+        case "name":
+          comparison = (a.url || "").localeCompare(b.url || "")
+          break
+        case "size":
+          comparison = a.width * a.height - b.width * b.height
+          break
+        case "favorite":
+          comparison =
+            (favorites.includes(b.id || b.image_id || "") ? 1 : 0) -
+            (favorites.includes(a.id || a.image_id || "") ? 1 : 0)
+          break
+        default:
+          comparison = 0
       }
 
-      return sortOrder === "asc" ? comparison : -comparison
+      return filters.sortOrder === "desc" ? -comparison : comparison
     })
 
     return filtered
-  }, [images, searchTerm, selectedCategory, selectedSource, sortBy, sortOrder])
+  }, [safeImages, filters, favorites])
 
-  const handleDownload = async (image: any) => {
-    try {
-      const response = await fetch(image.url)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = image.filename || `image-${image.image_id}.jpg`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      toast.success("Image downloaded successfully!")
-    } catch (error) {
-      toast.error("Failed to download image")
-    }
+  // Get unique tags from all images
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    safeImages.forEach((image) => {
+      if (image.tags) {
+        image.tags.forEach((tag) => tagSet.add(tag))
+      }
+    })
+    return Array.from(tagSet).sort()
+  }, [safeImages])
+
+  const handleImageClick = (image: WaifuImage) => {
+    setSelectedImage(image)
+    setIsPreviewOpen(true)
   }
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "Unknown"
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(1024))
-    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i]
+  const handleFilterChange = (key: keyof GalleryFilters, value: any) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
-  const formatResolution = (width?: number, height?: number) => {
-    if (!width || !height) return "Unknown"
-    return `${width} × ${height}`
+  const clearFilters = () => {
+    setFilters({
+      search: "",
+      category: "all",
+      tags: [],
+      dateRange: "all",
+      sortBy: "date",
+      sortOrder: "desc",
+      viewMode: "grid",
+    })
   }
 
-  if (!images || images.length === 0) {
-    return (
-      <Card className="material-card">
-        <CardContent className="p-12 text-center">
-          <div className="text-6xl mb-4 opacity-50">🖼️</div>
-          <h3 className="text-lg font-semibold mb-2 neon-text">No Images Found</h3>
-          <p className="text-muted-foreground">Start by downloading some images to see them here.</p>
-        </CardContent>
-      </Card>
-    )
+  const stats = {
+    total: safeImages.length,
+    filtered: filteredImages.length,
+    favorites: safeImages.filter((image) => isImageFavorite(image)).length,
+    recent: safeImages.filter((image) => {
+      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      return image.created_at && new Date(image.created_at) > oneWeekAgo
+    }).length,
   }
 
   return (
     <div className="space-y-6">
-      {/* Search and Filter Bar */}
-      <Card className="material-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 kawaii-heart" />
-            Image Gallery
-          </CardTitle>
-          <CardDescription>Browse and manage your downloaded images</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
+      {/* Header with Stats */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Image Gallery</h2>
+          <p className="text-muted-foreground">
+            Showing {filteredImages.length} of {safeImages.length} images
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <ImageIcon className="h-3 w-3" />
+            {stats.total} Total
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Heart className="h-3 w-3" />
+            {stats.favorites} Favorites
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {stats.recent} Recent
+          </Badge>
+        </div>
+      </div>
+
+      {/* Filters and Controls */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="space-y-4">
+            {/* Search and View Mode */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search images..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 glass-effect"
+                  placeholder="Search by tags, source, or URL..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  className="pl-10"
                 />
               </div>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[140px] glass-effect">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedSource} onValueChange={setSelectedSource}>
-                <SelectTrigger className="w-[120px] glass-effect">
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  {sources.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={(value: "date" | "name" | "size") => setSortBy(value)}>
-                <SelectTrigger className="w-[100px] glass-effect">
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="size">Size</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="glass-effect"
-              >
-                {sortOrder === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
-              </Button>
-
-              <div className="flex border rounded-md">
+              <div className="flex gap-2">
                 <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  variant={filters.viewMode === "grid" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="rounded-r-none"
+                  onClick={() => handleFilterChange("viewMode", "grid")}
                 >
                   <Grid3X3 className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
+                  variant={filters.viewMode === "list" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setViewMode("list")}
-                  className="rounded-l-none"
+                  onClick={() => handleFilterChange("viewMode", "list")}
                 >
                   <List className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-pink-500/20">
-            <Badge variant="secondary" className="glass-effect">
-              {filteredImages.length} images
-            </Badge>
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Select value={filters.category} onValueChange={(value) => handleFilterChange("category", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Images</SelectItem>
+                  <SelectItem value="favorites">Favorites</SelectItem>
+                  <SelectItem value="recent">Recent</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange("dateRange", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange("sortBy", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Date Added</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="size">Image Size</SelectItem>
+                  <SelectItem value="favorite">Favorites First</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex gap-2">
+                <Button
+                  variant={filters.sortOrder === "desc" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleFilterChange("sortOrder", filters.sortOrder === "desc" ? "asc" : "desc")}
+                  className="flex-1"
+                >
+                  {filters.sortOrder === "desc" ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Images Grid/List */}
-      <div
-        className={
-          viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" : "space-y-4"
-        }
-      >
-        <AnimatePresence>
-          {filteredImages.map((image, index) => (
-            <motion.div
-              key={image.image_id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2, delay: index * 0.02 }}
-            >
-              {viewMode === "grid" ? (
-                <Card className="group cursor-pointer transition-all hover:shadow-lg material-card kawaii-element">
-                  <CardContent className="p-0">
-                    <div className="relative aspect-square overflow-hidden rounded-t-lg">
-                      <img
-                        src={image.url || "/placeholder.svg?height=300&width=300"}
-                        alt={image.filename || "Image"}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                        loading="lazy"
-                      />
+      {/* Gallery Content */}
+      <AnimatePresence mode="wait">
+        {filteredImages.length > 0 ? (
+          <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <EnhancedImageGallery
+              images={filteredImages}
+              viewMode={filters.viewMode}
+              onImageClick={handleImageClick}
+              onToggleFavorite={handleToggleFavorite}
+              isFavorite={isImageFavorite}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-center py-12"
+          >
+            <ImageIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No images found</h3>
+            <p className="text-muted-foreground mb-4">
+              {filters.search || filters.category !== "all" || filters.dateRange !== "all"
+                ? "Try adjusting your filters or search terms"
+                : "Start by downloading some images to build your collection"}
+            </p>
+            {(filters.search || filters.category !== "all" || filters.dateRange !== "all") && (
+              <Button onClick={clearFilters} variant="outline">
+                Clear Filters
+              </Button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors">
-                        <div className="absolute top-2 right-2 flex gap-1">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity glass-effect"
-                                onClick={() => setSelectedImage(image)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl">
-                              {selectedImage && <EnhancedImagePreview image={selectedImage} />}
-                            </DialogContent>
-                          </Dialog>
-
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity glass-effect"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDownload(image)
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity glass-effect"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleFavorite(image.image_id)
-                              toast.success(
-                                isFavorite(image.image_id) ? "Added to favorites" : "Removed from favorites",
-                              )
-                            }}
-                          >
-                            <Heart
-                              className={`h-4 w-4 ${isFavorite(image.image_id) ? "fill-red-500 text-red-500" : ""}`}
-                            />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm truncate">{image.filename || `Image ${image.image_id}`}</h4>
-                        <Badge variant="outline" className="text-xs glass-effect">
-                          {image.source || "Unknown"}
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {(image.tags || []).slice(0, 2).map((tag, tagIndex) => (
-                          <Badge key={tagIndex} variant="secondary" className="text-xs glass-effect">
-                            {typeof tag === "string" ? tag : tag.name}
-                          </Badge>
-                        ))}
-                        {(image.tags || []).length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{(image.tags || []).length - 2}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{formatResolution(image.width, image.height)}</span>
-                        <span>{formatFileSize(image.file_size)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="group cursor-pointer transition-all hover:shadow-md material-card">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={image.url || "/placeholder.svg?height=64&width=64"}
-                          alt={image.filename || "Image"}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium truncate">{image.filename || `Image ${image.image_id}`}</h4>
-                          <Badge variant="outline" className="text-xs glass-effect">
-                            {image.source || "Unknown"}
-                          </Badge>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {(image.tags || []).slice(0, 3).map((tag, tagIndex) => (
-                            <Badge key={tagIndex} variant="secondary" className="text-xs glass-effect">
-                              {typeof tag === "string" ? tag : tag.name}
-                            </Badge>
-                          ))}
-                          {(image.tags || []).length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{(image.tags || []).length - 3}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{formatResolution(image.width, image.height)}</span>
-                          <span>{formatFileSize(image.file_size)}</span>
-                          <span>{new Date(image.created_at || Date.now()).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="glass-effect bg-transparent">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl">
-                            {selectedImage && <EnhancedImagePreview image={selectedImage} />}
-                          </DialogContent>
-                        </Dialog>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownload(image)}
-                          className="glass-effect"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            toggleFavorite(image.image_id)
-                            toast.success(isFavorite(image.image_id) ? "Added to favorites" : "Removed from favorites")
-                          }}
-                          className="glass-effect"
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${isFavorite(image.image_id) ? "fill-red-500 text-red-500" : ""}`}
-                          />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {/* Image Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Image Preview</DialogTitle>
+          </DialogHeader>
+          {selectedImage && (
+            <EnhancedImagePreview
+              image={selectedImage}
+              onClose={() => setIsPreviewOpen(false)}
+              onToggleFavorite={() => handleToggleFavorite(selectedImage)}
+              isFavorite={isImageFavorite(selectedImage)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

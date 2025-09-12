@@ -1,12 +1,10 @@
-import type { ImageCategory, WaifuImage, SortOption, Settings, ApiSource } from "@/types/waifu"
+import type { ImageCategory, WaifuImage, SortOption, Settings, ApiSource } from "../types/waifu"
 
-const API_ENDPOINTS = {
-  "waifu.im": "https://api.waifu.im/search",
-  "waifu.pics": "https://api.waifu.pics/sfw",
-  "nekos.best": "https://nekos.best/api/v2",
-  wallhaven: "https://wallhaven.cc/api/v1/search",
-  femboyfinder: "https://api.femboyfinder.com/v1",
-}
+const WAIFU_IM_API_BASE_URL = "https://api.waifu.im"
+const WAIFU_PICS_API_BASE_URL = "https://api.waifu.pics"
+const NEKOS_BEST_API_BASE_URL = "https://nekos.best/api/v2"
+const WALLHAVEN_API_BASE_URL = "https://wallhaven.cc/api/v1"
+const FEMBOYFINDER_API_BASE_URL = "https://femboyfinder.firestreaker2.gq"
 
 type WaifuImApiResponse = {
   images: WaifuImage[]
@@ -122,200 +120,506 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
   throw new Error("All retry attempts failed")
 }
 
-export async function fetchFromWaifuIm(
+export async function fetchImagesFromWaifuIm(
   category: ImageCategory,
-  count = 1,
+  limit = 30,
   isNsfw = false,
+  sortBy: SortOption = "RANDOM",
+  page = 1,
   minWidth?: number,
   minHeight?: number,
+  settings?: Settings,
 ): Promise<WaifuImage[]> {
   try {
     const params = new URLSearchParams({
       included_tags: category,
-      height: minHeight?.toString() || "600",
-      width: minWidth?.toString() || "800",
-      is_nsfw: isNsfw.toString(),
+      is_nsfw: String(isNsfw),
+      order_by: sortBy,
       many: "true",
+      page: String(page),
     })
 
-    const response = await fetch(`${API_ENDPOINTS["waifu.im"]}?${params}`)
+    if (limit > 0) {
+      params.append("limit", String(limit))
+    }
+
+    if (minWidth) {
+      params.append("width", `>=${minWidth}`)
+    }
+    if (minHeight) {
+      params.append("height", `>=${minHeight}`)
+    }
+
+    const headers: HeadersInit = {
+      Accept: "application/json",
+      "User-Agent": "WaifuDownloader/2.0",
+      "Content-Type": "application/json",
+    }
+
+    if (settings?.waifuImApiKey) {
+      headers["Authorization"] = `Bearer ${settings.waifuImApiKey}`
+    }
+
+    const url = `${WAIFU_IM_API_BASE_URL}/search?${params}`
+    console.log("Fetching from Waifu.im:", url)
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
     const data = await response.json()
+    console.log("Waifu.im response:", data)
 
     if (!data.images || !Array.isArray(data.images)) {
+      console.warn("Invalid response format from Waifu.im:", data)
       return []
     }
 
-    return data.images.slice(0, count).map((img: any) => ({
-      image_id: img.image_id || Math.random().toString(36),
-      url: img.url,
-      filename: img.url.split("/").pop() || `waifu-${Date.now()}.jpg`,
-      width: img.width,
-      height: img.height,
-      file_size: img.byte_size,
-      extension: img.extension,
-      source: "waifu.im",
-      tags: img.tags?.map((tag: any) => tag.name) || [category],
-      artist: img.artist?.name,
-      created_at: new Date().toISOString(),
-      rating: isNsfw ? "questionable" : "safe",
+    return data.images.map((image: any) => ({
+      ...image,
+      isFavorite: false,
+      fetchedFrom: "waifu.im" as ApiSource,
+      lastModified: new Date().toISOString(),
     }))
   } catch (error) {
-    console.error("Waifu.im API error:", error)
+    console.error("Error fetching images from Waifu.im:", error)
+    // Return empty array instead of throwing to allow other sources to work
     return []
   }
 }
 
-export async function fetchFromWaifuPics(category: ImageCategory, count = 1, isNsfw = false): Promise<WaifuImage[]> {
-  try {
-    const images: WaifuImage[] = []
-    const endpoint = isNsfw ? "nsfw" : "sfw"
-
-    for (let i = 0; i < count; i++) {
-      const response = await fetch(`${API_ENDPOINTS["waifu.pics"]}/${endpoint}/${category}`)
-      const data = await response.json()
-
-      if (data.url) {
-        images.push({
-          image_id: Math.random().toString(36),
-          url: data.url,
-          filename: data.url.split("/").pop() || `waifu-${Date.now()}.jpg`,
-          source: "waifu.pics",
-          tags: [category],
-          created_at: new Date().toISOString(),
-          rating: isNsfw ? "questionable" : "safe",
-        })
-      }
-    }
-
-    return images
-  } catch (error) {
-    console.error("Waifu.pics API error:", error)
-    return []
-  }
-}
-
-export async function fetchFromNekosBest(category: ImageCategory, count = 1): Promise<WaifuImage[]> {
-  try {
-    const response = await fetch(`${API_ENDPOINTS["nekos.best"]}/${category}?amount=${Math.min(count, 20)}`)
-    const data = await response.json()
-
-    if (!data.results || !Array.isArray(data.results)) {
-      return []
-    }
-
-    return data.results.map((img: any) => ({
-      image_id: Math.random().toString(36),
-      url: img.url,
-      filename: img.url.split("/").pop() || `neko-${Date.now()}.jpg`,
-      source: "nekos.best",
-      tags: [category],
-      artist: img.artist_name,
-      created_at: new Date().toISOString(),
-      rating: "safe",
-    }))
-  } catch (error) {
-    console.error("Nekos.best API error:", error)
-    return []
-  }
-}
-
-export async function fetchFromWallhaven(
+export async function fetchImagesFromWaifuPics(
   category: string,
-  count = 1,
-  apiKey?: string,
-  minWidth?: number,
-  minHeight?: number,
+  isNsfw = false,
+  settings?: Settings,
+  limit = 30,
 ): Promise<WaifuImage[]> {
   try {
-    const params = new URLSearchParams({
-      q: category,
-      categories: "111",
-      purity: "100",
-      sorting: "random",
-      per_page: Math.min(count, 24).toString(),
+    const type = isNsfw ? "nsfw" : "sfw"
+    const url = `${WAIFU_PICS_API_BASE_URL}/many/${type}/${category}`
+
+    console.log("Fetching from Waifu.pics:", url)
+
+    const response = await fetchWithRetry(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "WaifuDownloader/2.0",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({}),
     })
 
-    if (apiKey) {
-      params.append("apikey", apiKey)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    console.log("Waifu.pics response:", data)
+
+    if (!data.files || !Array.isArray(data.files)) {
+      console.warn("Invalid response format from Waifu.pics:", data)
+      return []
+    }
+
+    return data.files.slice(0, limit).map((url: string, index: number) => ({
+      image_id: Date.now() + index,
+      url,
+      preview_url: url,
+      width: 0,
+      height: 0,
+      tags: [{ name: category }],
+      source: "waifu.pics",
+      uploaded_at: new Date().toISOString(),
+      isFavorite: false,
+      fetchedFrom: "waifu.pics" as ApiSource,
+      lastModified: new Date().toISOString(),
+    }))
+  } catch (error) {
+    console.error("Error fetching images from Waifu.pics:", error)
+    return []
+  }
+}
+
+export async function fetchImagesFromNekosBest(
+  category: string,
+  settings?: Settings,
+  limit = 30,
+): Promise<WaifuImage[]> {
+  try {
+    const url = `${NEKOS_BEST_API_BASE_URL}/${category}?amount=${Math.min(limit, 20)}`
+    console.log("Fetching from Nekos.best:", url)
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "WaifuDownloader/2.0",
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    console.log("Nekos.best response:", data)
+
+    if (!data.results || !Array.isArray(data.results)) {
+      console.warn("Invalid response format from Nekos.best:", data)
+      return []
+    }
+
+    return data.results.map((item: any, index: number) => ({
+      image_id: Date.now() + index,
+      url: item.url,
+      preview_url: item.url,
+      width: 0,
+      height: 0,
+      tags: [{ name: category }],
+      source: "nekos.best",
+      uploaded_at: new Date().toISOString(),
+      isFavorite: false,
+      fetchedFrom: "nekos.best" as ApiSource,
+      lastModified: new Date().toISOString(),
+    }))
+  } catch (error) {
+    console.error("Error fetching images from Nekos.best:", error)
+    return []
+  }
+}
+
+export async function fetchImagesFromWallhaven(
+  query: string,
+  limit = 30,
+  isNsfw = false,
+  sortBy: SortOption = "RANDOM",
+  page = 1,
+  minWidth?: number,
+  minHeight?: number,
+  settings: Settings,
+): Promise<WaifuImage[]> {
+  try {
+    console.log("Fetching images from Wallhaven:", { query, limit, isNsfw, sortBy, page, minWidth, minHeight })
+
+    if (!settings.wallhavenApiKey) {
+      console.warn("Wallhaven API key not provided, skipping Wallhaven")
+      return []
+    }
+
+    const params = new URLSearchParams({
+      q: query,
+      categories: "010", // Only anime category
+      purity: isNsfw ? "011" : "100", // SFW or NSFW
+      sorting: sortBy === "RANDOM" ? "random" : "favorites",
+      order: "desc",
+      page: String(page),
+      apikey: settings.wallhavenApiKey,
+    })
+
+    if (limit > 0 && limit <= 100) {
+      params.append("limit", String(limit))
     }
 
     if (minWidth && minHeight) {
       params.append("atleast", `${minWidth}x${minHeight}`)
     }
 
-    const response = await fetch(`${API_ENDPOINTS.wallhaven}?${params}`)
-    const data = await response.json()
+    const url = `${WALLHAVEN_API_BASE_URL}/search?${params}`
+    console.log("Fetching from Wallhaven URL:", url)
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "WaifuDownloader/2.0",
+      },
+    })
+
+    const data = await handleApiResponse<WallhavenApiResponse>(response)
+    console.log("Wallhaven API Response:", data)
 
     if (!data.data || !Array.isArray(data.data)) {
+      console.warn("Invalid response format from Wallhaven:", data)
       return []
     }
 
-    return data.data.map((img: any) => ({
-      image_id: img.id,
-      url: img.path,
-      filename: `wallhaven-${img.id}.${img.file_type}`,
-      width: img.resolution?.split("x")[0] ? Number.parseInt(img.resolution.split("x")[0]) : undefined,
-      height: img.resolution?.split("x")[1] ? Number.parseInt(img.resolution.split("x")[1]) : undefined,
-      file_size: img.file_size,
-      source: "wallhaven",
-      tags: img.tags?.map((tag: any) => tag.name) || [category],
-      created_at: img.created_at,
-      favorites: img.favorites,
-      rating: "safe",
+    const transformedImages: WaifuImage[] = data.data.map((image) => ({
+      image_id: image.id,
+      url: image.path,
+      preview_url: image.thumbs.large,
+      extension: image.file_type.split("/")[1],
+      width: image.dimension_x,
+      height: image.dimension_y,
+      signature: "",
+      favorites: image.favorites,
+      dominant_color: image.colors[0] || "#000000",
+      source: image.source || "",
+      uploaded_at: image.created_at,
+      is_nsfw: image.purity !== "sfw",
+      tags: image.tags.map((tag) => ({
+        name: tag.name,
+        description: tag.category,
+        is_nsfw: tag.purity !== "sfw",
+      })),
+      isFavorite: false,
+      fetchedFrom: "wallhaven" as ApiSource,
+      lastModified: new Date().toISOString(),
     }))
+
+    console.log("Transformed Wallhaven images:", transformedImages)
+    return transformedImages
   } catch (error) {
-    console.error("Wallhaven API error:", error)
+    console.error("Error fetching images from Wallhaven:", error)
     return []
+  }
+}
+
+export async function fetchImageFromFemboyFinder(query: string, settings: Settings): Promise<WaifuImage> {
+  try {
+    const actualQuery = query === "random" ? "astolfo" : query
+    const url = `${FEMBOYFINDER_API_BASE_URL}/api/${actualQuery}`
+    console.log("Fetching from FemboyFinder URL:", url)
+
+    const response = await fetchWithRetry(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "WaifuDownloader/2.0",
+      },
+    })
+
+    const data = await handleApiResponse<FemboyFinderApiResponse>(response)
+    console.log("FemboyFinder API Response:", data)
+
+    if (data.error) {
+      throw new Error(data.query)
+    }
+
+    const transformedImage: WaifuImage = {
+      image_id: Date.now().toString(),
+      url: data.url,
+      preview_url: data.url,
+      width: 0,
+      height: 0,
+      tags: data.tags.split(" ").map((tag) => ({
+        name: tag,
+      })),
+      source: data.source,
+      uploaded_at: new Date().toISOString(),
+      isFavorite: false,
+      fetchedFrom: "femboyfinder" as ApiSource,
+      lastModified: new Date().toISOString(),
+    }
+
+    console.log("Transformed FemboyFinder image:", transformedImage)
+    return transformedImage
+  } catch (error) {
+    console.error("Error fetching image from FemboyFinder:", error)
+    throw error
   }
 }
 
 export async function fetchImagesFromMultipleSources(
   category: ImageCategory,
-  count: number,
+  limit = 30,
   isNsfw = false,
-  sortOption: SortOption = "RANDOM",
+  sortBy: SortOption = "RANDOM",
   page = 1,
   minWidth?: number,
   minHeight?: number,
-  settings?: Settings,
+  settings: Settings,
   apiSource: ApiSource = "all",
 ): Promise<WaifuImage[]> {
-  const allImages: WaifuImage[] = []
-  const imagesPerSource = apiSource === "all" ? Math.ceil(count / 3) : count
-
   try {
+    console.log("Fetching images from multiple sources:", {
+      category,
+      limit,
+      isNsfw,
+      sortBy,
+      page,
+      minWidth,
+      minHeight,
+      apiSource,
+    })
+
+    let combinedImages: WaifuImage[] = []
+
+    // Category mappings for different APIs
+    const categoryMappings = {
+      "nekos.best": {
+        waifu: "waifu",
+        neko: "neko",
+        husbando: "husbando",
+        kitsune: "kitsune",
+      },
+      "waifu.pics": {
+        waifu: "waifu",
+        neko: "neko",
+        shinobu: "shinobu",
+        megumin: "megumin",
+        bully: "bully",
+        cuddle: "cuddle",
+        cry: "cry",
+        hug: "hug",
+        awoo: "awoo",
+        kiss: "kiss",
+        lick: "lick",
+        pat: "pat",
+        smug: "smug",
+        bonk: "bonk",
+        yeet: "yeet",
+        blush: "blush",
+        smile: "smile",
+        wave: "wave",
+        highfive: "highfive",
+        handhold: "handhold",
+        nom: "nom",
+        bite: "bite",
+        glomp: "glomp",
+        slap: "slap",
+        kill: "kill",
+        kick: "kick",
+        happy: "happy",
+        wink: "wink",
+        poke: "poke",
+        dance: "dance",
+        cringe: "cringe",
+      },
+    }
+
+    // Calculate limits per source
+    const activeSources = []
+    if (apiSource === "all" || apiSource === "waifu.im") activeSources.push("waifu.im")
+    if (apiSource === "all" || apiSource === "waifu.pics") activeSources.push("waifu.pics")
+    if (apiSource === "all" || apiSource === "nekos.best") activeSources.push("nekos.best")
+    if (apiSource === "all" || apiSource === "wallhaven") activeSources.push("wallhaven")
+    if (apiSource === "all" || apiSource === "femboyfinder") activeSources.push("femboyfinder")
+
+    const limitPerSource = Math.max(1, Math.floor(limit / Math.max(1, activeSources.length)))
+
+    // Fetch from each source with proper error handling
+    const fetchPromises = []
+
     if (apiSource === "all" || apiSource === "waifu.im") {
-      const waifuImImages = await fetchFromWaifuIm(category, imagesPerSource, isNsfw, minWidth, minHeight)
-      allImages.push(...waifuImImages)
+      fetchPromises.push(
+        fetchImagesFromWaifuIm(category, limitPerSource, isNsfw, sortBy, page, minWidth, minHeight, settings).catch(
+          (error) => {
+            console.error("Waifu.im fetch failed:", error)
+            return []
+          },
+        ),
+      )
     }
 
     if (apiSource === "all" || apiSource === "waifu.pics") {
-      const waifuPicsImages = await fetchFromWaifuPics(category, imagesPerSource, isNsfw)
-      allImages.push(...waifuPicsImages)
+      const validCategory =
+        categoryMappings["waifu.pics"][category as keyof (typeof categoryMappings)["waifu.pics"]] || "waifu"
+      fetchPromises.push(
+        fetchImagesFromWaifuPics(validCategory, isNsfw, settings, limitPerSource).catch((error) => {
+          console.error("Waifu.pics fetch failed:", error)
+          return []
+        }),
+      )
     }
 
     if (apiSource === "all" || apiSource === "nekos.best") {
-      const nekosBestImages = await fetchFromNekosBest(category, imagesPerSource)
-      allImages.push(...nekosBestImages)
-    }
-
-    if ((apiSource === "all" || apiSource === "wallhaven") && settings?.wallhavenApiKey) {
-      const wallhavenImages = await fetchFromWallhaven(
-        category,
-        imagesPerSource,
-        settings.wallhavenApiKey,
-        minWidth,
-        minHeight,
+      const validCategory =
+        categoryMappings["nekos.best"][category as keyof (typeof categoryMappings)["nekos.best"]] || "waifu"
+      fetchPromises.push(
+        fetchImagesFromNekosBest(validCategory, settings, limitPerSource).catch((error) => {
+          console.error("Nekos.best fetch failed:", error)
+          return []
+        }),
       )
-      allImages.push(...wallhavenImages)
     }
 
-    // Shuffle and limit results
-    const shuffled = allImages.sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, count)
+    if (apiSource === "all" || apiSource === "wallhaven") {
+      fetchPromises.push(
+        fetchImagesFromWallhaven(category, limitPerSource, isNsfw, sortBy, page, minWidth, minHeight, settings).catch(
+          (error) => {
+            console.error("Wallhaven fetch failed:", error)
+            return []
+          },
+        ),
+      )
+    }
+
+    if (apiSource === "all" || apiSource === "femboyfinder") {
+      const femboyPromises = Array(limitPerSource)
+        .fill(null)
+        .map(() =>
+          fetchImageFromFemboyFinder(category, settings).catch((error) => {
+            console.error("FemboyFinder fetch failed:", error)
+            return null
+          }),
+        )
+
+      fetchPromises.push(
+        Promise.all(femboyPromises).then((results) => results.filter((img): img is WaifuImage => img !== null)),
+      )
+    }
+
+    // Wait for all promises to resolve
+    const results = await Promise.all(fetchPromises)
+    combinedImages = results.flat()
+
+    // If no images were fetched, try a fallback approach
+    if (combinedImages.length === 0) {
+      console.warn("No images fetched from any source, trying fallback...")
+
+      // Try just waifu.pics as a fallback since it's most reliable
+      try {
+        const fallbackImages = await fetchImagesFromWaifuPics("waifu", false, settings, limit)
+        combinedImages = fallbackImages
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError)
+
+        // Return some mock data so the UI doesn't break
+        combinedImages = [
+          {
+            image_id: "mock-1",
+            url: "/placeholder.svg?height=400&width=300&text=No+Images+Available",
+            preview_url: "/placeholder.svg?height=200&width=150&text=No+Preview",
+            width: 300,
+            height: 400,
+            tags: [{ name: "placeholder" }],
+            source: "placeholder",
+            uploaded_at: new Date().toISOString(),
+            isFavorite: false,
+            fetchedFrom: "placeholder" as ApiSource,
+            lastModified: new Date().toISOString(),
+          },
+        ]
+      }
+    }
+
+    console.log(`Total images fetched: ${combinedImages.length}`)
+    return combinedImages
   } catch (error) {
-    console.error("Multi-source fetch error:", error)
-    return []
+    console.error("Error fetching images from multiple sources:", error)
+
+    // Return mock data instead of throwing
+    return [
+      {
+        image_id: "error-1",
+        url: "/placeholder.svg?height=400&width=300&text=Error+Loading+Images",
+        preview_url: "/placeholder.svg?height=200&width=150&text=Error",
+        width: 300,
+        height: 400,
+        tags: [{ name: "error" }],
+        source: "error",
+        uploaded_at: new Date().toISOString(),
+        isFavorite: false,
+        fetchedFrom: "error" as ApiSource,
+        lastModified: new Date().toISOString(),
+      },
+    ]
   }
 }
 
@@ -352,7 +656,7 @@ export function saveImageToFile(blob: Blob, fileName: string): Promise<void> {
 
 export async function fetchCategories(): Promise<ImageCategory[]> {
   try {
-    const response = await fetchWithRetry(`${API_ENDPOINTS["waifu.im"]}/tags`, {
+    const response = await fetchWithRetry(`${WAIFU_IM_API_BASE_URL}/tags`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -376,11 +680,11 @@ export async function fetchRandomImage(settings: Settings): Promise<WaifuImage> 
 
     switch (randomSource) {
       case "waifu.pics":
-        const waifuPicsImages = await fetchFromWaifuPics("waifu", 1, false)
+        const waifuPicsImages = await fetchImagesFromWaifuPics("waifu", false, settings, 1)
         if (waifuPicsImages.length > 0) return waifuPicsImages[0]
         break
       case "nekos.best":
-        const nekosBestImages = await fetchFromNekosBest("waifu", 1)
+        const nekosBestImages = await fetchImagesFromNekosBest("waifu", settings, 1)
         if (nekosBestImages.length > 0) return nekosBestImages[0]
         break
     }
@@ -389,11 +693,15 @@ export async function fetchRandomImage(settings: Settings): Promise<WaifuImage> 
     return {
       image_id: "fallback-1",
       url: "/placeholder.svg?height=400&width=300&text=Random+Image+Unavailable",
-      filename: "placeholder.svg",
+      preview_url: "/placeholder.svg?height=200&width=150&text=Unavailable",
+      width: 300,
+      height: 400,
+      tags: [{ name: "fallback" }],
       source: "fallback",
-      tags: ["fallback"],
-      created_at: new Date().toISOString(),
-      rating: "safe",
+      uploaded_at: new Date().toISOString(),
+      isFavorite: false,
+      fetchedFrom: "fallback" as ApiSource,
+      lastModified: new Date().toISOString(),
     }
   } catch (error) {
     console.error("Error fetching random image:", error)

@@ -1,48 +1,41 @@
+// Core image types
 export interface WaifuImage {
   image_id: string | number
   url: string
-  filename?: string
-  width?: number
-  height?: number
+  preview_url?: string
+  width: number
+  height: number
   file_size?: number
   extension?: string
+  signature?: string
+  favorites?: number
+  dominant_color?: string
   source?: string
-  tags?: Array<string | { name: string; id?: number }>
   artist?: string
   character?: string
   series?: string
   rating?: "safe" | "questionable" | "explicit"
-  dominant_color?: string
   created_at?: string
   updated_at?: string
-  favorites?: number
+  tags?: Array<{
+    name: string
+    description?: string
+    is_nsfw?: boolean
+  }>
+  metadata?: {
+    addedAt?: string
+    dominantColor?: string
+    aspectRatio?: number
+    [key: string]: any
+  }
   isFavorite?: boolean
-  timestamp?: number
+  fetchedFrom?: ApiSource
+  lastModified?: string
+  filename?: string
 }
 
-export interface DownloadItem {
-  id: string
-  url: string
-  filename: string
-  status: "pending" | "downloading" | "completed" | "failed" | "paused"
-  progress: number
-  category?: ImageCategory
-  tags?: string[]
-  addedAt: Date
-  completedAt?: Date
-  error?: string
-}
-
-export interface DownloadProgress {
-  downloaded: number
-  total: number
-  speed: number
-  eta: number
-  currentFile?: string
-  errors?: string[]
-}
-
-export type DownloadStatus = "idle" | "downloading" | "paused" | "completed" | "failed"
+// API and source types
+export type ApiSource = "all" | "waifu.im" | "waifu.pics" | "nekos.best" | "wallhaven" | "femboyfinder"
 
 export type ImageCategory =
   | "waifu"
@@ -82,14 +75,12 @@ export type ImageCategory =
   | "husbando"
   | "kitsune"
 
-export type ApiSource = "all" | "waifu.im" | "waifu.pics" | "nekos.best" | "wallhaven" | "femboyfinder"
-
-export type SortOption = "RANDOM" | "NEWEST" | "OLDEST" | "POPULAR" | "RELEVANCE"
+export type SortOption = "RANDOM" | "NEWEST" | "OLDEST" | "FAVORITES" | "WIDTH" | "HEIGHT" | "FILE_SIZE"
 
 export type ThemeMode = "light" | "dark" | "system"
-
 export type Language = "en" | "ja" | "ko" | "zh"
 
+// Settings interface
 export interface Settings {
   // API Configuration
   concurrentDownloads: number
@@ -121,14 +112,12 @@ export interface Settings {
   // Download Behavior
   imagesPerPage: number
   enableNsfw: boolean
-  allowNsfw?: boolean
   skipDuplicates: boolean
   createSubfolders: boolean
   organizeByDate: boolean
   organizeBySource: boolean
   organizeByCategory: boolean
   downloadLocation: string
-  downloadPath?: string
   tempDownloadLocation: string
   maxConcurrentDownloads: number
   defaultCategory: ImageCategory
@@ -136,7 +125,6 @@ export interface Settings {
 
   // File Management
   fileNamingPattern: string
-  namingPattern?: string
   customNamingTemplate: string
   preserveOriginalNames: boolean
   addMetadataToFilename: boolean
@@ -145,7 +133,6 @@ export interface Settings {
 
   // UI & Appearance
   themeMode: ThemeMode
-  theme?: ThemeMode
   language: Language
   showPreviewImages: boolean
   previewImageSize: string
@@ -153,8 +140,6 @@ export interface Settings {
   showImageDetails: boolean
   showDownloadProgress: boolean
   compactMode: boolean
-  defaultGalleryView?: string
-  enableAnimations?: boolean
 
   // Notifications & Sounds
   enableNotifications: boolean
@@ -169,7 +154,6 @@ export interface Settings {
   // Performance & Caching
   enableImageCache: boolean
   maxCacheSize: number
-  cacheSize?: number
   cacheExpiryDays: number
   preloadImages: boolean
   enableLazyLoading: boolean
@@ -186,8 +170,6 @@ export interface Settings {
   proxyUrl: string
   proxyUsername: string
   proxyPassword: string
-  showContentWarnings?: boolean
-  enableCrashReports?: boolean
 
   // Backup & Sync
   enableAutoBackup: boolean
@@ -204,32 +186,125 @@ export interface Settings {
   enableAutoUpdate: boolean
   checkForUpdatesOnStartup: boolean
   enableDebugMode: boolean
-  debugMode?: boolean
   logLevel: string
   maxLogFileSize: number
 
   // Experimental Features
   enableExperimentalFeatures: boolean
-  experimentalFeatures?: boolean
   enableAITagging: boolean
   enableImageUpscaling: boolean
   upscalingFactor: number
   enableDuplicateDetection: boolean
   duplicateThreshold: number
-  enableRateLimit?: boolean
+
+  // Legacy compatibility
+  allowNsfw?: boolean
 }
 
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
+// Download types
+export type DownloadStatus = "pending" | "downloading" | "completed" | "failed" | "paused" | "cancelled"
+
+export interface DownloadItem {
+  id: string
+  url: string
+  filename: string
+  status: DownloadStatus
+  progress: number
+  timestamp: Date
+  addedAt: Date
+  source?: ApiSource
+  category?: ImageCategory
+  tags?: string[]
+  metadata?: any
   error?: string
-  message?: string
+  speed?: number
+  eta?: number
+  retries?: number
+  startTime?: Date
+  endTime?: Date
+  filePath?: string
 }
 
-export interface PaginatedResponse<T> {
-  items: T[]
+export interface DownloadProgress {
+  downloaded: number
   total: number
-  page: number
-  limit: number
-  hasMore: boolean
+  speed: number
+  eta: number
+  currentFile?: string
+  errors?: string[]
+}
+
+// Collection types
+export interface Collection {
+  id: string
+  name: string
+  description?: string
+  imageIds: string[]
+  created_at: string
+  updated_at: string
+  tags?: string[]
+}
+
+export interface Collections {
+  [key: string]: Collection
+}
+
+// Search and filter types
+export interface SearchFilters {
+  category?: ImageCategory
+  tags?: string[]
+  excludeTags?: string[]
+  minWidth?: number
+  minHeight?: number
+  maxWidth?: number
+  maxHeight?: number
+  aspectRatio?: "any" | "square" | "landscape" | "portrait"
+  fileFormat?: string[]
+  rating?: "any" | "safe" | "questionable" | "explicit"
+  source?: ApiSource[]
+}
+
+// API response types
+export interface ApiResponse<T> {
+  data: T
+  success: boolean
+  timestamp: string
+  source: ApiSource
+}
+
+export interface WaifuError {
+  code: string
+  message: string
+  source: ApiSource
+  timestamp: Date
+  context?: any
+}
+
+export interface PerformanceMetrics {
+  apiResponseTimes: {
+    [key in ApiSource]: number[]
+  }
+  downloadSpeeds: number[]
+  cacheHitRate: number
+  errorRate: number
+  memoryUsage: number
+}
+
+// Component prop types
+export interface ImageGalleryProps {
+  images: WaifuImage[]
+  onImageSelect?: (image: WaifuImage) => void
+  onImageDownload?: (image: WaifuImage) => void
+  selectedImages?: Set<string>
+  viewMode?: "grid" | "list"
+  showFavorites?: boolean
+}
+
+export interface DownloadTabProps {
+  onStartDownload?: (category: ImageCategory, limit: number, isNsfw: boolean, downloadPath: string) => void
+  onPauseDownload?: () => void
+  onStopDownload?: () => void
+  downloadStatus?: DownloadStatus
+  downloadProgress?: DownloadProgress
+  settings?: Settings
 }

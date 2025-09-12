@@ -13,7 +13,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { SumptuousHeart } from "@/components/sumptuous-heart"
 
 export function NavMain({
   items,
@@ -31,10 +30,7 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>
-        Platform
-        <SumptuousHeart size={16} className="ml-1" />
-      </SidebarGroupLabel>
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible key={item.title} asChild defaultOpen={item.isActive} className="group/collapsible">

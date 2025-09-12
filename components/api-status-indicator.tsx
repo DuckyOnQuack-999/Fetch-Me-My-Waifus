@@ -1,257 +1,171 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Wifi, WifiOff, Clock } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Wifi, WifiOff, AlertTriangle, CheckCircle } from "lucide-react"
+import { enhancedWaifuApi } from "@/services/enhanced-waifu-api"
+import type { ApiSource } from "@/types/waifu"
 
 interface ApiStatus {
-  name: string
-  url: string
-  status: "online" | "offline" | "slow" | "unknown"
-  responseTime?: number
+  source: ApiSource
+  status: "online" | "offline" | "degraded"
+  responseTime: number
   lastChecked: Date
 }
 
-export function ApiStatusIndicator() {
-  const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([
-    {
-      name: "Waifu.im",
-      url: "https://api.waifu.im",
-      status: "unknown",
-      lastChecked: new Date(),
-    },
-    {
-      name: "Waifu.pics",
-      url: "https://api.waifu.pics",
-      status: "unknown",
-      lastChecked: new Date(),
-    },
-    {
-      name: "Nekos.best",
-      url: "https://nekos.best/api/v2",
-      status: "unknown",
-      lastChecked: new Date(),
-    },
-    {
-      name: "Wallhaven",
-      url: "https://wallhaven.cc/api/v1",
-      status: "unknown",
-      lastChecked: new Date(),
-    },
-  ])
+interface ApiStatusIndicatorProps {
+  detailed?: boolean
+}
 
-  const [isChecking, setIsChecking] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+export function ApiStatusIndicator({ detailed = false }: ApiStatusIndicatorProps) {
+  const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const checkApiStatus = async (api: ApiStatus): Promise<ApiStatus> => {
-    const startTime = Date.now()
+  const checkApiStatuses = async () => {
+    const sources: ApiSource[] = ["waifu.pics", "waifu.im", "nekos.best", "wallhaven"]
+    const statuses: ApiStatus[] = []
 
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      const response = await fetch(`/api/proxy/status?url=${encodeURIComponent(api.url)}`, {
-        method: "GET",
-        signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-        },
-      })
-
-      clearTimeout(timeoutId)
-      const responseTime = Date.now() - startTime
-
-      let status: "online" | "offline" | "slow" = "online"
-      if (responseTime > 3000) {
-        status = "slow"
-      } else if (!response.ok) {
-        status = "offline"
-      }
-
-      return {
-        ...api,
-        status,
-        responseTime,
-        lastChecked: new Date(),
-      }
-    } catch (error) {
-      return {
-        ...api,
-        status: "offline",
-        responseTime: undefined,
-        lastChecked: new Date(),
+    for (const source of sources) {
+      try {
+        const status = await enhancedWaifuApi.getApiStatus(source)
+        statuses.push({
+          source,
+          ...status,
+          lastChecked: new Date(),
+        })
+      } catch (error) {
+        statuses.push({
+          source,
+          status: "offline",
+          responseTime: -1,
+          lastChecked: new Date(),
+        })
       }
     }
-  }
 
-  const checkAllApis = async () => {
-    setIsChecking(true)
-
-    try {
-      const promises = apiStatuses.map((api) => checkApiStatus(api))
-      const results = await Promise.all(promises)
-      setApiStatuses(results)
-      setLastUpdate(new Date())
-    } catch (error) {
-      console.error("Failed to check API statuses:", error)
-    } finally {
-      setIsChecking(false)
-    }
+    setApiStatuses(statuses)
+    setIsLoading(false)
   }
 
   useEffect(() => {
-    checkAllApis()
-
-    // Check every 5 minutes
-    const interval = setInterval(checkAllApis, 5 * 60 * 1000)
-
+    checkApiStatuses()
+    const interval = setInterval(checkApiStatuses, 30000) // Check every 30 seconds
     return () => clearInterval(interval)
   }, [])
 
-  const getStatusIcon = (status: ApiStatus["status"]) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "online":
         return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "degraded":
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
       case "offline":
-        return <XCircle className="h-4 w-4 text-red-500" />
-      case "slow":
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+        return <WifiOff className="h-4 w-4 text-red-500" />
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />
+        return <Wifi className="h-4 w-4 text-gray-500" />
     }
   }
 
-  const getStatusBadge = (status: ApiStatus["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "online":
-        return (
-          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-            Online
-          </Badge>
-        )
+        return "bg-green-500"
+      case "degraded":
+        return "bg-yellow-500"
       case "offline":
-        return <Badge variant="destructive">Offline</Badge>
-      case "slow":
-        return (
-          <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">
-            Slow
-          </Badge>
-        )
+        return "bg-red-500"
       default:
-        return <Badge variant="outline">Unknown</Badge>
+        return "bg-gray-500"
     }
   }
 
-  const overallStatus = apiStatuses.every((api) => api.status === "online")
-    ? "online"
-    : apiStatuses.some((api) => api.status === "online")
-      ? "partial"
-      : "offline"
+  const overallStatus =
+    apiStatuses.length > 0
+      ? apiStatuses.every((api) => api.status === "online")
+        ? "online"
+        : apiStatuses.some((api) => api.status === "online")
+          ? "degraded"
+          : "offline"
+      : "unknown"
 
-  const getOverallIcon = () => {
-    switch (overallStatus) {
-      case "online":
-        return <Wifi className="h-4 w-4 text-green-500" />
-      case "partial":
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      default:
-        return <WifiOff className="h-4 w-4 text-red-500" />
-    }
+  if (!detailed) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${getStatusColor(overallStatus)} animate-pulse`} />
+        <Badge variant={overallStatus === "online" ? "default" : "destructive"} className="cyberpunk-btn">
+          {isLoading ? "Checking..." : `APIs ${overallStatus.toUpperCase()}`}
+        </Badge>
+      </div>
+    )
   }
 
   return (
     <Card className="material-card">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              {getOverallIcon()}
-              <span className="font-medium">API Status</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {apiStatuses.map((api) => (
-                <motion.div
-                  key={api.name}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center gap-1"
-                >
-                  {getStatusIcon(api.status)}
-                  <span className="text-sm text-muted-foreground hidden sm:inline">{api.name}</span>
-                  {api.responseTime && (
-                    <span className="text-xs text-muted-foreground hidden md:inline">({api.responseTime}ms)</span>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-muted-foreground hidden sm:block">
-              Last updated: {lastUpdate.toLocaleTimeString()}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={checkAllApis}
-              disabled={isChecking}
-              className="h-8 bg-transparent"
-            >
-              <RefreshCw className={`h-3 w-3 ${isChecking ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline ml-1">Refresh</span>
-            </Button>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {overallStatus !== "online" && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="mt-3 pt-3 border-t"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {apiStatuses.map((api) => (
-                  <div key={api.name} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(api.status)}
-                      <span className="text-sm font-medium">{api.name}</span>
-                    </div>
-                    {getStatusBadge(api.status)}
-                  </div>
-                ))}
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 neon-text">
+          <Wifi className="h-5 w-5" />
+          API Status Monitor
+        </CardTitle>
+        <CardDescription>Real-time status of all connected APIs</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div className="loading-shimmer h-4 w-24 rounded" />
+                <div className="loading-shimmer h-6 w-16 rounded" />
               </div>
-
-              {overallStatus === "offline" && (
-                <div className="mt-2 p-2 rounded-md bg-destructive/10 border border-destructive/20">
-                  <div className="flex items-center gap-2 text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      All APIs are currently offline. Some features may not work properly.
-                    </span>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {apiStatuses.map((api) => (
+              <div
+                key={api.source}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(api.status)}
+                  <div>
+                    <p className="font-medium">{api.source}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Last checked: {api.lastChecked.toLocaleTimeString()}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {overallStatus === "partial" && (
-                <div className="mt-2 p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      Some APIs are experiencing issues. Functionality may be limited.
-                    </span>
-                  </div>
+                <div className="text-right">
+                  <Badge variant={api.status === "online" ? "default" : "destructive"} className="cyberpunk-btn">
+                    {api.status.toUpperCase()}
+                  </Badge>
+                  {api.responseTime > 0 && <p className="text-xs text-muted-foreground mt-1">{api.responseTime}ms</p>}
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="pt-4 border-t">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Overall Health</span>
+            <Badge variant={overallStatus === "online" ? "default" : "destructive"} className="cyberpunk-btn">
+              {overallStatus.toUpperCase()}
+            </Badge>
+          </div>
+          <Progress
+            value={
+              apiStatuses.length > 0
+                ? (apiStatuses.filter((api) => api.status === "online").length / apiStatuses.length) * 100
+                : 0
+            }
+            className="h-2"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            {apiStatuses.filter((api) => api.status === "online").length} of {apiStatuses.length} APIs operational
+          </p>
+        </div>
       </CardContent>
     </Card>
   )

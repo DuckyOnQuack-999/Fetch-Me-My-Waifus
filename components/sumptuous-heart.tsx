@@ -1,47 +1,64 @@
 "use client"
+
+import * as React from "react"
+import { motion } from "framer-motion"
+import { Heart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SumptuousHeartProps {
-  size?: number
   className?: string
-  glowing?: boolean
+  size?: number
+  filled?: boolean
   animated?: boolean
+  onClick?: () => void
 }
 
-export function SumptuousHeart({ size = 24, className, glowing = false, animated = true }: SumptuousHeartProps) {
+export function SumptuousHeart({
+  className,
+  size = 24,
+  filled = false,
+  animated = true,
+  onClick,
+}: SumptuousHeartProps) {
+  const [isHovered, setIsHovered] = React.useState(false)
+  const [isClicked, setIsClicked] = React.useState(false)
+
+  const handleClick = () => {
+    setIsClicked(true)
+    setTimeout(() => setIsClicked(false), 200)
+    onClick?.()
+  }
+
+  const HeartComponent = animated ? motion.div : "div"
+  const animationProps = animated
+    ? {
+        animate: {
+          scale: isClicked ? 1.3 : isHovered ? 1.1 : 1,
+          rotate: isClicked ? [0, -10, 10, 0] : 0,
+        },
+        transition: {
+          duration: isClicked ? 0.3 : 0.2,
+          ease: "easeInOut",
+        },
+      }
+    : {}
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn(
-        "kawaii-heart",
-        animated && "animate-pulse-slow",
-        glowing && "drop-shadow-[0_0_10px_var(--neon-primary)]",
-        className,
-      )}
+    <HeartComponent
+      className={cn("cursor-pointer inline-flex items-center justify-center", className)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleClick}
+      {...animationProps}
     >
-      <defs>
-        <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--neon-primary)" />
-          <stop offset="50%" stopColor="var(--neon-secondary)" />
-          <stop offset="100%" stopColor="var(--neon-accent)" />
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-        fill="url(#heartGradient)"
-        filter={glowing ? "url(#glow)" : undefined}
+      <Heart
+        size={size}
+        className={cn(
+          "transition-colors duration-200",
+          filled ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-400",
+          isHovered && !filled && "text-red-400",
+        )}
       />
-    </svg>
+    </HeartComponent>
   )
 }
