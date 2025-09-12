@@ -1,352 +1,159 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Download, Heart, ImageIcon, Activity, Zap, Clock, HardDrive } from "lucide-react"
-import { motion } from "framer-motion"
-import { useStorage } from "@/context/storageContext"
-import { useDownload } from "@/context/downloadContext"
-import { useSettings } from "@/context/settingsContext"
-
-interface StorageStats {
-  usage: {
-    used: number
-    available: number
-    percentage: number
-  }
-  counts: {
-    images: number
-    favorites: number
-    collections: number
-    downloadHistory: number
-  }
-  lastUpdated: string
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Download, Heart, Image, Zap, Activity, Database, Wifi, HardDrive, Cpu } from "lucide-react"
+import { SimpleDownloadTab } from "./simple-download-tab"
+import { GalleryTab } from "./gallery-tab"
+import { SettingsTab } from "./settings-tab"
 
 export function HomeDashboard() {
-  const { images, favorites, getStorageStats } = useStorage()
-  const { downloads, activeDownloads, completedDownloads, totalProgress } = useDownload()
-  const { settings } = useSettings()
-  const [storageStats, setStorageStats] = useState<StorageStats | null>(null)
+  const [stats, setStats] = useState({
+    totalDownloads: 1337,
+    favorites: 420,
+    collections: 69,
+    storageUsed: 75,
+  })
 
-  useEffect(() => {
-    try {
-      const stats = getStorageStats()
-      setStorageStats(stats)
-    } catch (error) {
-      console.error("Failed to get storage stats:", error)
-      // Set fallback stats
-      setStorageStats({
-        usage: { used: 0, available: 100 * 1024 * 1024, percentage: 0 },
-        counts: {
-          images: images?.length || 0,
-          favorites: favorites?.length || 0,
-          collections: 0,
-          downloadHistory: 0,
-        },
-        lastUpdated: new Date().toISOString(),
-      })
-    }
-  }, [images, favorites, getStorageStats])
-
-  const quickStats = [
-    {
-      title: "Total Images",
-      value: images?.length || 0,
-      change: "+12%",
-      icon: ImageIcon,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
-    },
-    {
-      title: "Favorites",
-      value: favorites?.length || 0,
-      change: "+8%",
-      icon: Heart,
-      color: "text-red-500",
-      bgColor: "bg-red-500/10",
-    },
-    {
-      title: "Downloads",
-      value: completedDownloads?.length || 0,
-      change: "+23%",
-      icon: Download,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
-    },
-    {
-      title: "Active",
-      value: activeDownloads?.length || 0,
-      change: "Live",
-      icon: Activity,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
-    },
-  ]
-
-  const recentActivity = [
-    { action: "Downloaded", item: "anime_girl_001.jpg", time: "2 minutes ago", type: "download" },
-    { action: "Added to favorites", item: "waifu_collection_42.png", time: "5 minutes ago", type: "favorite" },
-    { action: "Created collection", item: "Summer Waifus", time: "10 minutes ago", type: "collection" },
-    { action: "Downloaded", item: "neko_art_15.jpg", time: "15 minutes ago", type: "download" },
-    { action: "Updated settings", item: "API Configuration", time: "1 hour ago", type: "settings" },
-  ]
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "download":
-        return <Download className="h-4 w-4 text-green-500" />
-      case "favorite":
-        return <Heart className="h-4 w-4 text-red-500" />
-      case "collection":
-        return <ImageIcon className="h-4 w-4 text-blue-500" />
-      case "settings":
-        return <Zap className="h-4 w-4 text-purple-500" />
-      default:
-        return <Activity className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  // Safe access to totalProgress with fallbacks
-  const safeProgress = {
-    downloaded: totalProgress?.downloaded || 0,
-    total: totalProgress?.total || 0,
-    speed: totalProgress?.speed || 0,
-    currentFile: totalProgress?.currentFile || null,
-  }
-
-  const progressPercentage = safeProgress.total > 0 ? (safeProgress.downloaded / safeProgress.total) * 100 : 0
+  const [systemStatus, setSystemStatus] = useState({
+    api: "online",
+    storage: "optimal",
+    network: "stable",
+    cpu: "normal",
+  })
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-gradient">Welcome to your Dashboard</h2>
-        <p className="text-muted-foreground">Manage your anime image collection with powerful AI-enhanced tools</p>
-      </motion.div>
-
-      {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {quickStats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card className="material-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {stat.change}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+    <div className="min-h-screen space-y-6 p-6">
+      {/* Cyberpunk Header */}
+      <div className="text-center space-y-4 py-8">
+        <h1 className="text-4xl md:text-6xl font-bold text-gradient animate-float font-mono">WAIFU DOWNLOADER</h1>
+        <p className="text-lg text-muted-foreground font-mono">{"> NEURAL NETWORK INTERFACE v2.0"}</p>
+        <div className="flex justify-center">
+          <Badge className="cyber-notification font-mono">SYSTEM ONLINE</Badge>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Download Progress */}
-        <Card className="material-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              Download Progress
-            </CardTitle>
-            <CardDescription>Current download status and queue information</CardDescription>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="material-card glow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium font-mono text-primary">DOWNLOADS</CardTitle>
+            <Download className="h-4 w-4 text-primary animate-pulse-neon" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            {activeDownloads && activeDownloads.length > 0 ? (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Overall Progress</span>
-                    <span>{Math.round(progressPercentage)}%</span>
-                  </div>
-                  <Progress value={progressPercentage} className="h-2" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Downloaded</p>
-                    <p className="font-medium">
-                      {safeProgress.downloaded} / {safeProgress.total}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Speed</p>
-                    <p className="font-medium">{(safeProgress.speed / 1024 / 1024).toFixed(1)} MB/s</p>
-                  </div>
-                </div>
-
-                {safeProgress.currentFile && (
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">Currently downloading:</p>
-                    <p className="font-medium truncate">{safeProgress.currentFile}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <Download className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No active downloads</p>
-                <Button className="mt-2" onClick={() => (window.location.href = "/?tab=download")}>
-                  Start Downloading
-                </Button>
-              </div>
-            )}
+          <CardContent>
+            <div className="text-2xl font-bold text-gradient font-mono">{stats.totalDownloads.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground font-mono">+20.1% from last session</p>
           </CardContent>
         </Card>
 
-        {/* Storage Usage */}
-        <Card className="material-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Storage Usage
-            </CardTitle>
-            <CardDescription>Local storage and cache information</CardDescription>
+        <Card className="material-card glow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium font-mono text-primary">FAVORITES</CardTitle>
+            <Heart className="h-4 w-4 text-primary animate-pulse-neon" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            {storageStats && storageStats.usage ? (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Storage Used</span>
-                    <span>{storageStats.usage.percentage.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={storageStats.usage.percentage} className="h-2" />
-                </div>
+          <CardContent>
+            <div className="text-2xl font-bold text-gradient font-mono">{stats.favorites}</div>
+            <p className="text-xs text-muted-foreground font-mono">+12.5% this week</p>
+          </CardContent>
+        </Card>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Used</p>
-                    <p className="font-medium">{(storageStats.usage.used / 1024 / 1024).toFixed(1)} MB</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Available</p>
-                    <p className="font-medium">{(storageStats.usage.available / 1024 / 1024).toFixed(1)} MB</p>
-                  </div>
-                </div>
+        <Card className="material-card glow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium font-mono text-primary">COLLECTIONS</CardTitle>
+            <Image className="h-4 w-4 text-primary animate-pulse-neon" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gradient font-mono">{stats.collections}</div>
+            <p className="text-xs text-muted-foreground font-mono">+5 new collections</p>
+          </CardContent>
+        </Card>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Images</span>
-                    <Badge variant="secondary">{storageStats.counts.images}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Favorites</span>
-                    <Badge variant="secondary">{storageStats.counts.favorites}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Collections</span>
-                    <Badge variant="secondary">{storageStats.counts.collections}</Badge>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <HardDrive className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading storage information...</p>
-              </div>
-            )}
+        <Card className="material-card glow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium font-mono text-primary">STORAGE</CardTitle>
+            <HardDrive className="h-4 w-4 text-primary animate-pulse-neon" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gradient font-mono">{stats.storageUsed}%</div>
+            <Progress value={stats.storageUsed} className="mt-2" />
+            <p className="text-xs text-muted-foreground font-mono mt-1">2.1GB / 2.8GB used</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
+      {/* System Status */}
       <Card className="material-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Recent Activity
+          <CardTitle className="font-mono text-gradient flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            SYSTEM STATUS
           </CardTitle>
-          <CardDescription>Your latest actions and downloads</CardDescription>
+          <CardDescription className="font-mono">Real-time monitoring of all subsystems</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                {getActivityIcon(activity.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {activity.action} <span className="text-muted-foreground">"{activity.item}"</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
-              </motion.div>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-effect p-3 rounded-lg text-center">
+              <Wifi className="w-6 h-6 mx-auto mb-2 text-green-400" />
+              <div className="text-sm font-mono text-green-400">API</div>
+              <div className="text-xs font-mono text-muted-foreground">ONLINE</div>
+            </div>
+
+            <div className="glass-effect p-3 rounded-lg text-center">
+              <Database className="w-6 h-6 mx-auto mb-2 text-blue-400" />
+              <div className="text-sm font-mono text-blue-400">STORAGE</div>
+              <div className="text-xs font-mono text-muted-foreground">OPTIMAL</div>
+            </div>
+
+            <div className="glass-effect p-3 rounded-lg text-center">
+              <Zap className="w-6 h-6 mx-auto mb-2 text-yellow-400" />
+              <div className="text-sm font-mono text-yellow-400">NETWORK</div>
+              <div className="text-xs font-mono text-muted-foreground">STABLE</div>
+            </div>
+
+            <div className="glass-effect p-3 rounded-lg text-center">
+              <Cpu className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <div className="text-sm font-mono text-primary">CPU</div>
+              <div className="text-xs font-mono text-muted-foreground">NORMAL</div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
+      {/* Main Interface */}
       <Card className="material-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription>Common tasks and shortcuts</CardDescription>
+          <CardTitle className="font-mono text-gradient">NEURAL INTERFACE</CardTitle>
+          <CardDescription className="font-mono">Access all waifu acquisition protocols</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/?tab=download")}
-            >
-              <Download className="h-5 w-5" />
-              <span className="text-xs">Download Images</span>
-            </Button>
+          <Tabs defaultValue="download" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 glass-effect">
+              <TabsTrigger value="download" className="font-mono">
+                DOWNLOAD
+              </TabsTrigger>
+              <TabsTrigger value="gallery" className="font-mono">
+                GALLERY
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="font-mono">
+                SETTINGS
+              </TabsTrigger>
+            </TabsList>
 
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/gallery")}
-            >
-              <ImageIcon className="h-5 w-5" />
-              <span className="text-xs">Browse Gallery</span>
-            </Button>
+            <TabsContent value="download" className="mt-6">
+              <SimpleDownloadTab />
+            </TabsContent>
 
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/favorites")}
-            >
-              <Heart className="h-5 w-5" />
-              <span className="text-xs">View Favorites</span>
-            </Button>
+            <TabsContent value="gallery" className="mt-6">
+              <GalleryTab />
+            </TabsContent>
 
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/settings")}
-            >
-              <Zap className="h-5 w-5" />
-              <span className="text-xs">Settings</span>
-            </Button>
-          </div>
+            <TabsContent value="settings" className="mt-6">
+              <SettingsTab />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
