@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Download, Heart, ImageIcon, Activity, Zap, Clock, HardDrive } from "lucide-react"
+import { Download, Heart, ImageIcon, Activity, Zap, Clock, HardDrive, Sparkles } from "lucide-react"
 import { motion } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
 import { useDownload } from "@/context/downloadContext"
 import { useSettings } from "@/context/settingsContext"
 import { SumptuousHeart } from "@/components/sumptuous-heart"
+import { cn } from "@/lib/utils"
 
 interface StorageStats {
   usage: {
@@ -39,7 +40,6 @@ export function HomeDashboard() {
       setStorageStats(stats)
     } catch (error) {
       console.error("Failed to get storage stats:", error)
-      // Set fallback stats
       setStorageStats({
         usage: { used: 0, available: 100 * 1024 * 1024, percentage: 0 },
         counts: {
@@ -59,32 +59,36 @@ export function HomeDashboard() {
       value: images?.length || 0,
       change: "+12%",
       icon: ImageIcon,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
+      color: "text-[var(--neon-primary)]",
+      bgColor: "bg-[var(--neon-primary)]/10",
+      glowColor: "var(--neon-primary)",
     },
     {
       title: "Favorites",
       value: favorites?.length || 0,
       change: "+8%",
       icon: Heart,
-      color: "text-red-500",
-      bgColor: "bg-red-500/10",
+      color: "text-[var(--neon-secondary)]",
+      bgColor: "bg-[var(--neon-secondary)]/10",
+      glowColor: "var(--neon-secondary)",
     },
     {
       title: "Downloads",
       value: completedDownloads?.length || 0,
       change: "+23%",
       icon: Download,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
+      color: "text-[var(--neon-accent)]",
+      bgColor: "bg-[var(--neon-accent)]/10",
+      glowColor: "var(--neon-accent)",
     },
     {
       title: "Active",
       value: activeDownloads?.length || 0,
       change: "Live",
       icon: Activity,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
+      color: "text-orange-400",
+      bgColor: "bg-orange-400/10",
+      glowColor: "#fb923c",
     },
   ]
 
@@ -97,21 +101,21 @@ export function HomeDashboard() {
   ]
 
   const getActivityIcon = (type: string) => {
+    const iconProps = { className: "h-4 w-4 drop-shadow-[0_0_6px_currentColor]" }
     switch (type) {
       case "download":
-        return <Download className="h-4 w-4 text-green-500" />
+        return <Download {...iconProps} className={cn(iconProps.className, "text-[var(--neon-accent)]")} />
       case "favorite":
-        return <Heart className="h-4 w-4 text-red-500" />
+        return <SumptuousHeart size={16} glowing />
       case "collection":
-        return <ImageIcon className="h-4 w-4 text-blue-500" />
+        return <ImageIcon {...iconProps} className={cn(iconProps.className, "text-[var(--neon-primary)]")} />
       case "settings":
-        return <Zap className="h-4 w-4 text-purple-500" />
+        return <Zap {...iconProps} className={cn(iconProps.className, "text-purple-400")} />
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />
+        return <Activity {...iconProps} className={cn(iconProps.className, "text-gray-400")} />
     }
   }
 
-  // Safe access to totalProgress with fallbacks
   const safeProgress = {
     downloaded: totalProgress?.downloaded || 0,
     total: totalProgress?.total || 0,
@@ -122,37 +126,57 @@ export function HomeDashboard() {
   const progressPercentage = safeProgress.total > 0 ? (safeProgress.downloaded / safeProgress.total) * 100 : 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Welcome Section */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-kawaii-pink">Welcome to your Dashboard</h2>
-        <p className="text-muted-foreground">Manage your anime image collection with powerful AI-enhanced tools</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-4">
+        <h2 className="text-3xl font-bold neon-text">
+          Welcome to your Dashboard
+          <Sparkles className="inline-block ml-2 h-6 w-6 text-[var(--neon-accent)] animate-pulse" />
+        </h2>
+        <p className="text-muted-foreground text-lg">
+          Manage your anime image collection with powerful AI-enhanced tools
+        </p>
       </motion.div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {quickStats.map((stat, index) => (
           <motion.div
             key={stat.title}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: index * 0.1, type: "spring", stiffness: 300 }}
+            whileHover={{
+              scale: 1.05,
+              boxShadow: `0 10px 30px ${stat.glowColor}40`,
+              transition: { type: "spring", stiffness: 400 },
+            }}
           >
-            <Card className="material-card">
-              <CardContent className="p-4">
+            <Card className="material-card kawaii-element">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="secondary" className="text-xs">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-medium">{stat.title}</p>
+                    <p className="text-3xl font-bold neon-text">{stat.value}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="secondary"
+                        className={cn("text-xs glass-effect border-0", stat.bgColor, stat.color)}
+                      >
                         {stat.change}
                       </Badge>
                     </div>
                   </div>
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
+                  <motion.div
+                    className={cn("p-3 rounded-lg", stat.bgColor, "border border-current/20")}
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                    style={{
+                      boxShadow: `0 0 20px ${stat.glowColor}30`,
+                    }}
+                  >
+                    <stat.icon className={cn("h-6 w-6", stat.color, "drop-shadow-[0_0_8px_currentColor]")} />
+                  </motion.div>
                 </div>
               </CardContent>
             </Card>
@@ -162,194 +186,298 @@ export function HomeDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Download Progress */}
-        <Card className="material-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              Download Progress
-            </CardTitle>
-            <CardDescription>Current download status and queue information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {activeDownloads && activeDownloads.length > 0 ? (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Overall Progress</span>
-                    <span>{Math.round(progressPercentage)}%</span>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="material-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                >
+                  <Download className="h-6 w-6 text-[var(--neon-accent)] drop-shadow-[0_0_8px_currentColor]" />
+                </motion.div>
+                <span className="neon-text">Download Progress</span>
+              </CardTitle>
+              <CardDescription>Current download status and queue information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {activeDownloads && activeDownloads.length > 0 ? (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">Overall Progress</span>
+                      <span className="neon-text font-bold">{Math.round(progressPercentage)}%</span>
+                    </div>
+                    <div className="relative">
+                      <Progress value={progressPercentage} className="h-3 holographic" />
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        animate={{ x: [-100, 300] }}
+                        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                        style={{ width: "100px", height: "100%" }}
+                      />
+                    </div>
                   </div>
-                  <Progress value={progressPercentage} className="h-2" />
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Downloaded</p>
-                    <p className="font-medium">
-                      {safeProgress.downloaded} / {safeProgress.total}
-                    </p>
+                  <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground">Downloaded</p>
+                      <p className="font-bold text-lg neon-text">
+                        {safeProgress.downloaded} / {safeProgress.total}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground">Speed</p>
+                      <p className="font-bold text-lg neon-text">
+                        {(safeProgress.speed / 1024 / 1024).toFixed(1)} MB/s
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Speed</p>
-                    <p className="font-medium">{(safeProgress.speed / 1024 / 1024).toFixed(1)} MB/s</p>
-                  </div>
-                </div>
 
-                {safeProgress.currentFile && (
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm text-muted-foreground">Currently downloading:</p>
-                    <p className="font-medium truncate">{safeProgress.currentFile}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <Download className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No active downloads</p>
-                <Button className="mt-2" onClick={() => (window.location.href = "/?tab=download")}>
-                  Start Downloading
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  {safeProgress.currentFile && (
+                    <motion.div
+                      className="p-4 rounded-lg glass-effect border border-[var(--neon-primary)]/30"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <p className="text-sm text-muted-foreground mb-1">Currently downloading:</p>
+                      <p className="font-medium truncate neon-text">{safeProgress.currentFile}</p>
+                    </motion.div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <motion.div
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                  >
+                    <Download className="h-16 w-16 text-muted-foreground mx-auto mb-4 drop-shadow-[0_0_10px_currentColor]" />
+                  </motion.div>
+                  <p className="text-muted-foreground mb-4">No active downloads</p>
+                  <Button
+                    variant="cyber"
+                    onClick={() => (window.location.href = "/?tab=download")}
+                    className="kawaii-element"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Start Downloading
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Storage Usage */}
-        <Card className="material-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Storage Usage
-            </CardTitle>
-            <CardDescription>Local storage and cache information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {storageStats && storageStats.usage ? (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Storage Used</span>
-                    <span>{storageStats.usage.percentage.toFixed(1)}%</span>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="material-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                >
+                  <HardDrive className="h-6 w-6 text-[var(--neon-primary)] drop-shadow-[0_0_8px_currentColor]" />
+                </motion.div>
+                <span className="neon-text">Storage Usage</span>
+              </CardTitle>
+              <CardDescription>Local storage and cache information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {storageStats && storageStats.usage ? (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">Storage Used</span>
+                      <span className="neon-text font-bold">{storageStats.usage.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="relative">
+                      <Progress value={storageStats.usage.percentage} className="h-3 holographic" />
+                    </div>
                   </div>
-                  <Progress value={storageStats.usage.percentage} className="h-2" />
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Used</p>
-                    <p className="font-medium">{(storageStats.usage.used / 1024 / 1024).toFixed(1)} MB</p>
+                  <div className="grid grid-cols-2 gap-6 text-sm">
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground">Used</p>
+                      <p className="font-bold text-lg neon-text">
+                        {(storageStats.usage.used / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground">Available</p>
+                      <p className="font-bold text-lg neon-text">
+                        {(storageStats.usage.available / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">Available</p>
-                    <p className="font-medium">{(storageStats.usage.available / 1024 / 1024).toFixed(1)} MB</p>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Images</span>
-                    <Badge variant="secondary">{storageStats.counts.images}</Badge>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Images", count: storageStats.counts.images, color: "var(--neon-primary)" },
+                      { label: "Favorites", count: storageStats.counts.favorites, color: "var(--neon-secondary)" },
+                      { label: "Collections", count: storageStats.counts.collections, color: "var(--neon-accent)" },
+                    ].map((item, index) => (
+                      <motion.div
+                        key={item.label}
+                        className="flex justify-between items-center p-2 rounded glass-effect"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                      >
+                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                        <Badge
+                          variant="secondary"
+                          className="glass-effect border-0"
+                          style={{
+                            color: item.color,
+                            boxShadow: `0 0 10px ${item.color}30`,
+                          }}
+                        >
+                          {item.count}
+                        </Badge>
+                      </motion.div>
+                    ))}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Favorites</span>
-                    <Badge variant="secondary">{storageStats.counts.favorites}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Collections</span>
-                    <Badge variant="secondary">{storageStats.counts.collections}</Badge>
-                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                  >
+                    <HardDrive className="h-16 w-16 text-muted-foreground mx-auto mb-4 drop-shadow-[0_0_10px_currentColor]" />
+                  </motion.div>
+                  <p className="text-muted-foreground">Loading storage information...</p>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <HardDrive className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading storage information...</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Recent Activity */}
-      <Card className="material-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Recent Activity
-          </CardTitle>
-          <CardDescription>Your latest actions and downloads</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <Card className="material-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
               <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 8, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
               >
-                {getActivityIcon(activity.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {activity.action} <span className="text-muted-foreground">"{activity.item}"</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
+                <Clock className="h-6 w-6 text-[var(--neon-accent)] drop-shadow-[0_0_8px_currentColor]" />
               </motion.div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <span className="neon-text">Recent Activity</span>
+            </CardTitle>
+            <CardDescription>Your latest actions and downloads</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivity.map((activity, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{
+                    scale: 1.02,
+                    boxShadow: "0 4px 20px var(--neon-primary)20",
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-lg glass-effect border border-[var(--neon-primary)]/20 hover:border-[var(--neon-primary)]/40 transition-all duration-300 kawaii-element"
+                >
+                  <div className="flex-shrink-0">{getActivityIcon(activity.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      <span className="neon-text">{activity.action}</span>{" "}
+                      <span className="text-muted-foreground">"{activity.item}"</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Quick Actions */}
-      <Card className="material-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription>Common tasks and shortcuts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/?tab=download")}
-            >
-              <Download className="h-5 w-5" />
-              <span className="text-xs">Download Images</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/gallery")}
-            >
-              <ImageIcon className="h-5 w-5" />
-              <span className="text-xs">Browse Gallery</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/favorites")}
-            >
-              <SumptuousHeart size={20} />
-              <span className="text-xs">View Favorites</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-20 flex-col gap-2 bg-transparent"
-              onClick={() => (window.location.href = "/settings")}
-            >
-              <Zap className="h-5 w-5" />
-              <span className="text-xs">Settings</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+        <Card className="material-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <motion.div
+                animate={{
+                  rotate: [0, 10, -10, 0],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+              >
+                <Zap className="h-6 w-6 text-[var(--neon-accent)] drop-shadow-[0_0_8px_currentColor]" />
+              </motion.div>
+              <span className="neon-text">Quick Actions</span>
+            </CardTitle>
+            <CardDescription>Common tasks and shortcuts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                {
+                  icon: Download,
+                  label: "Download Images",
+                  href: "/?tab=download",
+                  color: "var(--neon-primary)",
+                },
+                {
+                  icon: ImageIcon,
+                  label: "Browse Gallery",
+                  href: "/gallery",
+                  color: "var(--neon-secondary)",
+                },
+                {
+                  icon: Heart,
+                  label: "View Favorites",
+                  href: "/favorites",
+                  color: "var(--neon-accent)",
+                  isHeart: true,
+                },
+                {
+                  icon: Zap,
+                  label: "Settings",
+                  href: "/settings",
+                  color: "#a855f7",
+                },
+              ].map((action, index) => (
+                <motion.div
+                  key={action.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 * index, type: "spring" }}
+                  whileHover={{
+                    scale: 1.05,
+                    boxShadow: `0 10px 30px ${action.color}40`,
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    variant="outline"
+                    className="h-24 flex-col gap-3 bg-transparent glass-effect border-[var(--neon-primary)]/30 hover:border-[var(--neon-primary)]/60 kawaii-element"
+                    onClick={() => (window.location.href = action.href)}
+                  >
+                    {action.isHeart ? (
+                      <SumptuousHeart size={24} glowing />
+                    ) : (
+                      <action.icon
+                        className="h-6 w-6 drop-shadow-[0_0_8px_currentColor]"
+                        style={{ color: action.color }}
+                      />
+                    )}
+                    <span className="text-xs font-medium">{action.label}</span>
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }
