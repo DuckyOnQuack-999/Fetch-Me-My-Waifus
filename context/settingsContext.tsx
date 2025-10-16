@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS: Settings = {
   waifuImApiKey: "",
   waifuPicsApiKey: "",
   nekosBestApiKey: "",
-  wallhavenApiKey: process.env.NEXT_PUBLIC_WALLHAVEN_API_KEY || "",
+  wallhavenApiKey: "", // Server-side only, never exposed to client
   femboyFinderApiKey: "",
   requestTimeout: 30000,
   rateLimitDelay: 1000,

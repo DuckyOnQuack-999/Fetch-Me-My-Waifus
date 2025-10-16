@@ -8,6 +8,7 @@ import type {
   WaifuError,
   PerformanceMetrics,
 } from "../types/waifu"
+import { fetchWallhavenImages } from "@/app/actions/wallhaven"
 
 // Enhanced API service with comprehensive error handling and performance monitoring
 class EnhancedWaifuApiService {
@@ -198,7 +199,7 @@ class EnhancedWaifuApiService {
           return {
             image_id: `waifu-pics-${Date.now()}-${index}`,
             url: response.data.url,
-            width: 1920, // Default dimensions
+            width: 1920,
             height: 1080,
             tags: [category],
             source: "waifu.pics",
@@ -264,7 +265,7 @@ class EnhancedWaifuApiService {
     }
   }
 
-  // Enhanced Wallhaven API implementation
+  // Enhanced Wallhaven API implementation - now uses server action
   async fetchImagesFromWallhaven(
     query: string,
     limit = 30,
@@ -281,46 +282,15 @@ class EnhancedWaifuApiService {
       return this.cache.get(cacheKey)
     }
 
-    const params = new URLSearchParams({
-      q: query,
-      categories: "111", // General, Anime, People
-      purity: isNsfw ? "111" : "100", // SFW, Sketchy, NSFW
-      sorting: sortBy === "RANDOM" ? "random" : "date_added",
-      order: "desc",
-      page: String(page),
-      atleast: minWidth && minHeight ? `${minWidth}x${minHeight}` : "1920x1080",
-    })
-
-    const headers: HeadersInit = {
-      "User-Agent": "WaifuDownloader/2.0",
-    }
-
-    if (settings?.wallhavenApiKey) {
-      headers["X-API-Key"] = settings.wallhavenApiKey
-    }
-
-    const url = `https://wallhaven.cc/api/v1/search?${params}`
-
     try {
-      const response = await this.handleApiRequest<{ data: any[] }>(url, { headers }, "wallhaven")
+      const result = await fetchWallhavenImages(query, limit, isNsfw, sortBy, page, minWidth, minHeight)
 
-      const transformedImages = response.data.data.map((item) => ({
-        image_id: item.id,
-        url: item.path,
-        preview_url: item.thumbs.large,
-        width: item.resolution.split("x")[0],
-        height: item.resolution.split("x")[1],
-        file_size: item.file_size,
-        tags: item.tags?.map((tag: any) => tag.name) || [],
-        source: "wallhaven",
-        rating: item.purity === "sfw" ? "safe" : item.purity === "sketchy" ? "questionable" : "explicit",
-        created_at: item.created_at,
-        fetchedFrom: "wallhaven" as ApiSource,
-        lastModified: new Date().toISOString(),
-      })) as WaifuImage[]
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch from Wallhaven")
+      }
 
-      this.cache.set(cacheKey, transformedImages)
-      return transformedImages
+      this.cache.set(cacheKey, result.images)
+      return result.images
     } catch (error) {
       console.error("Error fetching images from Wallhaven:", error)
       throw error
