@@ -2,95 +2,106 @@
 
 import { useActivity } from "@/context/activityContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Activity, Download, Heart, FolderOpen, Settings2, UserPlus, LogIn } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { Download, Heart, FolderOpen, Settings, LogIn, UserPlus, Wifi, WifiOff } from "lucide-react"
+import { formatDistanceToNow } from "date-fns"
+import type { ActivityMessage } from "@/lib/websocket"
 
 const activityIcons = {
   download: Download,
   favorite: Heart,
   collection: FolderOpen,
-  settings: Settings2,
+  settings: Settings,
   login: LogIn,
   register: UserPlus,
 }
 
 const activityColors = {
-  download: "text-green-500",
-  favorite: "text-red-500",
-  collection: "text-blue-500",
-  settings: "text-purple-500",
-  login: "text-yellow-500",
-  register: "text-pink-500",
+  download: "text-blue-500",
+  favorite: "text-pink-500",
+  collection: "text-purple-500",
+  settings: "text-gray-500",
+  login: "text-green-500",
+  register: "text-emerald-500",
 }
 
 export function ActivityFeed() {
   const { activities, isConnected } = useActivity()
 
+  const getActivityIcon = (type: ActivityMessage["type"]) => {
+    const Icon = activityIcons[type]
+    return Icon ? <Icon className={`h-4 w-4 ${activityColors[type]}`} /> : null
+  }
+
+  const formatTimestamp = (timestamp: Date) => {
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+    } catch {
+      return "just now"
+    }
+  }
+
   return (
-    <Card className="glass-card h-full">
+    <Card className="h-full">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary animate-pulse-glow" />
-            <CardTitle>Recent Activity</CardTitle>
+          <div>
+            <CardTitle className="text-lg">Recent Activity</CardTitle>
+            <CardDescription>Live feed of user actions</CardDescription>
           </div>
-          <Badge variant={isConnected ? "default" : "destructive"} className="animate-pulse">
-            {isConnected ? "Live" : "Offline"}
+          <Badge variant={isConnected ? "default" : "secondary"} className="gap-2">
+            {isConnected ? (
+              <>
+                <Wifi className="h-3 w-3" />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </>
+            )}
           </Badge>
         </div>
-        <CardDescription>Real-time updates from all users</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
-        <ScrollArea className="h-[600px] px-4">
-          <div className="space-y-3 py-4">
-            {activities.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Activity className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-sm text-muted-foreground">No recent activity</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Activity will appear here in real-time</p>
+      <CardContent>
+        <ScrollArea className="h-[400px] pr-4">
+          {activities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[300px] text-center">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <Download className="h-8 w-8 text-muted-foreground" />
               </div>
-            ) : (
-              activities.map((activity, index) => {
-                const Icon = activityIcons[activity.type] || Activity
-                const colorClass = activityColors[activity.type] || "text-gray-500"
-
-                return (
-                  <div
-                    key={activity.id}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg transition-all duration-300",
-                      "hover:bg-muted/50 animate-slide-in",
-                      index === 0 && "bg-accent/10 border border-accent/20",
-                    )}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <Avatar className="h-8 w-8 mt-0.5">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.username}`} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs">
-                        {activity.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Icon className={cn("h-4 w-4", colorClass)} />
-                        <span className="text-sm font-medium truncate">{activity.username}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground">{activity.action}</p>
-                      {activity.details && <p className="text-xs text-muted-foreground truncate">{activity.details}</p>}
+              <p className="text-sm text-muted-foreground">No recent activity</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isConnected ? "Actions will appear here" : "Running in offline mode"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.username}`} />
+                    <AvatarFallback>{activity.username[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{activity.username}</span>
+                      {getActivityIcon(activity.type)}
+                      <span className="text-sm text-muted-foreground">{activity.action}</span>
                     </div>
+                    <p className="text-xs text-muted-foreground">{activity.details}</p>
+                    <p className="text-xs text-muted-foreground">{formatTimestamp(activity.timestamp)}</p>
                   </div>
-                )
-              })
-            )}
-          </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>

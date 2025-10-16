@@ -1,43 +1,29 @@
 # Waifu Hub - Premium Anime Collection Platform
 
-A modern, dark-themed web application for downloading and managing anime images with real-time activity tracking and comprehensive user management.
+A modern, feature-rich web application for downloading and managing anime image collections with real-time activity tracking, advanced filtering, and comprehensive user management.
 
-## ✨ Features
+## 🌟 Features
 
-### 🎨 Design
-- **Dark Red Theme**: Sleek, modern dark red aesthetic
-- **Animated Sidebar**: Compact sidebar with dynamic animations
-- **Glass Morphism**: Beautiful glass card effects throughout
-- **Responsive Design**: Mobile-first responsive layout
+### Core Features
+- 🎨 **Dark Red Theme** - Sleek dark aesthetic with red accents and smooth animations
+- 🔐 **User Authentication** - Complete registration and login system with persistent storage
+- ⚡ **Real-Time Activity Feed** - Live tracking of all user actions (optional WebSocket)
+- 🖼️ **Multi-API Integration** - Access to 5+ anime image APIs
+- 📱 **Fully Responsive** - Works seamlessly on desktop, tablet, and mobile devices
 
-### 🔐 Authentication
-- **User Registration**: Complete sign-up flow with validation
-- **Secure Login**: Session-based authentication
-- **Persistent Storage**: User preferences saved locally
-- **Account Management**: Profile, billing, and notifications
+### Advanced Features
+- 💾 **Smart Caching** - Intelligent image caching for faster loading
+- ⭐ **Favorites System** - Save and organize your favorite images
+- 📁 **Collections** - Create custom collections to organize downloads
+- 🎯 **Advanced Filtering** - Filter by tags, categories, and more
+- 📊 **Analytics Dashboard** - Track your downloads and activity
+- 🎨 **AI Upscaling** - Enhance image quality with AI (coming soon)
 
-### ⚡ Real-Time Features
-- **Live Activity Feed**: WebSocket-powered real-time updates
-- **User Actions Tracking**: See what all users are doing
-- **Instant Notifications**: Toast notifications for important events
-
-### 📥 Download Management
-- **Multiple API Sources**: waifu.im, waifu.pics, nekos.best, wallhaven, femboyfinder
-- **Batch Downloads**: Download multiple images at once
-- **Progress Tracking**: Real-time download progress
-- **Queue Management**: Organized download queue
-
-### 🗂️ Collection Management
-- **Favorites**: Mark and organize favorite images
-- **Collections**: Create custom image collections
-- **Gallery View**: Beautiful grid layout for browsing
-- **Search & Filter**: Advanced search capabilities
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
-- npm or yarn package manager
+- Node.js 18+ 
+- npm or yarn
 
 ### Installation
 
@@ -52,266 +38,213 @@ cd waifu-downloader
 npm install
 \`\`\`
 
-3. **Set up environment variables**
-
-Create a `.env.local` file in the root directory:
-\`\`\`env
-NEXT_PUBLIC_WS_URL=ws://localhost:3001
-NEXT_PUBLIC_WALLHAVEN_API_KEY=your_api_key_here
-NEXT_PUBLIC_WAIFU_IM_API_KEY=your_api_key_here
-\`\`\`
-
-4. **Start the WebSocket server**
-\`\`\`bash
-npm run ws-server
-\`\`\`
-
-5. **Start the development server**
+3. **Start the development server**
 \`\`\`bash
 npm run dev
 \`\`\`
 
-6. **Open your browser**
+4. **(Optional) Start WebSocket server for real-time features**
+
+Open a new terminal and run:
+\`\`\`bash
+npm run ws-server
+\`\`\`
+
+> **Note:** The WebSocket server is optional. The app will work in offline mode if the server isn't running, storing activities locally.
+
+5. **Open your browser**
+
 Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 📝 Usage Guide
+
+### First Time Setup
+
+1. **Register an Account**
+   - Click "Sign Up" on the login page
+   - Enter username, email, and password
+   - Your account will be created and stored locally
+
+2. **Explore the Dashboard**
+   - View recent downloads and statistics
+   - Check the activity feed for real-time updates
+   - Navigate through different sections using the sidebar
+
+3. **Download Images**
+   - Go to the Download section
+   - Select your preferred API and filters
+   - Click download to save images
+
+4. **Manage Your Collection**
+   - Browse downloaded images in the Gallery
+   - Add favorites by clicking the heart icon
+   - Create collections to organize your images
+
+### Features Overview
+
+#### Activity Feed
+- **Real-Time Updates**: See what you and others are doing live (when WebSocket is connected)
+- **Offline Mode**: Activities are still tracked locally when WebSocket is unavailable
+- **Activity Types**: Downloads, favorites, collections, settings changes, and more
+
+#### API Integration
+The app connects to multiple anime image APIs:
+- Wallhaven
+- Waifu.im
+- Waifu.pics
+- Nekos.best
+- And more...
+
+#### User Settings
+- Theme preferences
+- Notification settings
+- Auto-download options
+- Account management
+
+## 🛠️ Technology Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Styling**: Tailwind CSS v4 with custom animations
+- **UI Components**: shadcn/ui
+- **State Management**: React Context API
+- **Real-Time**: WebSocket (optional)
+- **Storage**: localStorage (IndexedDB for images)
+- **TypeScript**: Full type safety
 
 ## 📁 Project Structure
 
 \`\`\`
 waifu-downloader/
-├── app/
-│   ├── globals.css          # Dark red theme styles
-│   ├── layout.tsx            # Root layout with providers
-│   ├── page.tsx              # Main dashboard page
-│   ├── login/                # Authentication pages
-│   ├── gallery/              # Image gallery
-│   ├── favorites/            # Favorites page
-│   ├── collections/          # Collections management
-│   └── settings/             # Settings page
-├── components/
-│   ├── app-sidebar.tsx       # Animated sidebar component
-│   ├── activity-feed.tsx     # Real-time activity feed
-│   ├── home-dashboard.tsx    # Dashboard with stats
-│   ├── ui/                   # shadcn/ui components
+├── app/                    # Next.js app directory
+│   ├── layout.tsx         # Root layout with providers
+│   ├── page.tsx           # Home/Dashboard page
+│   ├── login/             # Authentication pages
+│   ├── gallery/           # Gallery view
+│   ├── favorites/         # Favorites page
+│   ├── collections/       # Collections management
+│   └── settings/          # User settings
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── app-sidebar.tsx   # Main navigation sidebar
+│   ├── activity-feed.tsx # Real-time activity feed
+│   └── ...               # Other components
+├── context/              # React contexts
+│   ├── activityContext.tsx
+│   ├── settingsContext.tsx
 │   └── ...
-├── context/
-│   ├── activityContext.tsx   # Activity state management
-│   ├── settingsContext.tsx   # Settings state management
-│   ├── storageContext.tsx    # Storage management
-│   └── downloadContext.tsx   # Download state management
-├── lib/
-│   ├── auth.ts               # Authentication service
-│   ├── websocket.ts          # WebSocket client service
-│   └── utils.ts              # Utility functions
-├── server/
-│   └── websocket-server.js   # WebSocket server
-├── services/
-│   ├── waifuApi.ts           # External API integrations
-│   └── enhanced-waifu-api.ts # Enhanced API service
-├── types/
-│   └── waifu.ts              # TypeScript type definitions
-└── utils/
-    ├── localStorage.ts       # Local storage utilities
-    ├── secureStorage.ts      # Secure storage for API keys
-    ├── urlValidator.ts       # URL validation
-    └── rateLimiter.ts        # API rate limiting
+├── lib/                  # Utility libraries
+│   ├── auth.ts          # Authentication service
+│   ├── websocket.ts     # WebSocket client
+│   └── utils.ts         # Helper functions
+├── server/              # Backend services
+│   └── websocket-server.js  # WebSocket server
+└── public/              # Static assets
 \`\`\`
-
-## 🎯 Key Technologies
-
-- **Next.js 14**: React framework with App Router
-- **TypeScript**: Type-safe development
-- **Tailwind CSS v4**: Utility-first CSS with dark red theme
-- **shadcn/ui**: Beautiful, accessible UI components
-- **Framer Motion**: Smooth animations
-- **WebSocket**: Real-time communication
-- **date-fns**: Date formatting utilities
 
 ## 🔧 Configuration
 
-### Theme Customization
+### Environment Variables (Optional)
 
-The dark red theme is configured in `app/globals.css`. Key color variables:
+Create a `.env.local` file in the root directory:
 
-\`\`\`css
---primary: hsl(355 85% 55%)        /* Main red accent */
---sidebar-background: hsl(355 30% 12%)  /* Sidebar red tint */
---accent: hsl(355 70% 45%)         /* Secondary accent */
+\`\`\`env
+# WebSocket Configuration (optional)
+NEXT_PUBLIC_WS_URL=ws://localhost:3001
+
+# API Keys (add your own)
+WALLHAVEN_API_KEY=your_key_here
+WAIFU_API_KEY=your_key_here
 \`\`\`
 
-### API Configuration
+### WebSocket Server
 
-Configure API keys in your user settings or environment variables:
+The WebSocket server runs separately and provides real-time activity updates. It's completely optional - the app works perfectly without it.
 
-- **Wallhaven**: Requires API key for full access
-- **waifu.im**: Optional API key for higher rate limits
-- **waifu.pics**: No API key required
-- **nekos.best**: No API key required
-- **femboyfinder**: No API key required
-
-## 🌟 Features in Detail
-
-### Real-Time Activity Feed
-
-The activity feed uses WebSocket for instant updates:
-
-\`\`\`typescript
-// Components automatically subscribe to activity updates
-const { addActivity } = useActivity()
-
-// Track user actions
-addActivity({
-  userId: user.id,
-  username: user.username,
-  action: 'downloaded image',
-  details: 'anime_girl_001.jpg',
-  type: 'download'
-})
-\`\`\`
-
-### User Authentication
-
-Complete authentication system with persistent storage:
-
-\`\`\`typescript
-// Register new user
-const result = await authService.register(username, email, password)
-
-// Login existing user
-const result = await authService.login(email, password)
-
-// Get current user
-const user = authService.getCurrentUser()
-
-// Update preferences
-authService.updatePreferences({ theme: 'dark', notifications: true })
-\`\`\`
-
-### Download Management
-
-Multi-source API integration with fallbacks:
-
-\`\`\`typescript
-// Fetch from multiple sources
-const images = await fetchImagesFromMultipleSources(
-  category,
-  limit,
-  isNsfw,
-  sortBy,
-  page,
-  minWidth,
-  minHeight,
-  settings,
-  apiSource
-)
-\`\`\`
-
-## 🎨 UI Components
-
-### Animated Sidebar
-
-Compact sidebar with smooth animations and state management:
-
-- **Collapsible**: Icon-only mode for more screen space
-- **Glow Effects**: Red glow on hover and active states
-- **User Menu**: Quick access to account, billing, and settings
-- **Pro Badge**: Visual indicator for premium users
-
-### Glass Cards
-
-Beautiful glass morphism effect throughout the UI:
-
-\`\`\`css
-.glass-card {
-  background: rgba(20, 10, 10, 0.6);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 8px 32px 0 rgba(220, 38, 38, 0.2);
-}
-\`\`\`
-
-### Animated Borders
-
-Dynamic gradient borders that rotate:
-
-\`\`\`css
-.animated-border::before {
-  background: linear-gradient(45deg, 
-    var(--color-primary), 
-    var(--color-accent), 
-    var(--color-primary)
-  );
-  animation: borderRotate 3s linear infinite;
-}
-\`\`\`
-
-## 🔒 Security Features
-
-- **Secure Storage**: API keys encrypted in localStorage
-- **URL Validation**: Prevents XSS attacks via malicious URLs
-- **Rate Limiting**: Token bucket algorithm prevents API abuse
-- **Session Management**: 7-day session expiry
-- **Input Sanitization**: All user inputs validated
-
-## 📱 Responsive Design
-
-Fully responsive with mobile-first approach:
-
-- **Mobile**: Single column layout, hamburger menu
-- **Tablet**: Two column layout, collapsible sidebar
-- **Desktop**: Three column layout, persistent sidebar
-- **4K**: Optimized spacing and typography
-
-## 🚀 Performance
-
-- **Code Splitting**: Dynamic imports for heavy components
-- **Image Optimization**: Lazy loading with blur placeholders
-- **CSS Purging**: Unused styles removed in production
-- **Tree Shaking**: Dead code elimination
-- **Caching**: Smart caching strategy for API responses
-
-## 🛠️ Development
-
-### Available Scripts
-
+**To start the WebSocket server:**
 \`\`\`bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run ws-server    # Start WebSocket server
+npm run ws-server
 \`\`\`
 
-### Adding New Features
+**Default port:** 3001
 
-1. Create component in `components/`
-2. Add types in `types/waifu.ts`
-3. Update context if needed
-4. Add routing in `app/`
-5. Update sidebar navigation in `app-sidebar.tsx`
+## 🐛 Troubleshooting
 
-## 🤝 Contributing
+### WebSocket Connection Issues
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+If you see WebSocket connection errors in the console:
+- This is normal if the WebSocket server isn't running
+- The app will automatically run in offline mode
+- Activities will still be tracked locally
+- No functionality is lost
+
+**To fix:** Start the WebSocket server with `npm run ws-server`
+
+### Storage Issues
+
+If you encounter storage errors:
+- Clear browser cache and localStorage
+- Make sure cookies are enabled
+- Try using a different browser
+
+### Build Errors
+
+If you encounter build errors:
+\`\`\`bash
+# Clear cache and reinstall
+rm -rf .next node_modules
+npm install
+npm run dev
+\`\`\`
+
+## 🎨 Customization
+
+### Theme Colors
+
+Edit `app/globals.css` to customize the color scheme:
+
+\`\`\`css
+@theme {
+  --color-primary: oklch(0.58 0.25 350); /* Red accent */
+  --color-background: oklch(0.12 0.02 265); /* Dark background */
+  /* ... more colors */
+}
+\`\`\`
+
+### Animations
+
+Animations are defined in `app/globals.css` and can be customized:
+- `glow` - Glowing effect
+- `pulse-slow` - Slow pulsing
+- `slide-in` - Slide animations
+- `fade-in` - Fade effects
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is for educational purposes. Please respect the API terms of service and image copyrights.
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- [shadcn/ui](https://ui.shadcn.com/) for beautiful components
-- [Lucide](https://lucide.dev/) for icons
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- API providers: waifu.im, waifu.pics, nekos.best, wallhaven, femboyfinder
+Contributions are welcome! Please follow these steps:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
 
 ## 📞 Support
 
-For issues and feature requests, please open an issue on GitHub.
+If you encounter any issues or have questions:
+1. Check the troubleshooting section
+2. Search existing issues
+3. Create a new issue with detailed information
+
+## 🙏 Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Icons from [Lucide](https://lucide.dev/)
+- APIs from various anime image providers
 
 ---
 
-**Built with ❤️ by the Waifu Hub team**
+**Made with ❤️ for anime enthusiasts**

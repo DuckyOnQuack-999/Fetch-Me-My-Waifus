@@ -1,48 +1,70 @@
-import { storage } from "@/utils/localStorage"
-
-export interface User {
+interface User {
   id: string
   username: string
   email: string
   avatar?: string
-  createdAt: string
+  createdAt: Date
   preferences: {
-    theme: "light" | "dark"
+    theme: string
     notifications: boolean
-    language: string
-  }
-  subscription: {
-    plan: "free" | "pro" | "enterprise"
-    expiresAt?: string
+    autoDownload: boolean
   }
 }
 
+interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+}
+
 class AuthService {
-  private currentUser: User | null = null
-  private readonly STORAGE_KEY = "waifu_auth_user"
-  private readonly SESSION_KEY = "waifu_auth_session"
+  private readonly STORAGE_KEY = "waifu_auth_state"
+  private readonly USERS_KEY = "waifu_users"
 
-  constructor() {
-    this.loadUser()
-  }
+  getCurrentUser(): User | null {
+    if (typeof window === "undefined") return null
 
-  private loadUser() {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY)
-      if (stored) {
-        this.currentUser = JSON.parse(stored)
-      }
+      if (!stored) return null
+
+      const state: AuthState = JSON.parse(stored)
+      return state.user
     } catch (error) {
-      console.error("Failed to load user:", error)
+      console.error("Failed to get current user:", error)
+      return null
     }
   }
 
-  private saveUser(user: User) {
+  isAuthenticated(): boolean {
+    return this.getCurrentUser() !== null
+  }
+
+  async login(email: string, password: string): Promise<{ success: boolean; error?: string; user?: User }> {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(user))
-      this.currentUser = user
+      // Get all users
+      const users = this.getAllUsers()
+
+      // Find user by email
+      const user = users.find((u) => u.email === email)
+
+      if (!user) {
+        return { success: false, error: "Invalid email or password" }
+      }
+
+      // In a real app, you'd verify the password hash here
+      // For demo purposes, we're just checking if the user exists
+
+      // Save auth state
+      const authState: AuthState = {
+        user,
+        isAuthenticated: true,
+      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authState))
+
+      return { success: true, user }
     } catch (error) {
-      console.error("Failed to save user:", error)
+      console.error("Login error:", error)
+      return { success: false, error: "Login failed. Please try again." }
     }
   }
 
@@ -50,168 +72,112 @@ class AuthService {
     username: string,
     email: string,
     password: string,
-  ): Promise<{ success: boolean; user?: User; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; user?: User }> {
     try {
-      // Check if user already exists
-      const existingUsers = this.getAllUsers()
-      if (existingUsers.some((u) => u.email === email)) {
+      // Validate input
+      if (!username || username.length < 3) {
+        return { success: false, error: "Username must be at least 3 characters" }
+      }
+      if (!email || !email.includes("@")) {
+        return { success: false, error: "Please enter a valid email" }
+      }
+      if (!password || password.length < 6) {
+        return { success: false, error: "Password must be at least 6 characters" }
+      }
+
+      // Get all users
+      const users = this.getAllUsers()
+
+      // Check if email already exists
+      if (users.some((u) => u.email === email)) {
         return { success: false, error: "Email already registered" }
       }
 
-      if (existingUsers.some((u) => u.username === username)) {
+      // Check if username already exists
+      if (users.some((u) => u.username === username)) {
         return { success: false, error: "Username already taken" }
       }
 
       // Create new user
-      const user: User = {
+      const newUser: User = {
         id: crypto.randomUUID(),
         username,
         email,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
         preferences: {
           theme: "dark",
           notifications: true,
-          language: "en",
-        },
-        subscription: {
-          plan: "free",
+          autoDownload: false,
         },
       }
 
-      // Store password hash (in production, use proper hashing)
-      const passwordHash = btoa(password) // Simple encoding for demo
-      storage.set(`password_${user.id}`, passwordHash)
+      // Save user to users list
+      users.push(newUser)
+      localStorage.setItem(this.USERS_KEY, JSON.stringify(users))
 
-      // Save user to storage
-      existingUsers.push(user)
-      storage.set("all_users", JSON.stringify(existingUsers))
+      // Save auth state
+      const authState: AuthState = {
+        user: newUser,
+        isAuthenticated: true,
+      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authState))
 
-      this.saveUser(user)
-      this.createSession(user.id)
-
-      return { success: true, user }
+      return { success: true, user: newUser }
     } catch (error) {
       console.error("Registration error:", error)
-      return { success: false, error: "Registration failed" }
+      return { success: false, error: "Registration failed. Please try again." }
     }
   }
 
-  async login(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
-    try {
-      const users = this.getAllUsers()
-      const user = users.find((u) => u.email === email)
-
-      if (!user) {
-        return { success: false, error: "User not found" }
-      }
-
-      // Verify password
-      const storedHash = storage.get(`password_${user.id}`)
-      const inputHash = btoa(password)
-
-      if (storedHash !== inputHash) {
-        return { success: false, error: "Invalid password" }
-      }
-
-      this.saveUser(user)
-      this.createSession(user.id)
-
-      return { success: true, user }
-    } catch (error) {
-      console.error("Login error:", error)
-      return { success: false, error: "Login failed" }
-    }
-  }
-
-  logout() {
+  logout(): void {
     try {
       localStorage.removeItem(this.STORAGE_KEY)
-      localStorage.removeItem(this.SESSION_KEY)
-      this.currentUser = null
     } catch (error) {
       console.error("Logout error:", error)
     }
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUser
-  }
-
-  isAuthenticated(): boolean {
-    return this.currentUser !== null && this.hasValidSession()
-  }
-
-  updateUser(updates: Partial<User>): boolean {
-    if (!this.currentUser) return false
-
+  updateUser(updates: Partial<User>): User | null {
     try {
-      const updatedUser = { ...this.currentUser, ...updates }
-      this.saveUser(updatedUser)
+      const currentUser = this.getCurrentUser()
+      if (!currentUser) return null
 
-      // Update in all users list
+      const updatedUser = { ...currentUser, ...updates }
+
+      // Update in auth state
+      const authState: AuthState = {
+        user: updatedUser,
+        isAuthenticated: true,
+      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authState))
+
+      // Update in users list
       const users = this.getAllUsers()
-      const index = users.findIndex((u) => u.id === updatedUser.id)
-      if (index !== -1) {
-        users[index] = updatedUser
-        storage.set("all_users", JSON.stringify(users))
+      const userIndex = users.findIndex((u) => u.id === currentUser.id)
+      if (userIndex !== -1) {
+        users[userIndex] = updatedUser
+        localStorage.setItem(this.USERS_KEY, JSON.stringify(users))
       }
 
-      return true
+      return updatedUser
     } catch (error) {
-      console.error("Failed to update user:", error)
-      return false
-    }
-  }
-
-  updatePreferences(preferences: Partial<User["preferences"]>): boolean {
-    if (!this.currentUser) return false
-
-    return this.updateUser({
-      preferences: { ...this.currentUser.preferences, ...preferences },
-    })
-  }
-
-  upgradeToPro(): boolean {
-    if (!this.currentUser) return false
-
-    return this.updateUser({
-      subscription: {
-        plan: "pro",
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
-      },
-    })
-  }
-
-  private createSession(userId: string) {
-    const session = {
-      userId,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-    }
-    localStorage.setItem(this.SESSION_KEY, JSON.stringify(session))
-  }
-
-  private hasValidSession(): boolean {
-    try {
-      const stored = localStorage.getItem(this.SESSION_KEY)
-      if (!stored) return false
-
-      const session = JSON.parse(stored)
-      return new Date(session.expiresAt) > new Date()
-    } catch {
-      return false
+      console.error("Update user error:", error)
+      return null
     }
   }
 
   private getAllUsers(): User[] {
     try {
-      const stored = storage.get("all_users")
-      return stored ? JSON.parse(stored) : []
-    } catch {
+      const stored = localStorage.getItem(this.USERS_KEY)
+      if (!stored) return []
+      return JSON.parse(stored)
+    } catch (error) {
+      console.error("Failed to get users:", error)
       return []
     }
   }
 }
 
 export const authService = new AuthService()
+export type { User, AuthState }

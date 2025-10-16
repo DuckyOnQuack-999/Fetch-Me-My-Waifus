@@ -6,7 +6,7 @@ import { authService } from "@/lib/auth"
 
 interface ActivityContextType {
   activities: ActivityMessage[]
-  addActivity: (activity: Omit<ActivityMessage, "id" | "timestamp">) => void
+  addActivity: (activity: Omit<ActivityMessage, "id" | "timestamp" | "userId" | "username">) => void
   clearActivities: () => void
   isConnected: boolean
 }
@@ -18,24 +18,54 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    // Connect to WebSocket
+    // Only connect in browser environment
+    if (typeof window === "undefined") return
+
+    // Connect to WebSocket (will fail gracefully if server not available)
     wsService.connect()
-    setIsConnected(true)
+
+    // Check connection status
+    const checkConnection = setInterval(() => {
+      setIsConnected(wsService.isConnected())
+    }, 1000)
 
     // Subscribe to activity updates
     const unsubscribe = wsService.subscribe((message) => {
       setActivities((prev) => [message, ...prev].slice(0, 50)) // Keep last 50 activities
     })
 
+    // Load initial activities from localStorage
+    try {
+      const stored = localStorage.getItem("recent-activities")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        setActivities(parsed.slice(0, 50))
+      }
+    } catch (error) {
+      console.error("Failed to load activities from storage:", error)
+    }
+
     // Cleanup
     return () => {
+      clearInterval(checkConnection)
       unsubscribe()
       wsService.disconnect()
       setIsConnected(false)
     }
   }, [])
 
-  const addActivity = useCallback((activity: Omit<ActivityMessage, "id" | "timestamp">) => {
+  // Save activities to localStorage whenever they change
+  useEffect(() => {
+    if (activities.length > 0) {
+      try {
+        localStorage.setItem("recent-activities", JSON.stringify(activities))
+      } catch (error) {
+        console.error("Failed to save activities to storage:", error)
+      }
+    }
+  }, [activities])
+
+  const addActivity = useCallback((activity: Omit<ActivityMessage, "id" | "timestamp" | "userId" | "username">) => {
     const user = authService.getCurrentUser()
     if (!user) return
 
@@ -45,19 +75,29 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       username: user.username,
     }
 
-    wsService.sendActivity(fullActivity)
+    // Try to send via WebSocket
+    const sent = wsService.sendActivity(fullActivity)
 
-    // Also add locally for immediate feedback
+    // Always add locally for immediate feedback
     const message: ActivityMessage = {
       ...fullActivity,
       id: crypto.randomUUID(),
       timestamp: new Date(),
     }
     setActivities((prev) => [message, ...prev].slice(0, 50))
+
+    if (!sent) {
+      console.log("Activity saved locally (WebSocket not connected)")
+    }
   }, [])
 
   const clearActivities = useCallback(() => {
     setActivities([])
+    try {
+      localStorage.removeItem("recent-activities")
+    } catch (error) {
+      console.error("Failed to clear activities from storage:", error)
+    }
   }, [])
 
   return (

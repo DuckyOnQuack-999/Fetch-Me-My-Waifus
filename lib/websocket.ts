@@ -13,29 +13,58 @@ type WebSocketCallback = (message: ActivityMessage) => void
 class WebSocketService {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 3000
+  private maxReconnectAttempts = 3
+  private reconnectDelay = 2000
   private callbacks: Set<WebSocketCallback> = new Set()
   private pingInterval: NodeJS.Timeout | null = null
   private url: string
+  private isEnabled = true
+  private connectionFailed = false
 
   constructor() {
     // Use environment variable or fallback to local WebSocket server
-    this.url = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"
+    this.url =
+      typeof window !== "undefined"
+        ? process.env.NEXT_PUBLIC_WS_URL || `ws://${window.location.hostname}:3001`
+        : "ws://localhost:3001"
   }
 
   connect() {
+    // Don't attempt connection if it's already disabled due to repeated failures
+    if (this.connectionFailed || !this.isEnabled) {
+      console.log("WebSocket connection disabled")
+      return
+    }
+
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.log("WebSocket already connected")
       return
     }
 
+    // Check if we're in browser environment
+    if (typeof window === "undefined") {
+      console.log("WebSocket not available in server environment")
+      return
+    }
+
     try {
+      console.log(`Attempting WebSocket connection to ${this.url}...`)
       this.ws = new WebSocket(this.url)
 
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          console.log("WebSocket connection timeout")
+          this.ws?.close()
+          this.handleConnectionFailure()
+        }
+      }, 5000)
+
       this.ws.onopen = () => {
-        console.log("WebSocket connected")
+        clearTimeout(connectionTimeout)
+        console.log("✅ WebSocket connected successfully")
         this.reconnectAttempts = 0
+        this.connectionFailed = false
         this.startPing()
       }
 
@@ -49,40 +78,57 @@ class WebSocketService {
       }
 
       this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error)
+        clearTimeout(connectionTimeout)
+        console.log("⚠️ WebSocket connection error (this is normal if the server isn't running)")
+        // Don't log the error object as it doesn't contain useful info
+        this.handleConnectionFailure()
       }
 
-      this.ws.onclose = () => {
-        console.log("WebSocket disconnected")
+      this.ws.onclose = (event) => {
+        clearTimeout(connectionTimeout)
+        console.log(`WebSocket disconnected (code: ${event.code})`)
         this.stopPing()
-        this.attemptReconnect()
+
+        // Only attempt reconnect if it wasn't a manual close
+        if (event.code !== 1000 && !this.connectionFailed) {
+          this.attemptReconnect()
+        }
       }
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error)
-      this.attemptReconnect()
+      console.log("⚠️ Failed to create WebSocket connection:", error instanceof Error ? error.message : "Unknown error")
+      this.handleConnectionFailure()
     }
   }
 
   disconnect() {
+    this.isEnabled = false
     this.stopPing()
     if (this.ws) {
-      this.ws.close()
+      this.ws.close(1000, "Manual disconnect")
       this.ws = null
     }
   }
 
-  private attemptReconnect() {
+  private handleConnectionFailure() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("Max reconnection attempts reached")
+      console.log("ℹ️ WebSocket server not available - running in offline mode")
+      this.connectionFailed = true
+      this.isEnabled = false
+    }
+  }
+
+  private attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts || this.connectionFailed) {
+      this.handleConnectionFailure()
       return
     }
 
     this.reconnectAttempts++
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
+    console.log(`Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
 
     setTimeout(() => {
       this.connect()
-    }, this.reconnectDelay * this.reconnectAttempts)
+    }, this.reconnectDelay)
   }
 
   private startPing() {
@@ -113,9 +159,13 @@ class WebSocketService {
         timestamp: new Date(),
       }
       this.ws.send(JSON.stringify(message))
-    } else {
-      console.warn("WebSocket not connected, activity not sent")
+      return true
     }
+    return false
+  }
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN
   }
 }
 
