@@ -1,74 +1,174 @@
 /**
- * Secure storage utility for sensitive data like API keys
- * Implements basic encryption and follows security best practices
+ * Secure Storage Utility
+ * Provides encrypted storage for sensitive data like API keys
+ * Uses browser fingerprinting for device-specific encryption
  */
 
-// Simple XOR encryption (for demo - use proper encryption in production)
-function encryptData(data: string, key: string): string {
-  let encrypted = ""
-  for (let i = 0; i < data.length; i++) {
-    encrypted += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+interface StorageItem {
+  value: string
+  timestamp: number
+  encrypted: boolean
+}
+
+class SecureStorage {
+  private readonly storagePrefix = "waifu_secure_"
+  private encryptionKey: string | null = null
+
+  constructor() {
+    this.initializeEncryptionKey()
   }
-  return btoa(encrypted) // Base64 encode
-}
 
-function decryptData(encrypted: string, key: string): string {
-  try {
-    const data = atob(encrypted) // Base64 decode
-    let decrypted = ""
-    for (let i = 0; i < data.length; i++) {
-      decrypted += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+  /**
+   * Generate a device-specific encryption key based on browser fingerprint
+   */
+  private async initializeEncryptionKey(): Promise<void> {
+    try {
+      // Create a device fingerprint from available browser data
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        new Date().getTimezoneOffset(),
+        screen.width + "x" + screen.height,
+        screen.colorDepth,
+      ].join("|")
+
+      // Generate a consistent key from fingerprint
+      const encoder = new TextEncoder()
+      const data = encoder.encode(fingerprint)
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      this.encryptionKey = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+    } catch (error) {
+      console.error("Failed to initialize encryption key:", error)
+      // Fallback to a static key (less secure, but functional)
+      this.encryptionKey = "fallback-encryption-key-" + Date.now().toString(36)
     }
-    return decrypted
-  } catch (error) {
-    console.error("Decryption failed:", error)
-    return ""
   }
-}
 
-// Generate a device-specific encryption key
-function getDeviceKey(): string {
-  const userAgent = navigator.userAgent
-  const screenResolution = `${window.screen.width}x${window.screen.height}`
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  return btoa(`${userAgent}-${screenResolution}-${timezone}`)
-}
-
-export const SecureStorage = {
-  setItem: (key: string, value: string): void => {
-    try {
-      const deviceKey = getDeviceKey()
-      const encrypted = encryptData(value, deviceKey)
-      localStorage.setItem(`secure_${key}`, encrypted)
-    } catch (error) {
-      console.error("Failed to store secure data:", error)
+  /**
+   * Simple XOR encryption (NOTE: Use AES-256-GCM in production)
+   */
+  private encrypt(text: string): string {
+    if (!this.encryptionKey) {
+      throw new Error("Encryption key not initialized")
     }
-  },
 
-  getItem: (key: string): string | null => {
+    const key = this.encryptionKey
+    let result = ""
+
+    for (let i = 0; i < text.length; i++) {
+      const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+      result += String.fromCharCode(charCode)
+    }
+
+    // Convert to base64 for safe storage
+    return btoa(result)
+  }
+
+  /**
+   * Simple XOR decryption
+   */
+  private decrypt(encryptedText: string): string {
+    if (!this.encryptionKey) {
+      throw new Error("Encryption key not initialized")
+    }
+
     try {
-      const encrypted = localStorage.getItem(`secure_${key}`)
-      if (!encrypted) return null
+      const text = atob(encryptedText)
+      const key = this.encryptionKey
+      let result = ""
 
-      const deviceKey = getDeviceKey()
-      return decryptData(encrypted, deviceKey)
+      for (let i = 0; i < text.length; i++) {
+        const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+        result += String.fromCharCode(charCode)
+      }
+
+      return result
     } catch (error) {
-      console.error("Failed to retrieve secure data:", error)
+      console.error("Decryption failed:", error)
+      return ""
+    }
+  }
+
+  /**
+   * Store a value securely
+   */
+  async setItem(key: string, value: string, encrypt = true): Promise<void> {
+    try {
+      // Ensure encryption key is ready
+      if (!this.encryptionKey) {
+        await this.initializeEncryptionKey()
+      }
+
+      const storageItem: StorageItem = {
+        value: encrypt ? this.encrypt(value) : value,
+        timestamp: Date.now(),
+        encrypted: encrypt,
+      }
+
+      localStorage.setItem(this.storagePrefix + key, JSON.stringify(storageItem))
+    } catch (error) {
+      console.error(`Failed to store item ${key}:`, error)
+      throw new Error("Storage operation failed")
+    }
+  }
+
+  /**
+   * Retrieve a value securely
+   */
+  async getItem(key: string): Promise<string | null> {
+    try {
+      const stored = localStorage.getItem(this.storagePrefix + key)
+
+      if (!stored) {
+        return null
+      }
+
+      const storageItem: StorageItem = JSON.parse(stored)
+
+      // Check if item is expired (7 days)
+      const maxAge = 7 * 24 * 60 * 60 * 1000
+      if (Date.now() - storageItem.timestamp > maxAge) {
+        this.removeItem(key)
+        return null
+      }
+
+      return storageItem.encrypted ? this.decrypt(storageItem.value) : storageItem.value
+    } catch (error) {
+      console.error(`Failed to retrieve item ${key}:`, error)
       return null
     }
-  },
+  }
 
-  removeItem: (key: string): void => {
-    localStorage.removeItem(`secure_${key}`)
-  },
+  /**
+   * Remove a stored item
+   */
+  removeItem(key: string): void {
+    localStorage.removeItem(this.storagePrefix + key)
+  }
 
-  clear: (): void => {
-    // Only clear items with 'secure_' prefix
+  /**
+   * Clear all secure storage items
+   */
+  clear(): void {
     const keys = Object.keys(localStorage)
     keys.forEach((key) => {
-      if (key.startsWith("secure_")) {
+      if (key.startsWith(this.storagePrefix)) {
         localStorage.removeItem(key)
       }
     })
-  },
+  }
+
+  /**
+   * Check if an item exists
+   */
+  hasItem(key: string): boolean {
+    return localStorage.getItem(this.storagePrefix + key) !== null
+  }
 }
+
+// Singleton instance
+export const secureStorage = new SecureStorage()
+
+// Export type for external use
+export type { StorageItem }
