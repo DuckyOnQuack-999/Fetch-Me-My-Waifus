@@ -2,38 +2,54 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Eye, EyeOff, Github, Mail, Lock, User } from "lucide-react"
-import { motion } from "framer-motion"
-import { SumptuousHeart } from "@/components/sumptuous-heart"
+import { Eye, EyeOff, Sparkles, Mail, Lock, User } from "lucide-react"
+import { authService } from "@/lib/auth"
 import { toast } from "sonner"
+import { useActivity } from "@/context/activityContext"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { addActivity } = useActivity()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    username: "",
-  })
+  const [loginData, setLoginData] = useState({ email: "", password: "" })
+  const [registerData, setRegisterData] = useState({ username: "", email: "", password: "", confirmPassword: "" })
+
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      router.push("/")
+    }
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      // Simulate login
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast.success("Login successful!")
-      window.location.href = "/"
+      const result = await authService.login(loginData.email, loginData.password)
+
+      if (result.success) {
+        toast.success("Login successful!")
+        addActivity({
+          userId: result.user!.id,
+          username: result.user!.username,
+          action: "logged in",
+          details: "User successfully authenticated",
+          type: "login",
+        })
+        router.push("/")
+      } else {
+        toast.error(result.error || "Login failed")
+      }
     } catch (error) {
-      toast.error("Login failed. Please try again.")
+      toast.error("An error occurred during login")
     } finally {
       setIsLoading(false)
     }
@@ -41,40 +57,58 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords don't match!")
+
+    if (registerData.password !== registerData.confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+
+    if (registerData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
       return
     }
 
     setIsLoading(true)
 
     try {
-      // Simulate registration
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast.success("Registration successful!")
-      window.location.href = "/"
+      const result = await authService.register(registerData.username, registerData.email, registerData.password)
+
+      if (result.success) {
+        toast.success("Registration successful!")
+        addActivity({
+          userId: result.user!.id,
+          username: result.user!.username,
+          action: "registered",
+          details: "New user account created",
+          type: "register",
+        })
+        router.push("/")
+      } else {
+        toast.error(result.error || "Registration failed")
+      }
     } catch (error) {
-      toast.error("Registration failed. Please try again.")
+      toast.error("An error occurred during registration")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-indigo-900/20 p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <SumptuousHeart size={80} className="mx-auto mb-4 animate-float" />
-          <h1 className="text-3xl font-bold text-gradient">Welcome Back</h1>
-          <p className="text-muted-foreground mt-2">Sign in to your Waifu Downloader account</p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md space-y-6 animate-fade-in">
+        <div className="text-center space-y-2">
+          <div className="flex justify-center mb-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent animate-pulse-glow">
+              <Sparkles className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Welcome to Waifu Hub
+          </h1>
+          <p className="text-muted-foreground">Sign in to access your collection</p>
         </div>
 
-        <Card className="material-card">
+        <Card className="glass-card animated-border">
           <CardHeader>
             <CardTitle>Authentication</CardTitle>
             <CardDescription>Choose your preferred sign-in method</CardDescription>
@@ -86,92 +120,68 @@ export default function LoginPage() {
                 <TabsTrigger value="register">Sign Up</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login" className="space-y-4">
+              <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="login-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="email"
+                        id="login-email"
                         type="email"
                         placeholder="Enter your email"
                         className="pl-10"
-                        value={formData.email}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                        value={loginData.email}
+                        onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
                         required
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="login-password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="password"
+                        id="login-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
                         className="pl-10 pr-10"
-                        value={formData.password}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                        value={loginData.password}
+                        onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
                         required
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        className="absolute right-0 top-0 h-full px-3"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full glow" disabled={isLoading}>
+                  <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" className="w-full bg-transparent">
-                    <Github className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Button>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    <Mail className="mr-2 h-4 w-4" />
-                    Google
-                  </Button>
-                </div>
               </TabsContent>
 
-              <TabsContent value="register" className="space-y-4">
+              <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="register-username">Username</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="username"
+                        id="register-username"
                         type="text"
                         placeholder="Choose a username"
                         className="pl-10"
-                        value={formData.username}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                        value={registerData.username}
+                        onChange={(e) => setRegisterData((prev) => ({ ...prev, username: e.target.value }))}
                         required
                       />
                     </div>
@@ -180,14 +190,14 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="register-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="register-email"
                         type="email"
                         placeholder="Enter your email"
                         className="pl-10"
-                        value={formData.email}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                        value={registerData.email}
+                        onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
                         required
                       />
                     </div>
@@ -196,49 +206,45 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="register-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Create a password"
                         className="pl-10 pr-10"
-                        value={formData.password}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                        value={registerData.password}
+                        onChange={(e) => setRegisterData((prev) => ({ ...prev, password: e.target.value }))}
                         required
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        className="absolute right-0 top-0 h-full px-3"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Label htmlFor="register-confirm-password">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="confirm-password"
+                        id="register-confirm-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Confirm your password"
                         className="pl-10"
-                        value={formData.confirmPassword}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                        value={registerData.confirmPassword}
+                        onChange={(e) => setRegisterData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                         required
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full glow" disabled={isLoading}>
+                  <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
                     {isLoading ? "Creating account..." : "Create Account"}
                   </Button>
                 </form>
@@ -247,19 +253,17 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            By signing in, you agree to our{" "}
-            <a href="#" className="text-primary hover:underline">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="#" className="text-primary hover:underline">
-              Privacy Policy
-            </a>
-          </p>
-        </div>
-      </motion.div>
+        <p className="text-center text-sm text-muted-foreground">
+          By signing in, you agree to our{" "}
+          <a href="#" className="text-primary hover:underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="text-primary hover:underline">
+            Privacy Policy
+          </a>
+        </p>
+      </div>
     </div>
   )
 }
