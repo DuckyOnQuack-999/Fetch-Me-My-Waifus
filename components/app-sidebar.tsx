@@ -133,7 +133,7 @@ export function AppSidebar() {
                       <span className="truncate text-xs text-sidebar-foreground/60">{user?.email || "No account"}</span>
                     </div>
                   )}
-                  {!isCollapsed && user?.subscription.plan === "pro" && (
+                  {!isCollapsed && user?.subscription?.plan === "pro" && (
                     <Badge variant="default" className="ml-auto bg-gradient-to-r from-primary to-accent">
                       PRO
                     </Badge>
@@ -143,12 +143,12 @@ export function AppSidebar() {
               <DropdownMenuContent className="w-56 glass-card" align="end" side="right">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.username}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{user?.username || "Guest"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email || "Not logged in"}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {user?.subscription.plan !== "pro" && (
+                {user?.subscription?.plan !== "pro" && (
                   <>
                     <DropdownMenuItem asChild>
                       <Link href="/upgrade" className="cursor-pointer">

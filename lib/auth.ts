@@ -9,6 +9,10 @@ interface User {
     notifications: boolean
     autoDownload: boolean
   }
+  subscription: {
+    plan: "free" | "pro"
+    validUntil?: Date
+  }
 }
 
 interface AuthState {
@@ -109,6 +113,9 @@ class AuthService {
           theme: "dark",
           notifications: true,
           autoDownload: false,
+        },
+        subscription: {
+          plan: "free",
         },
       }
 
