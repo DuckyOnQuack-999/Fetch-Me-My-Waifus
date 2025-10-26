@@ -116,6 +116,8 @@
   --animate-pulse-glow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-slide-in: slideIn 0.3s ease-out;
   --animate-fade-in: fadeIn 0.5s ease-in;
+  --animate-bounce-slow: bounceSlow 3s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
 }
 
 * {
@@ -192,6 +194,29 @@ body {
   }
 }
 
+@keyframes bounceSlow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+  66% {
+    transform: translateY(-5px) rotate(-5deg);
+  }
+}
+
 /* Red Glow Button */
 .btn-glow {
   position: relative;
@@ -244,6 +269,37 @@ body {
   }
 }
 
+/* Shimmer Effect */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    left: 100%;
+  }
+}
+
+/* Waifu Particle Effect */
+.waifu-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Focus Styles */
 *:focus-visible {
   outline: 2px solid var(--color-ring);
@@ -254,4 +310,45 @@ body {
 ::selection {
   background-color: var(--color-primary);
   color: var(--color-primary-foreground);
+}
+
+/* Tooltip Animations */
+.tooltip-enter {
+  animation: tooltipEnter 0.2s ease-out;
+}
+
+@keyframes tooltipEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.3);
+}
+
+/* Image Loading Animation */
+.image-loading {
+  animation: imagePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes imagePulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }

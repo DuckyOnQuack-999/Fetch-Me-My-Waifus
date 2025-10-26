@@ -1,6 +1,5 @@
 import type { WaifuImage, Collection, Collections, Settings } from "@/types/waifu"
 
-// Storage keys with versioning for future migrations
 const STORAGE_KEYS = {
   IMAGES: "waifu-downloader-images-v2",
   FAVORITES: "waifu-downloader-favorites-v2",
@@ -10,22 +9,43 @@ const STORAGE_KEYS = {
   CACHE: "waifu-downloader-cache-v2",
   USER_PREFERENCES: "waifu-downloader-preferences-v2",
   API_CACHE: "waifu-downloader-api-cache-v2",
+  USER_PHOTOS: "waifu-user-photos",
 } as const
 
-// Storage quota management
 const STORAGE_QUOTA = {
   MAX_IMAGES: 10000,
   MAX_FAVORITES: 5000,
   MAX_COLLECTIONS: 1000,
   MAX_DOWNLOAD_HISTORY: 2000,
-  MAX_CACHE_SIZE: 100 * 1024 * 1024, // 100MB
-  CLEANUP_THRESHOLD: 0.9, // Clean up when 90% full
+  MAX_CACHE_SIZE: 100 * 1024 * 1024,
+  CLEANUP_THRESHOLD: 0.9,
 } as const
 
 class LocalStorageManager {
   private isClient = typeof window !== "undefined"
+  private currentUserId: string | null = null
 
-  // Safe JSON operations with error handling
+  setCurrentUser(userId: string | null): void {
+    this.currentUserId = userId
+  }
+
+  initializeUserStorage(userId: string): void {
+    const userPhotosKey = this.getUserPhotosKey(userId)
+    if (!localStorage.getItem(userPhotosKey)) {
+      localStorage.setItem(userPhotosKey, JSON.stringify([]))
+    }
+  }
+
+  private getUserPhotosKey(userId?: string): string {
+    const id = userId || this.currentUserId
+    return id ? `${STORAGE_KEYS.USER_PHOTOS}-${id}` : STORAGE_KEYS.USER_PHOTOS
+  }
+
+  private getUserKey(key: string, userId?: string): string {
+    const id = userId || this.currentUserId
+    return id ? `${key}-user-${id}` : key
+  }
+
   private safeJsonParse<T>(json: string | null, fallback: T): T {
     if (!json) return fallback
     try {
@@ -63,7 +83,6 @@ class LocalStorageManager {
       return true
     } catch (error) {
       console.error(`Failed to set item in localStorage (${key}):`, error)
-      // Try to free up space and retry
       if (error.name === "QuotaExceededError") {
         this.cleanupStorage()
         try {
@@ -88,7 +107,6 @@ class LocalStorageManager {
     }
   }
 
-  // Storage quota management
   private getStorageUsage(): { used: number; available: number; percentage: number } {
     if (!this.isClient) return { used: 0, available: 0, percentage: 0 }
 
@@ -118,7 +136,6 @@ class LocalStorageManager {
     if (!this.isClient) return
 
     try {
-      // Remove old cache entries first
       const cacheKeys = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
@@ -127,7 +144,6 @@ class LocalStorageManager {
         }
       }
 
-      // Remove oldest cache entries
       cacheKeys
         .sort()
         .slice(0, Math.floor(cacheKeys.length * 0.5))
@@ -135,7 +151,6 @@ class LocalStorageManager {
           localStorage.removeItem(key)
         })
 
-      // Trim download history if too large
       const history = this.getDownloadHistory()
       if (history.length > STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY) {
         const trimmed = history.slice(0, STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY)
@@ -148,12 +163,46 @@ class LocalStorageManager {
     }
   }
 
-  // Images management
+  // User-specific photo storage
+  getUserPhotos(): WaifuImage[] {
+    if (!this.currentUserId) return []
+
+    const key = this.getUserPhotosKey()
+    const data = this.safeGetItem(key)
+    return this.safeJsonParse<WaifuImage[]>(data, [])
+  }
+
+  saveUserPhoto(image: WaifuImage): boolean {
+    if (!this.currentUserId) return false
+
+    const photos = this.getUserPhotos()
+    const imageWithId = {
+      ...image,
+      image_id: image.image_id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: image.id || image.image_id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: this.currentUserId,
+      created_at: image.created_at || new Date().toISOString(),
+    }
+
+    photos.unshift(imageWithId)
+    const key = this.getUserPhotosKey()
+    return this.safeSetItem(key, this.safeJsonStringify(photos))
+  }
+
+  removeUserPhoto(imageId: string | number): boolean {
+    if (!this.currentUserId) return false
+
+    const photos = this.getUserPhotos()
+    const filtered = photos.filter((img) => img.image_id?.toString() !== imageId.toString())
+    const key = this.getUserPhotosKey()
+    return this.safeSetItem(key, this.safeJsonStringify(filtered))
+  }
+
   getImages(): WaifuImage[] {
-    const data = this.safeGetItem(STORAGE_KEYS.IMAGES)
+    const key = this.getUserKey(STORAGE_KEYS.IMAGES)
+    const data = this.safeGetItem(key)
     const images = this.safeJsonParse<WaifuImage[]>(data, [])
 
-    // Ensure images don't exceed quota and have valid IDs
     return images.slice(0, STORAGE_QUOTA.MAX_IMAGES).map((image, index) => ({
       ...image,
       image_id: image.image_id || `image-${Date.now()}-${index}`,
@@ -168,19 +217,17 @@ class LocalStorageManager {
   }
 
   saveImages(images: WaifuImage[]): boolean {
-    // Trim if exceeding quota and ensure all have IDs
+    const key = this.getUserKey(STORAGE_KEYS.IMAGES)
     const trimmedImages = images.slice(0, STORAGE_QUOTA.MAX_IMAGES).map((image, index) => ({
       ...image,
       image_id: image.image_id || `image-${Date.now()}-${index}`,
       id: image.id || image.image_id || `image-${Date.now()}-${index}`,
     }))
-    return this.safeSetItem(STORAGE_KEYS.IMAGES, this.safeJsonStringify(trimmedImages))
+    return this.safeSetItem(key, this.safeJsonStringify(trimmedImages))
   }
 
   addImage(image: WaifuImage): boolean {
     const images = this.getImages()
-
-    // Ensure image has valid ID
     const imageWithId = {
       ...image,
       image_id: image.image_id || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -193,7 +240,6 @@ class LocalStorageManager {
       },
     }
 
-    // Check if image already exists
     const exists = images.some(
       (img) =>
         (img.image_id && img.image_id === imageWithId.image_id) ||
@@ -203,7 +249,13 @@ class LocalStorageManager {
 
     if (exists) return true
 
-    images.unshift(imageWithId) // Add to beginning
+    images.unshift(imageWithId)
+
+    // Also save to user photos if user is logged in
+    if (this.currentUserId) {
+      this.saveUserPhoto(imageWithId)
+    }
+
     return this.saveImages(images)
   }
 
@@ -213,6 +265,12 @@ class LocalStorageManager {
     const images = this.getImages()
     const id = imageId.toString()
     const filtered = images.filter((img) => img.image_id?.toString() !== id && img.id?.toString() !== id)
+
+    // Also remove from user photos
+    if (this.currentUserId) {
+      this.removeUserPhoto(imageId)
+    }
+
     return this.saveImages(filtered)
   }
 
@@ -229,20 +287,19 @@ class LocalStorageManager {
     return this.saveImages(updated)
   }
 
-  // Favorites management
   getFavorites(): string[] {
-    const data = this.safeGetItem(STORAGE_KEYS.FAVORITES)
+    const key = this.getUserKey(STORAGE_KEYS.FAVORITES)
+    const data = this.safeGetItem(key)
     const favorites = this.safeJsonParse<string[]>(data, [])
-
-    // Ensure favorites don't exceed quota and are valid strings
     return favorites.filter((fav) => typeof fav === "string" && fav.trim() !== "").slice(0, STORAGE_QUOTA.MAX_FAVORITES)
   }
 
   saveFavorites(favorites: string[]): boolean {
+    const key = this.getUserKey(STORAGE_KEYS.FAVORITES)
     const validFavorites = favorites
       .filter((fav) => typeof fav === "string" && fav.trim() !== "")
       .slice(0, STORAGE_QUOTA.MAX_FAVORITES)
-    return this.safeSetItem(STORAGE_KEYS.FAVORITES, this.safeJsonStringify(validFavorites))
+    return this.safeSetItem(key, this.safeJsonStringify(validFavorites))
   }
 
   addFavorite(imageId: string | number): boolean {
@@ -253,7 +310,7 @@ class LocalStorageManager {
 
     if (favorites.includes(id)) return true
 
-    favorites.unshift(id) // Add to beginning
+    favorites.unshift(id)
     return this.saveFavorites(favorites)
   }
 
@@ -290,21 +347,21 @@ class LocalStorageManager {
     }
   }
 
-  // Collections management
   getCollections(): Collections {
-    const data = this.safeGetItem(STORAGE_KEYS.COLLECTIONS)
+    const key = this.getUserKey(STORAGE_KEYS.COLLECTIONS)
+    const data = this.safeGetItem(key)
     return this.safeJsonParse<Collections>(data, {})
   }
 
   saveCollections(collections: Collections): boolean {
-    // Ensure collections don't exceed quota
+    const key = this.getUserKey(STORAGE_KEYS.COLLECTIONS)
     const collectionEntries = Object.entries(collections)
     if (collectionEntries.length > STORAGE_QUOTA.MAX_COLLECTIONS) {
       const trimmed = Object.fromEntries(collectionEntries.slice(0, STORAGE_QUOTA.MAX_COLLECTIONS))
-      return this.safeSetItem(STORAGE_KEYS.COLLECTIONS, this.safeJsonStringify(trimmed))
+      return this.safeSetItem(key, this.safeJsonStringify(trimmed))
     }
 
-    return this.safeSetItem(STORAGE_KEYS.COLLECTIONS, this.safeJsonStringify(collections))
+    return this.safeSetItem(key, this.safeJsonStringify(collections))
   }
 
   createCollection(name: string, description?: string): string | null {
@@ -389,20 +446,21 @@ class LocalStorageManager {
     return this.saveCollections(collections)
   }
 
-  // Settings management
   getSettings(): Partial<Settings> {
-    const data = this.safeGetItem(STORAGE_KEYS.SETTINGS)
+    const key = this.getUserKey(STORAGE_KEYS.SETTINGS)
+    const data = this.safeGetItem(key)
     return this.safeJsonParse<Partial<Settings>>(data, {})
   }
 
   saveSettings(settings: Partial<Settings>): boolean {
     if (!settings || typeof settings !== "object") return false
 
+    const key = this.getUserKey(STORAGE_KEYS.SETTINGS)
     const settingsWithTimestamp = {
       ...settings,
       lastUpdated: new Date().toISOString(),
     }
-    return this.safeSetItem(STORAGE_KEYS.SETTINGS, this.safeJsonStringify(settingsWithTimestamp))
+    return this.safeSetItem(key, this.safeJsonStringify(settingsWithTimestamp))
   }
 
   updateSettings(updates: Partial<Settings>): boolean {
@@ -411,18 +469,17 @@ class LocalStorageManager {
     return this.saveSettings(updatedSettings)
   }
 
-  // Download history management
   getDownloadHistory(): any[] {
-    const data = this.safeGetItem(STORAGE_KEYS.DOWNLOAD_HISTORY)
+    const key = this.getUserKey(STORAGE_KEYS.DOWNLOAD_HISTORY)
+    const data = this.safeGetItem(key)
     const history = this.safeJsonParse<any[]>(data, [])
-
-    // Ensure history doesn't exceed quota
     return history.slice(0, STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY)
   }
 
   saveDownloadHistory(history: any[]): boolean {
+    const key = this.getUserKey(STORAGE_KEYS.DOWNLOAD_HISTORY)
     const trimmed = history.slice(0, STORAGE_QUOTA.MAX_DOWNLOAD_HISTORY)
-    return this.safeSetItem(STORAGE_KEYS.DOWNLOAD_HISTORY, this.safeJsonStringify(trimmed))
+    return this.safeSetItem(key, this.safeJsonStringify(trimmed))
   }
 
   addToDownloadHistory(item: any): boolean {
@@ -436,7 +493,7 @@ class LocalStorageManager {
       timestamp: new Date().toISOString(),
     }
 
-    history.unshift(historyItem) // Add to beginning
+    history.unshift(historyItem)
     return this.saveDownloadHistory(history)
   }
 
@@ -445,19 +502,19 @@ class LocalStorageManager {
   }
 
   clearDownloadHistory(): boolean {
-    return this.safeSetItem(STORAGE_KEYS.DOWNLOAD_HISTORY, "[]")
+    const key = this.getUserKey(STORAGE_KEYS.DOWNLOAD_HISTORY)
+    return this.safeSetItem(key, "[]")
   }
 
-  // Cache management
   getCacheItem(key: string): any {
-    const data = this.safeGetItem(`${STORAGE_KEYS.CACHE}-${key}`)
+    const cacheKey = `${STORAGE_KEYS.CACHE}-${key}`
+    const data = this.safeGetItem(cacheKey)
     const cached = this.safeJsonParse<{ data: any; timestamp: number; ttl: number } | null>(data, null)
 
     if (!cached) return null
 
-    // Check if cache has expired
     if (Date.now() > cached.timestamp + cached.ttl) {
-      this.safeRemoveItem(`${STORAGE_KEYS.CACHE}-${key}`)
+      this.safeRemoveItem(cacheKey)
       return null
     }
 
@@ -465,7 +522,6 @@ class LocalStorageManager {
   }
 
   setCacheItem(key: string, data: any, ttlMs = 3600000): boolean {
-    // 1 hour default
     const cacheItem = {
       data,
       timestamp: Date.now(),
@@ -495,7 +551,6 @@ class LocalStorageManager {
     }
   }
 
-  // Bulk operations
   exportData(): any {
     return {
       images: this.getImages(),
@@ -503,8 +558,10 @@ class LocalStorageManager {
       collections: this.getCollections(),
       settings: this.getSettings(),
       downloadHistory: this.getDownloadHistory(),
+      userPhotos: this.getUserPhotos(),
       exportedAt: new Date().toISOString(),
       version: "2.0",
+      userId: this.currentUserId,
     }
   }
 
@@ -514,7 +571,6 @@ class LocalStorageManager {
     try {
       let success = true
 
-      // Import with validation
       if (Array.isArray(data.images)) {
         success = success && this.saveImages(data.images)
       }
@@ -547,10 +603,10 @@ class LocalStorageManager {
 
     try {
       Object.values(STORAGE_KEYS).forEach((key) => {
-        this.safeRemoveItem(key)
+        const userKey = this.getUserKey(key)
+        this.safeRemoveItem(userKey)
       })
 
-      // Clear cache items
       this.clearCache()
 
       return true
@@ -560,7 +616,6 @@ class LocalStorageManager {
     }
   }
 
-  // Statistics and analytics
   getStorageStats(): {
     usage: { used: number; available: number; percentage: number }
     counts: {
@@ -568,6 +623,7 @@ class LocalStorageManager {
       favorites: number
       collections: number
       downloadHistory: number
+      userPhotos: number
     }
     lastUpdated: string
   } {
@@ -580,15 +636,14 @@ class LocalStorageManager {
         favorites: this.getFavorites().length,
         collections: Object.keys(this.getCollections()).length,
         downloadHistory: this.getDownloadHistory().length,
+        userPhotos: this.getUserPhotos().length,
       },
       lastUpdated: new Date().toISOString(),
     }
   }
 
-  // Migration utilities
   migrateFromOldVersion(): boolean {
     try {
-      // Check for old version data
       const oldImages = this.safeGetItem("waifu-downloader-images")
       const oldFavorites = this.safeGetItem("waifu-downloader-favorites")
       const oldSettings = this.safeGetItem("waifu-downloader-settings")
@@ -634,10 +689,8 @@ class LocalStorageManager {
   }
 }
 
-// Create singleton instance
 export const storage = new LocalStorageManager()
 
-// Export individual functions for convenience
 export const {
   getImages,
   saveImages,
