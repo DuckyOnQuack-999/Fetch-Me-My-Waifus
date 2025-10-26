@@ -388,6 +388,16 @@ class AuthService {
 
     return hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
   }
+
+  clearAllUsers(): void {
+    try {
+      localStorage.removeItem(this.USERS_KEY)
+      localStorage.removeItem(this.STORAGE_KEY)
+      console.log("All users cleared successfully")
+    } catch (error) {
+      console.error("Failed to clear users:", error)
+    }
+  }
 }
 
 export const authService = new AuthService()
