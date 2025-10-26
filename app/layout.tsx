@@ -8,15 +8,14 @@ import { SettingsProvider } from "@/context/settingsContext"
 import { StorageProvider } from "@/context/storageContext"
 import { DownloadProvider } from "@/context/downloadContext"
 import { ActivityProvider } from "@/context/activityContext"
-import { ErrorBoundary } from "@/components/error-boundary"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import WaifuParticles from "@/components/waifu-particles"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Waifu Hub - Premium Anime Collection",
-  description: "Download and manage your anime image collection with advanced features",
-  keywords: ["anime", "waifu", "images", "gallery", "collection"],
+  title: "Fetch Me My Waifus - Ultimate Anime Collection Manager",
+  description: "Your personal anime image collection manager with AI-powered features",
+  keywords: ["anime", "waifu", "image", "downloader", "collection", "manager"],
     generator: 'v0.app'
 }
 
@@ -26,33 +25,21 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <ActivityProvider>
             <SettingsProvider>
               <StorageProvider>
                 <DownloadProvider>
-                  <ActivityProvider>
-                    <SidebarProvider>
-                      {children}
-                      <Toaster
-                        position="bottom-right"
-                        toastOptions={{
-                          style: {
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            color: "hsl(var(--foreground))",
-                          },
-                        }}
-                      />
-                    </SidebarProvider>
-                  </ActivityProvider>
+                  <WaifuParticles />
+                  {children}
+                  <Toaster position="top-right" />
                 </DownloadProvider>
               </StorageProvider>
             </SettingsProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
+          </ActivityProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

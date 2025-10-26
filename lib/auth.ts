@@ -32,6 +32,17 @@ class AuthService {
   private readonly USERS_KEY = "waifu_users"
   private readonly SESSION_DURATION = 7 * 24 * 60 * 60 * 1000
 
+  constructor() {
+    // Clear all users on initialization for fresh start
+    if (typeof window !== "undefined") {
+      const users = this.getAllUsers()
+      if (users.length > 0) {
+        console.log("Clearing all existing users for fresh start")
+        this.clearAllUsers()
+      }
+    }
+  }
+
   private async hashPassword(password: string): Promise<string> {
     const encoder = new TextEncoder()
     const data = encoder.encode(password + "waifu_salt_2024")
@@ -216,12 +227,12 @@ class AuthService {
 
       this.updateUserInStorage(user)
 
-      console.log("Password reset token:", resetToken)
-      console.log("Reset link: /reset-password?token=" + resetToken)
+      console.log("🔑 Password reset token:", resetToken)
+      console.log("🔗 Reset link: /reset-password?token=" + resetToken)
 
       return {
         success: true,
-        message: "If an account exists with this email, a password reset link has been sent.",
+        message: "Password reset link has been sent to your email.",
       }
     } catch (error) {
       console.error("Password reset error:", error)
@@ -354,6 +365,16 @@ class AuthService {
     }
   }
 
+  clearAllUsers(): void {
+    try {
+      localStorage.removeItem(this.USERS_KEY)
+      localStorage.removeItem(this.STORAGE_KEY)
+      console.log("✨ All users cleared successfully - Fresh start!")
+    } catch (error) {
+      console.error("Failed to clear users:", error)
+    }
+  }
+
   private updateUserInStorage(user: User): void {
     const users = this.getAllUsers()
     const userIndex = users.findIndex((u) => u.id === user.id)
@@ -387,16 +408,6 @@ class AuthService {
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
 
     return hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
-  }
-
-  clearAllUsers(): void {
-    try {
-      localStorage.removeItem(this.USERS_KEY)
-      localStorage.removeItem(this.STORAGE_KEY)
-      console.log("All users cleared successfully")
-    } catch (error) {
-      console.error("Failed to clear users:", error)
-    }
   }
 }
 
