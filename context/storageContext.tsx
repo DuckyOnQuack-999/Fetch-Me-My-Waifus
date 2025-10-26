@@ -53,7 +53,9 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     const loadData = async () => {
       try {
         // Migrate from old version if needed
-        storage.migrateFromOldVersion()
+        if (typeof storage.migrateFromOldVersion === "function") {
+          storage.migrateFromOldVersion()
+        }
 
         // Load all data
         const loadedImages = storage.getImages()
