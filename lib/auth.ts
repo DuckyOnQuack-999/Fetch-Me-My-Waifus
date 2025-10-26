@@ -4,7 +4,7 @@ interface User {
   id: string
   username: string
   email: string
-  password: string // Hashed password
+  password: string
   avatar?: string
   createdAt: Date
   lastLogin?: Date
@@ -30,9 +30,8 @@ interface AuthState {
 class AuthService {
   private readonly STORAGE_KEY = "waifu_auth_state"
   private readonly USERS_KEY = "waifu_users"
-  private readonly SESSION_DURATION = 7 * 24 * 60 * 60 * 1000 // 7 days
+  private readonly SESSION_DURATION = 7 * 24 * 60 * 60 * 1000
 
-  // Simple hash function (in production, use bcrypt or similar)
   private async hashPassword(password: string): Promise<string> {
     const encoder = new TextEncoder()
     const data = encoder.encode(password + "waifu_salt_2024")
@@ -60,7 +59,6 @@ class AuthService {
 
       const state: AuthState = JSON.parse(stored)
 
-      // Check if session is expired
       if (!this.isSessionValid(state)) {
         this.logout()
         return null
@@ -98,11 +96,9 @@ class AuthService {
         return { success: false, error: "Invalid email or password" }
       }
 
-      // Update last login
       user.lastLogin = new Date()
       this.updateUserInStorage(user)
 
-      // Create session
       const { password: _, ...userWithoutPassword } = user
       const sessionExpiry = new Date(Date.now() + this.SESSION_DURATION)
 
@@ -127,7 +123,6 @@ class AuthService {
     password: string,
   ): Promise<{ success: boolean; error?: string; user?: Omit<User, "password"> }> {
     try {
-      // Validate input
       if (!username || username.length < 3) {
         return { success: false, error: "Username must be at least 3 characters" }
       }
@@ -177,7 +172,6 @@ class AuthService {
       users.push(newUser)
       localStorage.setItem(this.USERS_KEY, JSON.stringify(users))
 
-      // Create user-specific storage
       storage.initializeUserStorage(newUser.id)
 
       const { password: _, ...userWithoutPassword } = newUser
@@ -208,23 +202,20 @@ class AuthService {
       const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase())
 
       if (!user) {
-        // Don't reveal if email exists for security
         return {
           success: true,
           message: "If an account exists with this email, a password reset link has been sent.",
         }
       }
 
-      // Generate reset token
       const resetToken = crypto.randomUUID()
-      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000)
 
       user.resetToken = resetToken
       user.resetTokenExpiry = resetTokenExpiry
 
       this.updateUserInStorage(user)
 
-      // In production, send email here
       console.log("Password reset token:", resetToken)
       console.log("Reset link: /reset-password?token=" + resetToken)
 

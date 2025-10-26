@@ -33,7 +33,6 @@ export default function LoginPage() {
       router.push("/")
     }
 
-    // Generate floating hearts
     const hearts = Array.from({ length: 10 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
@@ -153,10 +152,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
-      {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
 
-      {/* Floating hearts animation */}
       {floatingHearts.map((heart) => (
         <motion.div
           key={heart.id}
@@ -179,7 +176,6 @@ export default function LoginPage() {
         </motion.div>
       ))}
 
-      {/* Sparkle effects */}
       <motion.div
         className="absolute top-20 left-20"
         animate={{

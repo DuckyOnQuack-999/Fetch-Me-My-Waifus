@@ -161,7 +161,6 @@ function ResetPasswordContent() {
                 </div>
               </div>
 
-              {/* Password strength indicator */}
               {password && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
                   <p className="text-sm font-medium">Password requirements:</p>

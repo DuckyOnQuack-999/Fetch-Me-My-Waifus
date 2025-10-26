@@ -163,7 +163,6 @@ class LocalStorageManager {
     }
   }
 
-  // User-specific photo storage
   getUserPhotos(): WaifuImage[] {
     if (!this.currentUserId) return []
 
@@ -251,7 +250,6 @@ class LocalStorageManager {
 
     images.unshift(imageWithId)
 
-    // Also save to user photos if user is logged in
     if (this.currentUserId) {
       this.saveUserPhoto(imageWithId)
     }
@@ -266,7 +264,6 @@ class LocalStorageManager {
     const id = imageId.toString()
     const filtered = images.filter((img) => img.image_id?.toString() !== id && img.id?.toString() !== id)
 
-    // Also remove from user photos
     if (this.currentUserId) {
       this.removeUserPhoto(imageId)
     }
