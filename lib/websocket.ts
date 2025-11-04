@@ -18,7 +18,7 @@ class WebSocketService {
   private callbacks: Set<WebSocketCallback> = new Set()
   private pingInterval: NodeJS.Timeout | null = null
   private url: string
-  private isEnabled = true
+  private isEnabled = false
   private connectionFailed = false
   private isReconnecting = false
   private networkOnlineHandler: (() => void) | null = null
@@ -29,11 +29,13 @@ class WebSocketService {
       const hostname = window.location.hostname
       const port = process.env.NEXT_PUBLIC_WS_PORT || "3001"
       this.url = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//${hostname}:${port}`
+
+      this.isEnabled = process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET === "true"
     } else {
       this.url = "ws://localhost:3001"
     }
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && this.isEnabled) {
       this.networkOnlineHandler = () => {
         if (!this.isConnected() && !this.connectionFailed && !this.isReconnecting) {
           this.connect()
@@ -44,7 +46,7 @@ class WebSocketService {
   }
 
   connect() {
-    if (this.connectionFailed || !this.isEnabled || this.isReconnecting) {
+    if (!this.isEnabled || this.connectionFailed || this.isReconnecting) {
       return
     }
 
@@ -195,6 +197,10 @@ class WebSocketService {
       this.isEnabled = true
       this.connect()
     }
+  }
+
+  isWebSocketEnabled(): boolean {
+    return this.isEnabled
   }
 }
 
