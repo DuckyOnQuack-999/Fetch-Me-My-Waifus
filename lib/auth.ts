@@ -32,17 +32,6 @@ class AuthService {
   private readonly USERS_KEY = "waifu_users"
   private readonly SESSION_DURATION = 7 * 24 * 60 * 60 * 1000
 
-  constructor() {
-    // Clear all users on initialization for fresh start
-    if (typeof window !== "undefined") {
-      const users = this.getAllUsers()
-      if (users.length > 0) {
-        console.log("Clearing all existing users for fresh start")
-        this.clearAllUsers()
-      }
-    }
-  }
-
   private async hashPassword(password: string): Promise<string> {
     const encoder = new TextEncoder()
     const data = encoder.encode(password + "waifu_salt_2024")
@@ -362,16 +351,6 @@ class AuthService {
     } catch (error) {
       console.error("Change password error:", error)
       return { success: false, error: "Failed to change password" }
-    }
-  }
-
-  clearAllUsers(): void {
-    try {
-      localStorage.removeItem(this.USERS_KEY)
-      localStorage.removeItem(this.STORAGE_KEY)
-      console.log("✨ All users cleared successfully - Fresh start!")
-    } catch (error) {
-      console.error("Failed to clear users:", error)
     }
   }
 
