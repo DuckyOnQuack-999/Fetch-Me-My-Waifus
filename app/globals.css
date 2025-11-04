@@ -1,7 +1,60 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Dark Red Theme - Tailwind v4 */
+/* Fixed @theme syntax - using proper Tailwind v4 format */
+@theme {
+  --color-background: 0 0% 7%;
+  --color-foreground: 0 0% 95%;
+  --color-card: 0 5% 10%;
+  --color-card-foreground: 0 0% 95%;
+  --color-popover: 0 5% 12%;
+  --color-popover-foreground: 0 0% 95%;
+  --color-primary: 355 85% 55%;
+  --color-primary-foreground: 0 0% 100%;
+  --color-secondary: 355 25% 20%;
+  --color-secondary-foreground: 0 0% 95%;
+  --color-muted: 355 15% 15%;
+  --color-muted-foreground: 0 0% 65%;
+  --color-accent: 355 70% 45%;
+  --color-accent-foreground: 0 0% 100%;
+  --color-destructive: 0 85% 50%;
+  --color-destructive-foreground: 0 0% 100%;
+  --color-border: 355 20% 18%;
+  --color-input: 355 20% 18%;
+  --color-ring: 355 85% 55%;
+
+  --color-sidebar: 355 30% 12%;
+  --color-sidebar-foreground: 0 0% 95%;
+  --color-sidebar-primary: 355 85% 55%;
+  --color-sidebar-primary-foreground: 0 0% 100%;
+  --color-sidebar-accent: 355 40% 18%;
+  --color-sidebar-accent-foreground: 0 0% 95%;
+  --color-sidebar-border: 355 25% 15%;
+  --color-sidebar-ring: 355 85% 55%;
+
+  --color-chart-1: 355 85% 55%;
+  --color-chart-2: 25 85% 55%;
+  --color-chart-3: 340 70% 50%;
+  --color-chart-4: 10 75% 55%;
+  --color-chart-5: 345 80% 60%;
+
+  --radius-sm: calc(0.5rem - 4px);
+  --radius-md: calc(0.5rem - 2px);
+  --radius-lg: 0.5rem;
+  --radius-xl: calc(0.5rem + 4px);
+
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-slide-in: slideIn 0.3s ease-out;
+  --animate-fade-in: fadeIn 0.5s ease-in;
+  --animate-bounce-slow: bounceSlow 3s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+/* Dark Red Theme */
 :root {
   --background: hsl(0 0% 7%);
   --foreground: hsl(0 0% 95%);
@@ -29,7 +82,7 @@
   --chart-4: hsl(10 75% 55%);
   --chart-5: hsl(345 80% 60%);
 
-  /* Sidebar - Dark Red Theme */
+  /* Sidebar */
   --sidebar-background: hsl(355 30% 12%);
   --sidebar-foreground: hsl(0 0% 95%);
   --sidebar-primary: hsl(355 85% 55%);
@@ -70,96 +123,45 @@
   --sidebar-ring: hsl(355 85% 55%);
 }
 
-/* Fixed @theme block with proper closing brace */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar-background);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
-
-  --animate-glow: glow 3s ease-in-out infinite;
-  --animate-pulse-glow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-slide-in: slideIn 0.3s ease-out;
-  --animate-fade-in: fadeIn 0.5s ease-in;
-  --animate-bounce-slow: bounceSlow 3s ease-in-out infinite;
-  --animate-float: float 6s ease-in-out infinite;
-}
-
 * {
-  border-color: var(--color-border);
+  border-color: var(--border);
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
 }
 
-/* Custom Scrollbar - Dark Red Theme */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-muted);
+  background: var(--muted);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-primary), var(--color-accent));
+  background: linear-gradient(180deg, var(--primary), var(--accent));
   border-radius: 5px;
-  border: 2px solid var(--color-muted);
+  border: 2px solid var(--muted);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
+  background: var(--primary);
 }
 
-/* Glow Effects */
+/* Animations */
 @keyframes glow {
   0%,
   100% {
-    box-shadow: 0 0 20px var(--color-primary), 0 0 40px var(--color-primary);
+    box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary);
   }
   50% {
-    box-shadow: 0 0 30px var(--color-accent), 0 0 60px var(--color-accent);
+    box-shadow: 0 0 30px var(--accent), 0 0 60px var(--accent);
   }
 }
 
@@ -167,11 +169,11 @@ body {
   0%,
   100% {
     opacity: 1;
-    filter: drop-shadow(0 0 8px var(--color-primary));
+    filter: drop-shadow(0 0 8px var(--primary));
   }
   50% {
     opacity: 0.8;
-    filter: drop-shadow(0 0 16px var(--color-accent));
+    filter: drop-shadow(0 0 16px var(--accent));
   }
 }
 
@@ -218,31 +220,29 @@ body {
   }
 }
 
-/* Red Glow Button */
+/* Utility Classes */
 .btn-glow {
   position: relative;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   animation: glow 3s ease-in-out infinite;
   transition: all 0.3s ease;
 }
 
 .btn-glow:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 40px var(--color-primary);
+  box-shadow: 0 0 40px var(--primary);
 }
 
-/* Glass Card Effect */
 .glass-card {
   background: rgba(20, 10, 10, 0.6);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   box-shadow: 0 8px 32px 0 rgba(220, 38, 38, 0.2);
 }
 
-/* Animated Border */
 .animated-border {
   position: relative;
-  background: var(--color-card);
+  background: var(--card);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -252,7 +252,7 @@ body {
   position: absolute;
   inset: -2px;
   z-index: -1;
-  background: linear-gradient(45deg, var(--color-primary), var(--color-accent), var(--color-primary));
+  background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary));
   background-size: 200% 200%;
   border-radius: inherit;
   animation: borderRotate 3s linear infinite;
@@ -270,7 +270,6 @@ body {
   }
 }
 
-/* Shimmer Effect */
 .shimmer {
   position: relative;
   overflow: hidden;
@@ -293,7 +292,6 @@ body {
   }
 }
 
-/* Waifu Particle Effect */
 .waifu-particles {
   position: fixed;
   inset: 0;
@@ -301,19 +299,16 @@ body {
   z-index: 1;
 }
 
-/* Focus Styles */
 *:focus-visible {
-  outline: 2px solid var(--color-ring);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-/* Selection */
 ::selection {
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
-/* Tooltip Animations */
 .tooltip-enter {
   animation: tooltipEnter 0.2s ease-out;
 }
@@ -329,7 +324,6 @@ body {
   }
 }
 
-/* Card Hover Effects */
 .card-hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -339,7 +333,6 @@ body {
   box-shadow: 0 12px 40px rgba(220, 38, 38, 0.3);
 }
 
-/* Image Loading Animation */
 .image-loading {
   animation: imagePulse 1.5s ease-in-out infinite;
 }

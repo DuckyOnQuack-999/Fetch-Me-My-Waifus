@@ -9,6 +9,7 @@ import { StorageProvider } from "@/context/storageContext"
 import { DownloadProvider } from "@/context/downloadContext"
 import { ActivityProvider } from "@/context/activityContext"
 import WaifuParticles from "@/components/waifu-particles"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,19 +28,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <ActivityProvider>
-            <SettingsProvider>
-              <StorageProvider>
-                <DownloadProvider>
-                  <WaifuParticles />
-                  {children}
-                  <Toaster position="top-right" />
-                </DownloadProvider>
-              </StorageProvider>
-            </SettingsProvider>
-          </ActivityProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+            <ActivityProvider>
+              <SettingsProvider>
+                <StorageProvider>
+                  <DownloadProvider>
+                    <WaifuParticles />
+                    {children}
+                    <Toaster position="top-right" />
+                  </DownloadProvider>
+                </StorageProvider>
+              </SettingsProvider>
+            </ActivityProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )
