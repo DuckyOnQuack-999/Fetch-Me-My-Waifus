@@ -70,7 +70,8 @@
   --sidebar-ring: hsl(355 85% 55%);
 }
 
-@theme {
+/* Fixed @theme block with proper closing brace */
+@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
