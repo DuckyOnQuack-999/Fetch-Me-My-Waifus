@@ -3,7 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Dark Red Waifu Theme */
 :root {
   --background: 0 0% 7%;
   --foreground: 0 0% 95%;
@@ -24,15 +23,13 @@
   --border: 355 20% 18%;
   --input: 355 20% 18%;
   --ring: 355 85% 55%;
-  --radius: 0.5rem;
   --chart-1: 355 85% 55%;
   --chart-2: 25 85% 55%;
   --chart-3: 340 70% 50%;
   --chart-4: 10 75% 55%;
   --chart-5: 345 80% 60%;
-
-  /* Sidebar */
-  --sidebar-background: 355 30% 12%;
+  --radius: 0.5rem;
+  --sidebar: 355 30% 12%;
   --sidebar-foreground: 0 0% 95%;
   --sidebar-primary: 355 85% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
@@ -62,7 +59,7 @@
   --border: 355 20% 18%;
   --input: 355 20% 18%;
   --ring: 355 85% 55%;
-  --sidebar-background: 355 30% 12%;
+  --sidebar: 355 30% 12%;
   --sidebar-foreground: 0 0% 95%;
   --sidebar-primary: 355 85% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
@@ -102,7 +99,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar-background);
+  --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
