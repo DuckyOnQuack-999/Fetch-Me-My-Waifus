@@ -24,15 +24,18 @@ class WebSocketService {
   private networkOnlineHandler: (() => void) | null = null
 
   constructor() {
-    this.url =
-      typeof window !== "undefined"
-        ? process.env.NEXT_PUBLIC_WS_URL || `ws://${window.location.hostname}:3001`
-        : "ws://localhost:3001"
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+      const hostname = window.location.hostname
+      const port = process.env.NEXT_PUBLIC_WS_PORT || "3001"
+      this.url = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//${hostname}:${port}`
+    } else {
+      this.url = "ws://localhost:3001"
+    }
 
     if (typeof window !== "undefined") {
       this.networkOnlineHandler = () => {
         if (!this.isConnected() && !this.connectionFailed && !this.isReconnecting) {
-          console.log("[v0] Network back online, attempting to reconnect WebSocket...")
           this.connect()
         }
       }
@@ -54,7 +57,6 @@ class WebSocketService {
     }
 
     if (!navigator.onLine) {
-      console.log("[v0] No network connection, skipping WebSocket connection")
       return
     }
 
@@ -81,12 +83,12 @@ class WebSocketService {
         try {
           const data = JSON.parse(event.data)
           if (data.type === "pong") {
-            return // Heartbeat response, ignore
+            return
           }
           const message: ActivityMessage = data
           this.callbacks.forEach((callback) => callback(message))
         } catch (error) {
-          console.error("[v0] Failed to parse WebSocket message:", error)
+          console.error("Failed to parse WebSocket message:", error)
         }
       }
 
@@ -146,7 +148,7 @@ class WebSocketService {
         this.connect()
       },
       this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
-    ) // Exponential backoff
+    )
   }
 
   private startPing() {

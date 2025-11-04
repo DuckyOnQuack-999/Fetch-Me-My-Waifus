@@ -1,136 +1,135 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Fixed @theme syntax - using proper Tailwind v4 format */
-@theme {
-  --color-background: 0 0% 7%;
-  --color-foreground: 0 0% 95%;
-  --color-card: 0 5% 10%;
-  --color-card-foreground: 0 0% 95%;
-  --color-popover: 0 5% 12%;
-  --color-popover-foreground: 0 0% 95%;
-  --color-primary: 355 85% 55%;
-  --color-primary-foreground: 0 0% 100%;
-  --color-secondary: 355 25% 20%;
-  --color-secondary-foreground: 0 0% 95%;
-  --color-muted: 355 15% 15%;
-  --color-muted-foreground: 0 0% 65%;
-  --color-accent: 355 70% 45%;
-  --color-accent-foreground: 0 0% 100%;
-  --color-destructive: 0 85% 50%;
-  --color-destructive-foreground: 0 0% 100%;
-  --color-border: 355 20% 18%;
-  --color-input: 355 20% 18%;
-  --color-ring: 355 85% 55%;
+@custom-variant dark (&:is(.dark *));
 
-  --color-sidebar: 355 30% 12%;
-  --color-sidebar-foreground: 0 0% 95%;
-  --color-sidebar-primary: 355 85% 55%;
-  --color-sidebar-primary-foreground: 0 0% 100%;
-  --color-sidebar-accent: 355 40% 18%;
-  --color-sidebar-accent-foreground: 0 0% 95%;
-  --color-sidebar-border: 355 25% 15%;
-  --color-sidebar-ring: 355 85% 55%;
-
-  --color-chart-1: 355 85% 55%;
-  --color-chart-2: 25 85% 55%;
-  --color-chart-3: 340 70% 50%;
-  --color-chart-4: 10 75% 55%;
-  --color-chart-5: 345 80% 60%;
-
-  --radius-sm: calc(0.5rem - 4px);
-  --radius-md: calc(0.5rem - 2px);
-  --radius-lg: 0.5rem;
-  --radius-xl: calc(0.5rem + 4px);
-
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
-
-  --animate-glow: glow 3s ease-in-out infinite;
-  --animate-pulse-glow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-slide-in: slideIn 0.3s ease-out;
-  --animate-fade-in: fadeIn 0.5s ease-in;
-  --animate-bounce-slow: bounceSlow 3s ease-in-out infinite;
-  --animate-float: float 6s ease-in-out infinite;
-}
-
-/* Dark Red Theme */
+/* Dark Red Waifu Theme */
 :root {
-  --background: hsl(0 0% 7%);
-  --foreground: hsl(0 0% 95%);
-  --card: hsl(0 5% 10%);
-  --card-foreground: hsl(0 0% 95%);
-  --popover: hsl(0 5% 12%);
-  --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(355 85% 55%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(355 25% 20%);
-  --secondary-foreground: hsl(0 0% 95%);
-  --muted: hsl(355 15% 15%);
-  --muted-foreground: hsl(0 0% 65%);
-  --accent: hsl(355 70% 45%);
-  --accent-foreground: hsl(0 0% 100%);
-  --destructive: hsl(0 85% 50%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(355 20% 18%);
-  --input: hsl(355 20% 18%);
-  --ring: hsl(355 85% 55%);
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+  --card: 0 5% 10%;
+  --card-foreground: 0 0% 95%;
+  --popover: 0 5% 12%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 355 85% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 355 25% 20%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 355 15% 15%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 355 70% 45%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 85% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 355 20% 18%;
+  --input: 355 20% 18%;
+  --ring: 355 85% 55%;
   --radius: 0.5rem;
-  --chart-1: hsl(355 85% 55%);
-  --chart-2: hsl(25 85% 55%);
-  --chart-3: hsl(340 70% 50%);
-  --chart-4: hsl(10 75% 55%);
-  --chart-5: hsl(345 80% 60%);
+  --chart-1: 355 85% 55%;
+  --chart-2: 25 85% 55%;
+  --chart-3: 340 70% 50%;
+  --chart-4: 10 75% 55%;
+  --chart-5: 345 80% 60%;
 
   /* Sidebar */
-  --sidebar-background: hsl(355 30% 12%);
-  --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(355 85% 55%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(355 40% 18%);
-  --sidebar-accent-foreground: hsl(0 0% 95%);
-  --sidebar-border: hsl(355 25% 15%);
-  --sidebar-ring: hsl(355 85% 55%);
+  --sidebar-background: 355 30% 12%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 355 85% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 355 40% 18%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-border: 355 25% 15%;
+  --sidebar-ring: 355 85% 55%;
 }
 
 .dark {
-  --background: hsl(0 0% 7%);
-  --foreground: hsl(0 0% 95%);
-  --card: hsl(0 5% 10%);
-  --card-foreground: hsl(0 0% 95%);
-  --popover: hsl(0 5% 12%);
-  --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(355 85% 55%);
-  --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(355 25% 20%);
-  --secondary-foreground: hsl(0 0% 95%);
-  --muted: hsl(355 15% 15%);
-  --muted-foreground: hsl(0 0% 65%);
-  --accent: hsl(355 70% 45%);
-  --accent-foreground: hsl(0 0% 100%);
-  --destructive: hsl(0 85% 50%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(355 20% 18%);
-  --input: hsl(355 20% 18%);
-  --ring: hsl(355 85% 55%);
-  --sidebar-background: hsl(355 30% 12%);
-  --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(355 85% 55%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(355 40% 18%);
-  --sidebar-accent-foreground: hsl(0 0% 95%);
-  --sidebar-border: hsl(355 25% 15%);
-  --sidebar-ring: hsl(355 85% 55%);
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+  --card: 0 5% 10%;
+  --card-foreground: 0 0% 95%;
+  --popover: 0 5% 12%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 355 85% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 355 25% 20%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 355 15% 15%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 355 70% 45%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 85% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 355 20% 18%;
+  --input: 355 20% 18%;
+  --ring: 355 85% 55%;
+  --sidebar-background: 355 30% 12%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 355 85% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 355 40% 18%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-border: 355 25% 15%;
+  --sidebar-ring: 355 85% 55%;
+}
+
+@theme inline {
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 * {
-  border-color: var(--border);
+  border-color: hsl(var(--border));
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
 }
 
 /* Custom Scrollbar */
@@ -140,28 +139,28 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--muted);
+  background: hsl(var(--muted));
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--primary), var(--accent));
+  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--accent)));
   border-radius: 5px;
-  border: 2px solid var(--muted);
+  border: 2px solid hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  background: hsl(var(--primary));
 }
 
 /* Animations */
 @keyframes glow {
   0%,
   100% {
-    box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary);
+    box-shadow: 0 0 20px hsl(var(--primary)), 0 0 40px hsl(var(--primary));
   }
   50% {
-    box-shadow: 0 0 30px var(--accent), 0 0 60px var(--accent);
+    box-shadow: 0 0 30px hsl(var(--accent)), 0 0 60px hsl(var(--accent));
   }
 }
 
@@ -169,11 +168,11 @@ body {
   0%,
   100% {
     opacity: 1;
-    filter: drop-shadow(0 0 8px var(--primary));
+    filter: drop-shadow(0 0 8px hsl(var(--primary)));
   }
   50% {
     opacity: 0.8;
-    filter: drop-shadow(0 0 16px var(--accent));
+    filter: drop-shadow(0 0 16px hsl(var(--accent)));
   }
 }
 
@@ -220,42 +219,10 @@ body {
   }
 }
 
-/* Utility Classes */
-.btn-glow {
-  position: relative;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  animation: glow 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-}
-
-.btn-glow:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 40px var(--primary);
-}
-
-.glass-card {
-  background: rgba(20, 10, 10, 0.6);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 32px 0 rgba(220, 38, 38, 0.2);
-}
-
-.animated-border {
-  position: relative;
-  background: var(--card);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.animated-border::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  z-index: -1;
-  background: linear-gradient(45deg, var(--primary), var(--accent), var(--primary));
-  background-size: 200% 200%;
-  border-radius: inherit;
-  animation: borderRotate 3s linear infinite;
+@keyframes shimmer {
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes borderRotate {
@@ -268,6 +235,65 @@ body {
   100% {
     background-position: 0% 50%;
   }
+}
+
+@keyframes tooltipEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes imagePulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Utility Classes */
+.btn-glow {
+  position: relative;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  animation: glow 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.btn-glow:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 40px hsl(var(--primary));
+}
+
+.glass-card {
+  background: rgba(20, 10, 10, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 8px 32px 0 rgba(220, 38, 38, 0.2);
+}
+
+.animated-border {
+  position: relative;
+  background: hsl(var(--card));
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.animated-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary)));
+  background-size: 200% 200%;
+  border-radius: inherit;
+  animation: borderRotate 3s linear infinite;
 }
 
 .shimmer {
@@ -286,12 +312,6 @@ body {
   animation: shimmer 2s infinite;
 }
 
-@keyframes shimmer {
-  100% {
-    left: 100%;
-  }
-}
-
 .waifu-particles {
   position: fixed;
   inset: 0;
@@ -300,28 +320,17 @@ body {
 }
 
 *:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
 ::selection {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .tooltip-enter {
   animation: tooltipEnter 0.2s ease-out;
-}
-
-@keyframes tooltipEnter {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
 }
 
 .card-hover {
@@ -335,14 +344,4 @@ body {
 
 .image-loading {
   animation: imagePulse 1.5s ease-in-out infinite;
-}
-
-@keyframes imagePulse {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
 }
