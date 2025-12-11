@@ -192,7 +192,9 @@ class AuthService {
     }
   }
 
-  async requestPasswordReset(email: string): Promise<{ success: boolean; error?: string; message?: string }> {
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{ success: boolean; error?: string; message?: string; resetLink?: string }> {
     try {
       if (!email || !this.isValidEmail(email)) {
         return { success: false, error: "Please enter a valid email address" }
@@ -204,24 +206,30 @@ class AuthService {
       if (!user) {
         return {
           success: true,
-          message: "If an account exists with this email, a password reset link has been sent.",
+          message: "If an account exists with this email, a password reset link has been generated.",
         }
       }
 
       const resetToken = crypto.randomUUID()
-      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000)
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour expiry
 
       user.resetToken = resetToken
       user.resetTokenExpiry = resetTokenExpiry
 
       this.updateUserInStorage(user)
 
+      const resetLink =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/reset-password?token=${resetToken}`
+          : `/reset-password?token=${resetToken}`
+
       console.log("🔑 Password reset token:", resetToken)
-      console.log("🔗 Reset link: /reset-password?token=" + resetToken)
+      console.log("🔗 Reset link:", resetLink)
 
       return {
         success: true,
-        message: "Password reset link has been sent to your email.",
+        message: "Password reset link has been generated.",
+        resetLink,
       }
     } catch (error) {
       console.error("Password reset error:", error)

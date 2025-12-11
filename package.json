@@ -34,7 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "latest",
     "framer-motion": "latest",
-    "http": "latest",
+    "http": "0.0.1-security",
     "lucide-react": "^0.454.0",
     "next": "14.1.0",
     "next-themes": "latest",

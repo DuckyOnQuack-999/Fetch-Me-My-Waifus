@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Eye, EyeOff, Sparkles, Mail, Lock, User, ArrowLeft, Heart } from "lucide-react"
+import { Eye, EyeOff, Sparkles, Mail, Lock, User, ArrowLeft, Heart, Copy } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { toast } from "sonner"
 import { useActivity } from "@/context/activityContext"
@@ -23,10 +23,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showResetMode, setShowResetMode] = useState<"form" | "link">("form")
   const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [registerData, setRegisterData] = useState({ username: "", email: "", password: "", confirmPassword: "" })
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("")
-  const [floatingHearts, setFloatingHearts] = useState<{ id: number; x: number; delay: number }[]>([])
+  const [resetLink, setResetLink] = useState("")
 
   useEffect(() => {
     if (authService.isAuthenticated()) {
@@ -131,11 +132,19 @@ export default function LoginPage() {
       const result = await authService.requestPasswordReset(forgotPasswordEmail)
 
       if (result.success) {
-        toast.success("Reset link sent! 📧", {
-          description: result.message,
-        })
-        setShowForgotPassword(false)
-        setForgotPasswordEmail("")
+        if (result.resetLink) {
+          setResetLink(result.resetLink)
+          setShowResetMode("link")
+          toast.success("Reset link generated! 🔗", {
+            description: "Copy the link below to reset your password",
+          })
+        } else {
+          toast.success("Reset link sent! 📧", {
+            description: result.message,
+          })
+          setShowForgotPassword(false)
+          setForgotPasswordEmail("")
+        }
       } else {
         toast.error("Request failed", {
           description: result.error || "Please try again",
@@ -149,6 +158,21 @@ export default function LoginPage() {
       setIsLoading(false)
     }
   }
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(resetLink)
+    toast.success("Link copied! 📋", {
+      description: "Paste it in a new tab to reset your password",
+    })
+  }
+
+  const handleBackToForgotForm = () => {
+    setShowResetMode("form")
+    setResetLink("")
+    setForgotPasswordEmail("")
+  }
+
+  const [floatingHearts, setFloatingHearts] = useState<{ id: number; x: number; delay: number }[]>([])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
@@ -249,44 +273,94 @@ export default function LoginPage() {
             >
               <Card className="glass-card animated-border">
                 <CardHeader>
-                  <Button variant="ghost" size="sm" className="w-fit mb-2" onClick={() => setShowForgotPassword(false)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit mb-2"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setShowResetMode("form")
+                      setResetLink("")
+                      setForgotPasswordEmail("")
+                    }}
+                  >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to login
                   </Button>
                   <CardTitle>Reset Password</CardTitle>
-                  <CardDescription>Enter your email to receive a reset link</CardDescription>
+                  <CardDescription>
+                    {showResetMode === "form"
+                      ? "Enter your email to receive a reset link"
+                      : "Use this link to reset your password"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleForgotPassword} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="forgot-email">Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="forgot-email"
-                          type="email"
-                          placeholder="your.email@example.com"
-                          className="pl-10"
-                          value={forgotPasswordEmail}
-                          onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                          required
-                        />
+                  {showResetMode === "form" ? (
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="forgot-email">Email Address</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="forgot-email"
+                            type="email"
+                            placeholder="your.email@example.com"
+                            className="pl-10"
+                            value={forgotPasswordEmail}
+                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
+                        {isLoading ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
+                          >
+                            <Sparkles className="h-4 w-4" />
+                          </motion.div>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                    </form>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Your Password Reset Link</Label>
+                        <div className="flex gap-2">
+                          <Input value={resetLink} readOnly className="font-mono text-xs" />
+                          <Button type="button" variant="outline" size="icon" onClick={handleCopyLink}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Copy this link and open it in a new tab to reset your password. This link will expire in 1
+                          hour.
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1 bg-transparent"
+                          onClick={handleBackToForgotForm}
+                        >
+                          Try Another Email
+                        </Button>
+                        <Button
+                          type="button"
+                          className="flex-1 btn-glow"
+                          onClick={() => window.open(resetLink, "_blank")}
+                        >
+                          Open Reset Page
+                        </Button>
                       </div>
                     </div>
-
-                    <Button type="submit" className="w-full btn-glow" disabled={isLoading}>
-                      {isLoading ? (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-                        >
-                          <Sparkles className="h-4 w-4" />
-                        </motion.div>
-                      ) : (
-                        "Send Reset Link"
-                      )}
-                    </Button>
-                  </form>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
