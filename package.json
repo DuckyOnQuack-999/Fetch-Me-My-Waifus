@@ -36,7 +36,7 @@
     "framer-motion": "latest",
     "http": "0.0.1-security",
     "lucide-react": "^0.454.0",
-    "next": "14.1.0",
+    "next": "14.2.35",
     "next-themes": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

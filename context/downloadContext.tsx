@@ -1,13 +1,12 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import type { DownloadItem, DownloadStatus, DownloadProgress } from "@/types/waifu"
 import { useSettings } from "./settingsContext"
 import { useStorage } from "./storageContext"
 import { toast } from "sonner"
 
 interface DownloadContextType {
-  // State
   downloads: DownloadItem[]
   activeDownloads: DownloadItem[]
   completedDownloads: DownloadItem[]
@@ -15,7 +14,6 @@ interface DownloadContextType {
   totalProgress: DownloadProgress
   isDownloading: boolean
 
-  // Actions
   addToQueue: (item: DownloadItem) => void
   startDownload: (url: string, options?: Partial<DownloadItem>) => Promise<string>
   pauseDownload: (downloadId: string) => Promise<boolean>
@@ -26,13 +24,11 @@ interface DownloadContextType {
   clearFailed: () => void
   clearAll: () => void
 
-  // Batch operations
   startBatchDownload: (urls: string[], options?: Partial<DownloadItem>) => Promise<string[]>
   pauseAll: () => Promise<void>
   resumeAll: () => Promise<void>
   cancelAll: () => Promise<void>
 
-  // Queue management
   getQueuePosition: (downloadId: string) => number
   moveToTop: (downloadId: string) => void
   moveToBottom: (downloadId: string) => void
@@ -47,7 +43,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const [isDownloading, setIsDownloading] = useState(false)
 
-  // Computed values
+  const downloadControllersRef = useRef<Map<string, AbortController>>(new Map())
+  const processingRef = useRef<boolean>(false)
+
   const activeDownloads = downloads.filter((d) => d.status === "downloading")
   const completedDownloads = downloads.filter((d) => d.status === "completed")
   const failedDownloads = downloads.filter((d) => d.status === "failed")
@@ -61,263 +59,321 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     errors: failedDownloads.map((d) => d.error).filter(Boolean) as string[],
   }
 
-  // Auto-start downloads when queue changes
-  useEffect(() => {
-    processDownloadQueue()
-  }, [downloads, settings?.maxConcurrentDownloads])
+  const updateDownloadStatus = useCallback(
+    (downloadId: string, status: DownloadStatus, updates: Partial<DownloadItem> = {}) => {
+      setDownloads((prev) =>
+        prev.map((d) => (d.id === downloadId ? { ...d, status, ...updates, timestamp: new Date() } : d)),
+      )
+    },
+    [],
+  )
 
-  // Process download queue
-  const processDownloadQueue = async () => {
-    const maxConcurrent = settings?.maxConcurrentDownloads || 3
-    const currentActive = activeDownloads.length
-    const pendingDownloads = downloads.filter((d) => d.status === "pending")
+  const executeDownload = useCallback(
+    async (downloadId: string) => {
+      const download = downloads.find((d) => d.id === downloadId)
+      if (!download) return
 
-    if (currentActive < maxConcurrent && pendingDownloads.length > 0) {
-      const toStart = pendingDownloads.slice(0, maxConcurrent - currentActive)
+      const controller = new AbortController()
+      downloadControllersRef.current.set(downloadId, controller)
 
-      for (const download of toStart) {
-        executeDownload(download.id)
-      }
-    }
+      try {
+        updateDownloadStatus(downloadId, "downloading", { progress: 0, startTime: new Date() })
 
-    setIsDownloading(activeDownloads.length > 0)
-  }
-
-  // Execute individual download
-  const executeDownload = async (downloadId: string) => {
-    const download = downloads.find((d) => d.id === downloadId)
-    if (!download) return
-
-    try {
-      // Update status to downloading
-      updateDownloadStatus(downloadId, "downloading", { progress: 0 })
-
-      // Simulate download with progress updates
-      const startTime = Date.now()
-      let progress = 0
-
-      const progressInterval = setInterval(() => {
-        progress += Math.random() * 15 + 5 // Random progress between 5-20%
-        progress = Math.min(progress, 100)
-
-        const elapsed = (Date.now() - startTime) / 1000
-        const speed = ((progress / 100) * 1024 * 1024) / elapsed // Simulated speed
-        const eta = progress < 100 ? ((100 - progress) / progress) * elapsed : 0
-
-        updateDownloadStatus(downloadId, "downloading", {
-          progress: Math.floor(progress),
-          speed,
-          eta,
+        const response = await fetch(download.url, {
+          signal: controller.signal,
+          mode: "cors",
+          credentials: "omit",
         })
 
-        if (progress >= 100) {
-          clearInterval(progressInterval)
-
-          // Simulate network delay
-          setTimeout(() => {
-            updateDownloadStatus(downloadId, "completed", {
-              progress: 100,
-              speed: 0,
-              eta: 0,
-            })
-
-            // Add to download history
-            addDownloadRecord({
-              id: downloadId,
-              url: download.url,
-              filename: download.filename,
-              source: download.source,
-              timestamp: new Date().toISOString(),
-              status: "completed",
-            })
-
-            toast.success(`Downloaded: ${download.filename}`)
-          }, 500)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
-      }, 200)
 
-      // Handle potential errors
-      if (Math.random() < 0.1) {
-        // 10% chance of failure for demo
-        setTimeout(
-          () => {
-            clearInterval(progressInterval)
-            updateDownloadStatus(downloadId, "failed", {
-              error: "Network error: Connection timeout",
-            })
-            toast.error(`Failed to download: ${download.filename}`)
-          },
-          Math.random() * 3000 + 1000,
-        )
+        const contentLength = response.headers.get("content-length")
+        const totalBytes = contentLength ? Number.parseInt(contentLength, 10) : 0
+
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error("Failed to get response reader")
+        }
+
+        const chunks: Uint8Array[] = []
+        let receivedBytes = 0
+        const startTime = Date.now()
+
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) break
+
+          chunks.push(value)
+          receivedBytes += value.length
+
+          const elapsed = (Date.now() - startTime) / 1000
+          const speed = receivedBytes / elapsed
+          const progress = totalBytes > 0 ? (receivedBytes / totalBytes) * 100 : 0
+          const eta = totalBytes > 0 && speed > 0 ? (totalBytes - receivedBytes) / speed : 0
+
+          updateDownloadStatus(downloadId, "downloading", {
+            progress: Math.min(progress, 99),
+            speed,
+            eta,
+          })
+        }
+
+        // Create blob from chunks
+        const blob = new Blob(chunks)
+        const url = URL.createObjectURL(blob)
+
+        // Trigger download
+        const a = document.createElement("a")
+        a.href = url
+        a.download = download.filename
+        a.style.display = "none"
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        updateDownloadStatus(downloadId, "completed", {
+          progress: 100,
+          speed: 0,
+          eta: 0,
+          endTime: new Date(),
+        })
+
+        addDownloadRecord({
+          id: downloadId,
+          url: download.url,
+          filename: download.filename,
+          source: download.source,
+          timestamp: new Date().toISOString(),
+          status: "completed",
+          fileSize: receivedBytes,
+        })
+
+        toast.success(`Downloaded: ${download.filename}`)
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          updateDownloadStatus(downloadId, "cancelled")
+          return
+        }
+
+        const errorMessage = error instanceof Error ? error.message : "Unknown error"
+        updateDownloadStatus(downloadId, "failed", {
+          error: errorMessage,
+          endTime: new Date(),
+        })
+        toast.error(`Failed: ${download.filename}`)
+      } finally {
+        downloadControllersRef.current.delete(downloadId)
       }
-    } catch (error) {
-      updateDownloadStatus(downloadId, "failed", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      })
-      toast.error(`Download failed: ${download.filename}`)
+    },
+    [downloads, updateDownloadStatus, addDownloadRecord],
+  )
+
+  const processQueue = useCallback(async () => {
+    if (processingRef.current) return
+    processingRef.current = true
+
+    try {
+      const maxConcurrent = settings?.maxConcurrentDownloads || 3
+      const currentActive = downloads.filter((d) => d.status === "downloading").length
+      const pendingDownloads = downloads.filter((d) => d.status === "pending")
+
+      if (currentActive < maxConcurrent && pendingDownloads.length > 0) {
+        const toStart = pendingDownloads.slice(0, maxConcurrent - currentActive)
+        await Promise.all(toStart.map((download) => executeDownload(download.id)))
+      }
+    } finally {
+      processingRef.current = false
     }
-  }
+  }, [downloads, settings?.maxConcurrentDownloads, executeDownload])
 
-  // Update download status
-  const updateDownloadStatus = (downloadId: string, status: DownloadStatus, updates: Partial<DownloadItem> = {}) => {
-    setDownloads((prev) =>
-      prev.map((d) => (d.id === downloadId ? { ...d, status, ...updates, timestamp: new Date() } : d)),
-    )
-  }
+  useEffect(() => {
+    const hasPending = downloads.some((d) => d.status === "pending")
+    const hasActive = downloads.some((d) => d.status === "downloading")
 
-  // Add to queue
-  const addToQueue = (item: DownloadItem) => {
+    setIsDownloading(hasActive)
+
+    if (hasPending && !processingRef.current) {
+      processQueue()
+    }
+  }, [downloads, processQueue])
+
+  const addToQueue = useCallback((item: DownloadItem) => {
     setDownloads((prev) => [...prev, item])
-  }
+  }, [])
 
-  // Start download
-  const startDownload = async (url: string, options: Partial<DownloadItem> = {}): Promise<string> => {
-    const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const startDownload = useCallback(
+    async (url: string, options: Partial<DownloadItem> = {}): Promise<string> => {
+      const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
-    const newDownload: DownloadItem = {
-      id: downloadId,
-      url,
-      filename: options.filename || `image-${Date.now()}.jpg`,
-      status: "pending",
-      progress: 0,
-      timestamp: new Date(),
-      addedAt: new Date(),
-      source: options.source || settings?.apiSource || "waifu.im",
-      category: options.category,
-      tags: options.tags || [],
-      metadata: options.metadata,
-      ...options,
+      const urlFilename = url.split("/").pop()?.split("?")[0] || `image-${Date.now()}.jpg`
+
+      const newDownload: DownloadItem = {
+        id: downloadId,
+        url,
+        filename: options.filename || urlFilename,
+        status: "pending",
+        progress: 0,
+        timestamp: new Date(),
+        addedAt: new Date(),
+        source: options.source || settings?.apiSource || "waifu.im",
+        category: options.category,
+        tags: options.tags || [],
+        metadata: options.metadata,
+        retries: 0,
+        ...options,
+      }
+
+      setDownloads((prev) => [...prev, newDownload])
+      toast.success(`Added to queue: ${newDownload.filename}`)
+
+      return downloadId
+    },
+    [settings?.apiSource],
+  )
+
+  const pauseDownload = useCallback(
+    async (downloadId: string): Promise<boolean> => {
+      const controller = downloadControllersRef.current.get(downloadId)
+      if (controller) {
+        controller.abort()
+        downloadControllersRef.current.delete(downloadId)
+      }
+
+      updateDownloadStatus(downloadId, "paused")
+      toast.info("Download paused")
+      return true
+    },
+    [updateDownloadStatus],
+  )
+
+  const resumeDownload = useCallback(
+    async (downloadId: string): Promise<boolean> => {
+      updateDownloadStatus(downloadId, "pending", { progress: 0 })
+      toast.info("Download resumed")
+      return true
+    },
+    [updateDownloadStatus],
+  )
+
+  const cancelDownload = useCallback(async (downloadId: string): Promise<boolean> => {
+    const controller = downloadControllersRef.current.get(downloadId)
+    if (controller) {
+      controller.abort()
+      downloadControllersRef.current.delete(downloadId)
     }
-
-    setDownloads((prev) => [...prev, newDownload])
-    toast.success(`Added to download queue: ${newDownload.filename}`)
-
-    return downloadId
-  }
-
-  // Pause download
-  const pauseDownload = async (downloadId: string): Promise<boolean> => {
-    const download = downloads.find((d) => d.id === downloadId)
-    if (!download || download.status !== "downloading") return false
-
-    updateDownloadStatus(downloadId, "paused")
-    toast.info(`Paused: ${download.filename}`)
-    return true
-  }
-
-  // Resume download
-  const resumeDownload = async (downloadId: string): Promise<boolean> => {
-    const download = downloads.find((d) => d.id === downloadId)
-    if (!download || download.status !== "paused") return false
-
-    updateDownloadStatus(downloadId, "pending")
-    toast.info(`Resumed: ${download.filename}`)
-    return true
-  }
-
-  // Cancel download
-  const cancelDownload = async (downloadId: string): Promise<boolean> => {
-    const download = downloads.find((d) => d.id === downloadId)
-    if (!download) return false
 
     setDownloads((prev) => prev.filter((d) => d.id !== downloadId))
-    toast.info(`Cancelled: ${download.filename}`)
+    toast.info("Download cancelled")
     return true
-  }
+  }, [])
 
-  // Retry download
-  const retryDownload = async (downloadId: string): Promise<boolean> => {
-    const download = downloads.find((d) => d.id === downloadId)
-    if (!download || download.status !== "failed") return false
+  const retryDownload = useCallback(
+    async (downloadId: string): Promise<boolean> => {
+      const download = downloads.find((d) => d.id === downloadId)
+      if (!download) return false
 
-    updateDownloadStatus(downloadId, "pending", {
-      progress: 0,
-      error: undefined,
-      speed: undefined,
-      eta: undefined,
-    })
+      const retries = (download.retries || 0) + 1
+      if (retries > 3) {
+        toast.error("Max retries exceeded")
+        return false
+      }
 
-    toast.info(`Retrying: ${download.filename}`)
-    return true
-  }
+      updateDownloadStatus(downloadId, "pending", {
+        progress: 0,
+        error: undefined,
+        retries,
+      })
 
-  // Clear completed downloads
-  const clearCompleted = () => {
+      toast.info(`Retrying download (${retries}/3)`)
+      return true
+    },
+    [downloads, updateDownloadStatus],
+  )
+
+  const clearCompleted = useCallback(() => {
     setDownloads((prev) => prev.filter((d) => d.status !== "completed"))
     toast.success("Cleared completed downloads")
-  }
+  }, [])
 
-  // Clear failed downloads
-  const clearFailed = () => {
+  const clearFailed = useCallback(() => {
     setDownloads((prev) => prev.filter((d) => d.status !== "failed"))
     toast.success("Cleared failed downloads")
-  }
+  }, [])
 
-  // Clear all downloads
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
+    // Cancel all active downloads
+    downloadControllersRef.current.forEach((controller) => controller.abort())
+    downloadControllersRef.current.clear()
+
     setDownloads([])
     toast.success("Cleared all downloads")
-  }
+  }, [])
 
-  // Start batch download
-  const startBatchDownload = async (urls: string[], options: Partial<DownloadItem> = {}): Promise<string[]> => {
-    const downloadIds: string[] = []
+  const startBatchDownload = useCallback(
+    async (urls: string[], options: Partial<DownloadItem> = {}): Promise<string[]> => {
+      const downloadIds: string[] = []
 
-    for (const url of urls) {
-      const id = await startDownload(url, {
-        ...options,
-        filename: options.filename || `batch-${Date.now()}-${downloadIds.length + 1}.jpg`,
-      })
-      downloadIds.push(id)
-    }
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i]
+        const urlFilename = url.split("/").pop()?.split("?")[0] || `batch-${i + 1}.jpg`
 
-    toast.success(`Added ${urls.length} items to download queue`)
-    return downloadIds
-  }
+        const id = await startDownload(url, {
+          ...options,
+          filename: options.filename ? `${options.filename}-${i + 1}` : urlFilename,
+        })
+        downloadIds.push(id)
+      }
 
-  // Pause all downloads
-  const pauseAll = async () => {
+      toast.success(`Added ${urls.length} items to queue`)
+      return downloadIds
+    },
+    [startDownload],
+  )
+
+  const pauseAll = useCallback(async () => {
     const activeIds = activeDownloads.map((d) => d.id)
     await Promise.all(activeIds.map((id) => pauseDownload(id)))
     toast.info("Paused all downloads")
-  }
+  }, [activeDownloads, pauseDownload])
 
-  // Resume all downloads
-  const resumeAll = async () => {
+  const resumeAll = useCallback(async () => {
     const pausedDownloads = downloads.filter((d) => d.status === "paused")
     await Promise.all(pausedDownloads.map((d) => resumeDownload(d.id)))
     toast.info("Resumed all downloads")
-  }
+  }, [downloads, resumeDownload])
 
-  // Cancel all downloads
-  const cancelAll = async () => {
-    const activeIds = [
-      ...activeDownloads.map((d) => d.id),
-      ...downloads.filter((d) => d.status === "pending").map((d) => d.id),
-    ]
-    await Promise.all(activeIds.map((id) => cancelDownload(id)))
+  const cancelAll = useCallback(async () => {
+    const toCancel = downloads.filter((d) => d.status === "pending" || d.status === "downloading")
+    await Promise.all(toCancel.map((d) => cancelDownload(d.id)))
     toast.info("Cancelled all downloads")
-  }
+  }, [downloads, cancelDownload])
 
-  // Get queue position
-  const getQueuePosition = (downloadId: string): number => {
-    const pendingDownloads = downloads.filter((d) => d.status === "pending")
-    return pendingDownloads.findIndex((d) => d.id === downloadId) + 1
-  }
+  const getQueuePosition = useCallback(
+    (downloadId: string): number => {
+      const pendingDownloads = downloads.filter((d) => d.status === "pending")
+      return pendingDownloads.findIndex((d) => d.id === downloadId) + 1
+    },
+    [downloads],
+  )
 
-  // Move to top of queue
-  const moveToTop = (downloadId: string) => {
+  const moveToTop = useCallback((downloadId: string) => {
     setDownloads((prev) => {
       const download = prev.find((d) => d.id === downloadId)
       if (!download || download.status !== "pending") return prev
 
       const others = prev.filter((d) => d.id !== downloadId)
-      return [download, ...others]
-    })
-  }
+      const insertIndex = others.findIndex((d) => d.status === "pending")
 
-  // Move to bottom of queue
-  const moveToBottom = (downloadId: string) => {
+      if (insertIndex === -1) return [...others, download]
+      return [...others.slice(0, insertIndex), download, ...others.slice(insertIndex)]
+    })
+  }, [])
+
+  const moveToBottom = useCallback((downloadId: string) => {
     setDownloads((prev) => {
       const download = prev.find((d) => d.id === downloadId)
       if (!download || download.status !== "pending") return prev
@@ -325,10 +381,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       const others = prev.filter((d) => d.id !== downloadId)
       return [...others, download]
     })
-  }
+  }, [])
 
   const contextValue: DownloadContextType = {
-    // State
     downloads,
     activeDownloads,
     completedDownloads,
@@ -336,7 +391,6 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     totalProgress,
     isDownloading,
 
-    // Actions
     addToQueue,
     startDownload,
     pauseDownload,
@@ -347,13 +401,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     clearFailed,
     clearAll,
 
-    // Batch operations
     startBatchDownload,
     pauseAll,
     resumeAll,
     cancelAll,
 
-    // Queue management
     getQueuePosition,
     moveToTop,
     moveToBottom,

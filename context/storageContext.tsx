@@ -1,24 +1,21 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import type { WaifuImage, Collections } from "@/types/waifu"
 import { storage } from "@/utils/localStorage"
 
 interface StorageContextType {
-  // Images
   images: WaifuImage[]
   addImage: (image: WaifuImage) => boolean
   removeImage: (imageId: string | number) => boolean
   updateImage: (imageId: string | number, updates: Partial<WaifuImage>) => boolean
 
-  // Favorites
   favorites: string[]
   isFavorite: (imageId: string | number) => boolean
   toggleFavorite: (imageId: string | number) => boolean
   addFavorite: (imageId: string | number) => boolean
   removeFavorite: (imageId: string | number) => boolean
 
-  // Collections
   collections: Collections
   createCollection: (name: string, description?: string) => string | null
   deleteCollection: (collectionId: string) => boolean
@@ -26,17 +23,16 @@ interface StorageContextType {
   addToCollection: (collectionId: string, imageId: string | number) => boolean
   removeFromCollection: (collectionId: string, imageId: string | number) => boolean
 
-  // Download History
   downloadHistory: any[]
   addDownloadRecord: (record: any) => boolean
   clearDownloadHistory: () => boolean
 
-  // Utility
   exportData: () => any
   importData: (data: any) => boolean
   clearAllData: () => boolean
   getStorageStats: () => any
   isLoading: boolean
+  error: string | null
 }
 
 const StorageContext = createContext<StorageContextType | undefined>(undefined)
@@ -47,28 +43,41 @@ export function StorageProvider({ children }: { children: ReactNode }) {
   const [collections, setCollections] = useState<Collections>({})
   const [downloadHistory, setDownloadHistory] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Load data from localStorage on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Migrate from old version if needed
-        if (typeof storage.migrateFromOldVersion === "function") {
-          storage.migrateFromOldVersion()
+        setError(null)
+
+        if (storage && typeof storage.migrateFromOldVersion === "function") {
+          try {
+            storage.migrateFromOldVersion()
+          } catch (migrationError) {
+            console.warn("Migration skipped:", migrationError)
+          }
         }
 
-        // Load all data
-        const loadedImages = storage.getImages()
-        const loadedFavorites = storage.getFavorites()
-        const loadedCollections = storage.getCollections()
-        const loadedHistory = storage.getDownloadHistory()
+        // Load all data with fallbacks
+        const loadedImages = storage?.getImages?.() ?? []
+        const loadedFavorites = storage?.getFavorites?.() ?? []
+        const loadedCollections = storage?.getCollections?.() ?? {}
+        const loadedHistory = storage?.getDownloadHistory?.() ?? []
 
         setImages(loadedImages)
         setFavorites(loadedFavorites)
         setCollections(loadedCollections)
         setDownloadHistory(loadedHistory)
-      } catch (error) {
-        console.error("Failed to load storage data:", error)
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to load storage data"
+        console.error("Storage load error:", errorMessage)
+        setError(errorMessage)
+
+        // Set empty defaults on error
+        setImages([])
+        setFavorites([])
+        setCollections({})
+        setDownloadHistory([])
       } finally {
         setIsLoading(false)
       }
@@ -77,171 +86,263 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     loadData()
   }, [])
 
-  // Image management
-  const addImage = (image: WaifuImage): boolean => {
-    const success = storage.addImage(image)
-    if (success) {
-      setImages(storage.getImages())
+  const addImage = useCallback((image: WaifuImage): boolean => {
+    try {
+      const success = storage.addImage(image)
+      if (success) {
+        setImages(storage.getImages())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to add image:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const removeImage = (imageId: string | number): boolean => {
-    const success = storage.removeImage(imageId)
-    if (success) {
-      setImages(storage.getImages())
-      // Also remove from favorites if it exists
-      const id = imageId.toString()
-      if (favorites.includes(id)) {
-        storage.removeFavorite(id)
+  const removeImage = useCallback(
+    (imageId: string | number): boolean => {
+      try {
+        const success = storage.removeImage(imageId)
+        if (success) {
+          setImages(storage.getImages())
+          const id = imageId.toString()
+          if (favorites.includes(id)) {
+            storage.removeFavorite(id)
+            setFavorites(storage.getFavorites())
+          }
+        }
+        return success
+      } catch (err) {
+        console.error("Failed to remove image:", err)
+        return false
+      }
+    },
+    [favorites],
+  )
+
+  const updateImage = useCallback((imageId: string | number, updates: Partial<WaifuImage>): boolean => {
+    try {
+      const success = storage.updateImage(imageId, updates)
+      if (success) {
+        setImages(storage.getImages())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to update image:", err)
+      return false
+    }
+  }, [])
+
+  const isFavorite = useCallback((imageId: string | number): boolean => {
+    try {
+      return storage.isFavorite(imageId)
+    } catch {
+      return false
+    }
+  }, [])
+
+  const toggleFavorite = useCallback((imageId: string | number): boolean => {
+    try {
+      const success = storage.toggleFavorite(imageId)
+      if (success) {
         setFavorites(storage.getFavorites())
       }
+      return success
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const updateImage = (imageId: string | number, updates: Partial<WaifuImage>): boolean => {
-    const success = storage.updateImage(imageId, updates)
-    if (success) {
-      setImages(storage.getImages())
+  const addFavorite = useCallback((imageId: string | number): boolean => {
+    try {
+      const success = storage.addFavorite(imageId)
+      if (success) {
+        setFavorites(storage.getFavorites())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to add favorite:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  // Favorites management
-  const isFavorite = (imageId: string | number): boolean => {
-    return storage.isFavorite(imageId)
-  }
-
-  const toggleFavorite = (imageId: string | number): boolean => {
-    const success = storage.toggleFavorite(imageId)
-    if (success) {
-      setFavorites(storage.getFavorites())
+  const removeFavorite = useCallback((imageId: string | number): boolean => {
+    try {
+      const success = storage.removeFavorite(imageId)
+      if (success) {
+        setFavorites(storage.getFavorites())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to remove favorite:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const addFavorite = (imageId: string | number): boolean => {
-    const success = storage.addFavorite(imageId)
-    if (success) {
-      setFavorites(storage.getFavorites())
+  const createCollection = useCallback((name: string, description?: string): string | null => {
+    try {
+      const collectionId = storage.createCollection(name, description)
+      if (collectionId) {
+        setCollections(storage.getCollections())
+      }
+      return collectionId
+    } catch (err) {
+      console.error("Failed to create collection:", err)
+      return null
     }
-    return success
-  }
+  }, [])
 
-  const removeFavorite = (imageId: string | number): boolean => {
-    const success = storage.removeFavorite(imageId)
-    if (success) {
-      setFavorites(storage.getFavorites())
+  const deleteCollection = useCallback((collectionId: string): boolean => {
+    try {
+      const success = storage.deleteCollection(collectionId)
+      if (success) {
+        setCollections(storage.getCollections())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to delete collection:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  // Collections management
-  const createCollection = (name: string, description?: string): string | null => {
-    const collectionId = storage.createCollection(name, description)
-    if (collectionId) {
-      setCollections(storage.getCollections())
+  const updateCollection = useCallback((collectionId: string, updates: Partial<any>): boolean => {
+    try {
+      const success = storage.updateCollection(collectionId, updates)
+      if (success) {
+        setCollections(storage.getCollections())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to update collection:", err)
+      return false
     }
-    return collectionId
-  }
+  }, [])
 
-  const deleteCollection = (collectionId: string): boolean => {
-    const success = storage.deleteCollection(collectionId)
-    if (success) {
-      setCollections(storage.getCollections())
+  const addToCollection = useCallback((collectionId: string, imageId: string | number): boolean => {
+    try {
+      const success = storage.addToCollection(collectionId, imageId)
+      if (success) {
+        setCollections(storage.getCollections())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to add to collection:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const updateCollection = (collectionId: string, updates: Partial<any>): boolean => {
-    const success = storage.updateCollection(collectionId, updates)
-    if (success) {
-      setCollections(storage.getCollections())
+  const removeFromCollection = useCallback((collectionId: string, imageId: string | number): boolean => {
+    try {
+      const success = storage.removeFromCollection(collectionId, imageId)
+      if (success) {
+        setCollections(storage.getCollections())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to remove from collection:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const addToCollection = (collectionId: string, imageId: string | number): boolean => {
-    const success = storage.addToCollection(collectionId, imageId)
-    if (success) {
-      setCollections(storage.getCollections())
+  const addDownloadRecord = useCallback((record: any): boolean => {
+    try {
+      const success = storage.addDownloadRecord(record)
+      if (success) {
+        setDownloadHistory(storage.getDownloadHistory())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to add download record:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const removeFromCollection = (collectionId: string, imageId: string | number): boolean => {
-    const success = storage.removeFromCollection(collectionId, imageId)
-    if (success) {
-      setCollections(storage.getCollections())
+  const clearDownloadHistory = useCallback((): boolean => {
+    try {
+      const success = storage.clearDownloadHistory()
+      if (success) {
+        setDownloadHistory([])
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to clear download history:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  // Download history management
-  const addDownloadRecord = (record: any): boolean => {
-    const success = storage.addDownloadRecord(record)
-    if (success) {
-      setDownloadHistory(storage.getDownloadHistory())
+  const exportData = useCallback(() => {
+    try {
+      return storage.exportData()
+    } catch (err) {
+      console.error("Failed to export data:", err)
+      return null
     }
-    return success
-  }
+  }, [])
 
-  const clearDownloadHistory = (): boolean => {
-    const success = storage.clearDownloadHistory()
-    if (success) {
-      setDownloadHistory([])
+  const importData = useCallback((data: any): boolean => {
+    try {
+      const success = storage.importData(data)
+      if (success) {
+        setImages(storage.getImages())
+        setFavorites(storage.getFavorites())
+        setCollections(storage.getCollections())
+        setDownloadHistory(storage.getDownloadHistory())
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to import data:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  // Utility functions
-  const exportData = () => {
-    return storage.exportData()
-  }
-
-  const importData = (data: any): boolean => {
-    const success = storage.importData(data)
-    if (success) {
-      // Reload all data
-      setImages(storage.getImages())
-      setFavorites(storage.getFavorites())
-      setCollections(storage.getCollections())
-      setDownloadHistory(storage.getDownloadHistory())
+  const clearAllData = useCallback((): boolean => {
+    try {
+      const success = storage.clearAllData()
+      if (success) {
+        setImages([])
+        setFavorites([])
+        setCollections({})
+        setDownloadHistory([])
+      }
+      return success
+    } catch (err) {
+      console.error("Failed to clear all data:", err)
+      return false
     }
-    return success
-  }
+  }, [])
 
-  const clearAllData = (): boolean => {
-    const success = storage.clearAllData()
-    if (success) {
-      setImages([])
-      setFavorites([])
-      setCollections({})
-      setDownloadHistory([])
+  const getStorageStats = useCallback(() => {
+    try {
+      return storage.getStorageStats()
+    } catch (err) {
+      console.error("Failed to get storage stats:", err)
+      return {
+        usage: { used: 0, available: 100 * 1024 * 1024, percentage: 0 },
+        counts: {
+          images: images.length,
+          favorites: favorites.length,
+          collections: Object.keys(collections).length,
+          downloadHistory: downloadHistory.length,
+          userPhotos: 0,
+        },
+        lastUpdated: new Date().toISOString(),
+      }
     }
-    return success
-  }
-
-  const getStorageStats = () => {
-    return storage.getStorageStats()
-  }
+  }, [images.length, favorites.length, collections, downloadHistory.length])
 
   const contextValue: StorageContextType = {
-    // Images
     images,
     addImage,
     removeImage,
     updateImage,
 
-    // Favorites
     favorites,
     isFavorite,
     toggleFavorite,
     addFavorite,
     removeFavorite,
 
-    // Collections
     collections,
     createCollection,
     deleteCollection,
@@ -249,17 +350,16 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     addToCollection,
     removeFromCollection,
 
-    // Download History
     downloadHistory,
     addDownloadRecord,
     clearDownloadHistory,
 
-    // Utility
     exportData,
     importData,
     clearAllData,
     getStorageStats,
     isLoading,
+    error,
   }
 
   return <StorageContext.Provider value={contextValue}>{children}</StorageContext.Provider>
