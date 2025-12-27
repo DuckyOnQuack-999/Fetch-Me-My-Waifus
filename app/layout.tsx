@@ -19,13 +19,17 @@ const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200"
 const _sourceSerif_4 = V0_Font_Source_Serif_4({ subsets: ['latin'], weight: ["200","300","400","500","600","700","800","900"], variable: '--v0-font-source-serif-4' })
 const _v0_fontVariables = `${_geist.variable} ${_geistMono.variable} ${_sourceSerif_4.variable}`
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Fetch Me My Waifus - Ultimate Anime Collection Manager",
   description: "Your personal anime image collection manager with AI-powered features",
   keywords: ["anime", "waifu", "image", "downloader", "collection", "manager"],
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -35,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className + " " + _v0_fontVariables}>
+      <body className={`${inter.variable} font-sans antialiased ${_v0_fontVariables}`}>
         <ErrorBoundary>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             <ActivityProvider>

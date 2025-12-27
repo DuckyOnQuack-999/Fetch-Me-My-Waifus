@@ -34,6 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "latest",
     "framer-motion": "latest",
+    "geist": "1.5.1",
     "http": "0.0.1-security",
     "lucide-react": "^0.454.0",
     "next": "14.2.35",
