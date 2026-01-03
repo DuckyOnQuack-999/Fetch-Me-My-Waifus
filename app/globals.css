@@ -82,6 +82,7 @@
   --chart-5: 0 84% 50%;
 }
 
+/* Removed @theme inline block - using standard CSS custom properties instead */
 @theme inline {
   /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
