@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
+    "@fluentui/react-components": "9.72.9",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "latest",

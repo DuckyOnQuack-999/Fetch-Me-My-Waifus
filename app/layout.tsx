@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import { FluentThemeProvider } from "@/components/fluent-theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { SettingsProvider } from "@/context/settingsContext"
 import { StorageProvider } from "@/context/storageContext"
@@ -41,7 +41,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased ${_v0_fontVariables}`}>
         <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <FluentThemeProvider>
             <ActivityProvider>
               <SettingsProvider>
                 <StorageProvider>
@@ -53,7 +53,7 @@ export default function RootLayout({
                 </StorageProvider>
               </SettingsProvider>
             </ActivityProvider>
-          </ThemeProvider>
+          </FluentThemeProvider>
         </ErrorBoundary>
       </body>
     </html>
