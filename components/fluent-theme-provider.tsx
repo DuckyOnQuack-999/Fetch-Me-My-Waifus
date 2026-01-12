@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { FluentProvider, createDarkTheme, createLightTheme, type BrandVariants } from "@fluentui/react-components"
-import { useEffect, useState } from "react"
+import { useEffect, useState, createContext, useContext } from "react"
 
 // Custom waifu-themed brand colors (red/pink palette)
 const waifuBrand: BrandVariants = {
@@ -41,45 +41,7 @@ const waifuDarkTheme = {
   colorBrandBackgroundPressed: "#B91C1C",
 }
 
-export function FluentThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    // Check for system preference or stored preference
-    const stored = localStorage.getItem("theme")
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored)
-    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      setTheme("light")
-    }
-
-    // Apply class to html element for CSS compatibility
-    document.documentElement.classList.toggle("dark", theme === "dark")
-  }, [theme])
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark")
-    localStorage.setItem("theme", theme)
-  }, [theme])
-
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#0a0a0a]">{children}</div>
-  }
-
-  const currentTheme = theme === "dark" ? waifuDarkTheme : waifuLightTheme
-
-  return (
-    <FluentProvider theme={currentTheme} className="min-h-screen">
-      <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
-    </FluentProvider>
-  )
-}
-
 // Theme context for toggling
-import { createContext, useContext } from "react"
-
 interface ThemeContextType {
   theme: "light" | "dark"
   setTheme: (theme: "light" | "dark") => void
@@ -91,3 +53,42 @@ const ThemeContext = createContext<ThemeContextType>({
 })
 
 export const useFluentTheme = () => useContext(ThemeContext)
+
+export function FluentThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<"light" | "dark">("dark")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    // Check for system preference or stored preference
+    try {
+      const stored = localStorage.getItem("theme")
+      if (stored === "light" || stored === "dark") {
+        setTheme(stored)
+      } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+        setTheme("light")
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      document.documentElement.classList.toggle("dark", theme === "dark")
+      try {
+        localStorage.setItem("theme", theme)
+      } catch (e) {
+        // localStorage not available
+      }
+    }
+  }, [theme, mounted])
+
+  const currentTheme = theme === "dark" ? waifuDarkTheme : waifuLightTheme
+
+  return (
+    <FluentProvider theme={currentTheme} className="min-h-screen">
+      <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+    </FluentProvider>
+  )
+}

@@ -22,7 +22,7 @@
   --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.577 0.245 27.325);
+  --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -35,43 +35,43 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.577 0.245 27.325);
-  --sidebar-border: oklch(0.577 0.245 27.325);
-  --sidebar-ring: oklch(0.577 0.245 27.325);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: oklch(0.12 0.01 15);
+  --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.15 0.01 15);
+  --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.01 15);
+  --popover: oklch(0.145 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.577 0.245 27.325);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.03 15);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0.02 15);
+  --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.35 0.08 15);
+  --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.35 0.08 15);
-  --input: oklch(0.25 0.03 15);
-  --ring: oklch(0.577 0.245 27.325);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.15 0.01 15);
+  --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.577 0.245 27.325);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.2 0.02 15);
-  --sidebar-accent-foreground: oklch(0.577 0.245 27.325);
-  --sidebar-border: oklch(0.45 0.15 20);
-  --sidebar-ring: oklch(0.577 0.245 27.325);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
@@ -115,19 +115,19 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
+    outline-color: var(--ring);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
   }
 }
 
-/* Fluent UI integration styles */
 .fui-FluentProvider {
   background-color: transparent !important;
 }
 
-/* Custom Scrollbar with Fluent styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -147,7 +147,6 @@
   background: oklch(0.577 0.245 27.325);
 }
 
-/* Enhanced waifu-themed animations */
 @keyframes waifuGlow {
   0%,
   100% {
@@ -162,41 +161,9 @@
   0%,
   100% {
     transform: scale(1);
-    filter: drop-shadow(0 0 8px oklch(0.645 0.246 16.439 / 0.5));
   }
   50% {
     transform: scale(1.1);
-    filter: drop-shadow(0 0 16px oklch(0.577 0.245 27.325 / 0.7));
-  }
-}
-
-@keyframes sakuraFloat {
-  0% {
-    transform: translateY(0) rotate(0deg) translateX(0);
-    opacity: 1;
-  }
-  25% {
-    transform: translateY(-20px) rotate(45deg) translateX(10px);
-  }
-  50% {
-    transform: translateY(-10px) rotate(90deg) translateX(-5px);
-    opacity: 0.8;
-  }
-  75% {
-    transform: translateY(-30px) rotate(135deg) translateX(15px);
-  }
-  100% {
-    transform: translateY(-50px) rotate(180deg) translateX(0);
-    opacity: 0;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
   }
 }
 
@@ -210,7 +177,6 @@
   }
 }
 
-/* Utility Classes */
 .waifu-glow {
   animation: waifuGlow 3s ease-in-out infinite;
 }
@@ -219,54 +185,29 @@
   animation: heartPulse 1.5s ease-in-out infinite;
 }
 
-.sakura-float {
-  animation: sakuraFloat 4s ease-in-out infinite;
-}
-
 .float-animation {
   animation: floatUp 3s ease-in-out infinite;
 }
 
 .btn-glow {
-  position: relative;
   background: linear-gradient(135deg, oklch(0.577 0.245 27.325), oklch(0.645 0.246 16.439));
   animation: waifuGlow 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-}
-
-.btn-glow:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 40px oklch(0.577 0.245 27.325 / 0.6);
 }
 
 .glass-card {
-  background: oklch(var(--card) / 0.8);
+  background: oklch(0.15 0.01 15 / 0.8);
   backdrop-filter: blur(16px);
-  border: 1px solid oklch(var(--border) / 0.5);
-  box-shadow: 0 8px 32px oklch(0.577 0.245 27.325 / 0.15);
+  border: 1px solid oklch(0.35 0.08 15 / 0.5);
 }
 
 .material-card {
   background: var(--card);
-  border: 1px solid oklch(var(--border) / 0.3);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 4px 20px oklch(0 0 0 / 0.1);
-  transition: all 0.3s ease;
-}
-
-.material-card:hover {
-  box-shadow: 0 8px 30px oklch(0.577 0.245 27.325 / 0.2);
-  border-color: oklch(0.577 0.245 27.325 / 0.3);
-}
-
-.shimmer {
-  background: linear-gradient(90deg, var(--muted) 0%, oklch(0.577 0.245 27.325 / 0.1) 50%, var(--muted) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, oklch(0.577 0.245 27.325), oklch(0.645 0.246 16.439), oklch(0.72 0.2 10));
+  background: linear-gradient(135deg, oklch(0.577 0.245 27.325), oklch(0.645 0.246 16.439));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -279,45 +220,7 @@
   z-index: 1;
 }
 
-*:focus-visible {
-  outline: 2px solid oklch(0.577 0.245 27.325);
-  outline-offset: 2px;
-}
-
-::selection {
-  background-color: oklch(0.577 0.245 27.325 / 0.3);
-  color: var(--foreground);
-}
-
-.card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 .card-hover:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 40px oklch(0.577 0.245 27.325 / 0.25);
-}
-
-/* Fluent UI component overrides */
-.fluent-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .fui-FluentProvider aside {
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .fui-FluentProvider aside.open {
-    transform: translateX(0);
-  }
-
-  .fui-FluentProvider main {
-    margin-left: 0 !important;
-  }
 }
