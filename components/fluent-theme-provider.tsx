@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { FluentProvider, createDarkTheme, createLightTheme, type BrandVariants } from "@fluentui/react-components"
-import { useEffect, useState, createContext, useContext } from "react"
+import { useEffect, useState, createContext, useContext, useCallback } from "react"
 
 // Custom waifu-themed brand colors (red/pink palette)
 const waifuBrand: BrandVariants = {
@@ -45,50 +45,61 @@ const waifuDarkTheme = {
 interface ThemeContextType {
   theme: "light" | "dark"
   setTheme: (theme: "light" | "dark") => void
+  toggleTheme: () => void
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: "dark",
   setTheme: () => {},
+  toggleTheme: () => {},
 })
 
 export const useFluentTheme = () => useContext(ThemeContext)
 
 export function FluentThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
+  const [theme, setThemeState] = useState<"light" | "dark">("dark")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    // Check for system preference or stored preference
-    try {
-      const stored = localStorage.getItem("theme")
-      if (stored === "light" || stored === "dark") {
-        setTheme(stored)
-      } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-        setTheme("light")
-      }
-    } catch (e) {
-      // localStorage not available
+    const stored = typeof window !== "undefined" ? localStorage.getItem("theme") : null
+    if (stored === "light" || stored === "dark") {
+      setThemeState(stored)
+    } else if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches) {
+      setThemeState("light")
     }
   }, [])
 
   useEffect(() => {
     if (mounted) {
       document.documentElement.classList.toggle("dark", theme === "dark")
-      try {
+      if (typeof window !== "undefined") {
         localStorage.setItem("theme", theme)
-      } catch (e) {
-        // localStorage not available
       }
     }
   }, [theme, mounted])
 
+  const setTheme = useCallback((newTheme: "light" | "dark") => {
+    setThemeState(newTheme)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => (prev === "dark" ? "light" : "dark"))
+  }, [])
+
   const currentTheme = theme === "dark" ? waifuDarkTheme : waifuLightTheme
+
+  if (!mounted) {
+    return (
+      <FluentProvider theme={waifuDarkTheme} className="min-h-screen">
+        <div className="opacity-0">{children}</div>
+      </FluentProvider>
+    )
+  }
 
   return (
     <FluentProvider theme={currentTheme} className="min-h-screen">
-      <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+      <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>{children}</ThemeContext.Provider>
     </FluentProvider>
   )
 }

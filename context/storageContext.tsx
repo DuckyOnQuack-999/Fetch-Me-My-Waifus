@@ -52,28 +52,34 @@ export function StorageProvider({ children }: { children: ReactNode }) {
 
         if (storage && typeof storage.migrateFromOldVersion === "function") {
           try {
-            storage.migrateFromOldVersion()
+            await storage.migrateFromOldVersion()
+            console.log("[v0] Storage migration completed successfully")
           } catch (migrationError) {
-            console.warn("Migration skipped:", migrationError)
+            console.warn("[v0] Migration skipped or failed:", migrationError)
           }
         }
 
-        // Load all data with fallbacks
-        const loadedImages = storage?.getImages?.() ?? []
-        const loadedFavorites = storage?.getFavorites?.() ?? []
-        const loadedCollections = storage?.getCollections?.() ?? {}
-        const loadedHistory = storage?.getDownloadHistory?.() ?? []
+        const loadedImages = Array.isArray(storage?.getImages?.()) ? storage.getImages() : []
+        const loadedFavorites = Array.isArray(storage?.getFavorites?.()) ? storage.getFavorites() : []
+        const loadedCollections = typeof storage?.getCollections?.() === "object" ? storage.getCollections() : {}
+        const loadedHistory = Array.isArray(storage?.getDownloadHistory?.()) ? storage.getDownloadHistory() : []
 
         setImages(loadedImages)
         setFavorites(loadedFavorites)
         setCollections(loadedCollections)
         setDownloadHistory(loadedHistory)
+
+        console.log("[v0] Storage loaded successfully:", {
+          images: loadedImages.length,
+          favorites: loadedFavorites.length,
+          collections: Object.keys(loadedCollections).length,
+          history: loadedHistory.length,
+        })
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load storage data"
-        console.error("Storage load error:", errorMessage)
+        console.error("[v0] Storage load error:", errorMessage, err)
         setError(errorMessage)
 
-        // Set empty defaults on error
         setImages([])
         setFavorites([])
         setCollections({})

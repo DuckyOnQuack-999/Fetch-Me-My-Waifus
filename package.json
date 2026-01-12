@@ -42,6 +42,7 @@
     "next-themes": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-toastify": "11.0.5",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",

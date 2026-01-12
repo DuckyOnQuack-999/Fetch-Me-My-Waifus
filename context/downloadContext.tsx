@@ -76,6 +76,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController()
       downloadControllersRef.current.set(downloadId, controller)
 
+      const maxRetries = settings?.retryAttempts || 3
+      const currentRetry = download.retries || 0
+
       try {
         updateDownloadStatus(downloadId, "downloading", { progress: 0, startTime: new Date() })
 
@@ -121,11 +124,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           })
         }
 
-        // Create blob from chunks
         const blob = new Blob(chunks)
         const url = URL.createObjectURL(blob)
 
-        // Trigger download
         const a = document.createElement("a")
         a.href = url
         a.download = download.filename
@@ -159,17 +160,27 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           return
         }
 
+        if (currentRetry < maxRetries) {
+          const nextRetry = currentRetry + 1
+          updateDownloadStatus(downloadId, "pending", {
+            retries: nextRetry,
+            error: `Retrying (${nextRetry}/${maxRetries})...`,
+          })
+          toast.info(`Retrying download: ${download.filename} (${nextRetry}/${maxRetries})`)
+          return
+        }
+
         const errorMessage = error instanceof Error ? error.message : "Unknown error"
         updateDownloadStatus(downloadId, "failed", {
           error: errorMessage,
           endTime: new Date(),
         })
-        toast.error(`Failed: ${download.filename}`)
+        toast.error(`Failed: ${download.filename} - ${errorMessage}`)
       } finally {
         downloadControllersRef.current.delete(downloadId)
       }
     },
-    [downloads, updateDownloadStatus, addDownloadRecord],
+    [downloads, updateDownloadStatus, addDownloadRecord, settings?.retryAttempts],
   )
 
   const processQueue = useCallback(async () => {
@@ -305,7 +316,6 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const clearAll = useCallback(() => {
-    // Cancel all active downloads
     downloadControllersRef.current.forEach((controller) => controller.abort())
     downloadControllersRef.current.clear()
 

@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { Settings } from "@/types/waifu"
 import { storage } from "@/utils/localStorage"
+import { toast } from "react-toastify"
 
 // Default settings with comprehensive configuration
 const DEFAULT_SETTINGS: Settings = {
@@ -193,8 +194,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     try {
       const importedSettings = JSON.parse(settingsJson)
 
-      // Validate imported settings
       if (typeof importedSettings !== "object" || importedSettings === null) {
+        toast.error("Invalid settings format")
+        return false
+      }
+
+      const requiredFields = ["apiSource", "concurrentDownloads", "themeMode"]
+      const missingFields = requiredFields.filter((field) => !(field in importedSettings))
+
+      if (missingFields.length > 0) {
+        toast.error(`Missing required fields: ${missingFields.join(", ")}`)
         return false
       }
 
@@ -204,9 +213,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setSettings(validatedSettings)
       storage.saveSettings(validatedSettings)
 
+      toast.success("Settings imported successfully")
       return true
     } catch (error) {
-      console.error("Failed to import settings:", error)
+      console.error("[v0] Failed to import settings:", error)
+      toast.error("Failed to import settings: Invalid JSON")
       return false
     }
   }

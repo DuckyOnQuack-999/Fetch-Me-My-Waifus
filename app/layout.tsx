@@ -10,8 +10,7 @@ import { DownloadProvider } from "@/context/downloadContext"
 import { ActivityProvider } from "@/context/activityContext"
 import WaifuParticles from "@/components/waifu-particles"
 import { ErrorBoundary } from "@/components/error-boundary"
-
-import { Inter, Geist as V0_Font_Geist, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
+import { Inter, Source_Serif_4, Geist as V0_Font_Geist, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
 
 // Initialize fonts
 const _geist = V0_Font_Geist({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"], variable: '--v0-font-geist' })
@@ -25,11 +24,18 @@ const inter = Inter({
   display: "swap",
 })
 
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-serif",
+  display: "swap",
+})
+
 export const metadata: Metadata = {
   title: "Fetch Me My Waifus - Ultimate Anime Collection Manager",
   description: "Your personal anime image collection manager with AI-powered features",
   keywords: ["anime", "waifu", "image", "downloader", "collection", "manager"],
-  generator: "v0.app",
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
@@ -39,7 +45,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased ${_v0_fontVariables}`}>
+      <body className={`${inter.variable} ${sourceSerif.variable} font-sans antialiased ${_v0_fontVariables}`}>
         <ErrorBoundary>
           <FluentThemeProvider>
             <ActivityProvider>
