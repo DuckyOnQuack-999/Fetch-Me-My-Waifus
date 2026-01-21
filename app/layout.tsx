@@ -11,6 +11,9 @@ import { ActivityProvider } from "@/context/activityContext"
 import WaifuParticles from "@/components/waifu-particles"
 import { ErrorBoundary } from "@/components/error-boundary"
 
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+
 import { Inter, Source_Serif_4, Geist as V0_Font_Geist, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
 
 // Initialize fonts
@@ -46,7 +49,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${sourceSerif.variable} font-sans antialiased ${_v0_fontVariables}`}>
+      <body className={`${inter.variable} ${sourceSerif.variable} ${GeistSans.variable} ${GeistMono.variable} font-sans antialiased ${_v0_fontVariables}`}>
         <ErrorBoundary>
           <FluentThemeProvider>
             <ActivityProvider>
