@@ -17,6 +17,8 @@ export interface WaifuImage {
   rating?: "safe" | "questionable" | "explicit"
   created_at?: string
   updated_at?: string
+  uploaded_at?: string
+  is_nsfw?: boolean
   tags?: Array<{
     name: string
     description?: string
