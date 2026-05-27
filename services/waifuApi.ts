@@ -2,10 +2,9 @@ import type { ImageCategory, WaifuImage, SortOption, Settings, ApiSource } from 
 import { requestDeduplicator, createRequestKey } from "@/utils/requestDeduplication"
 import { parseApiError, logApiError } from "@/utils/apiErrorHandler"
 import { fetchWallhavenImages } from "@/app/actions/wallhaven"
+import { fetchWaifuImImages, fetchWaifuPicsImages, fetchNekosBestImages } from "@/app/actions/waifu-apis"
 
 const WAIFU_IM_API_BASE_URL = "https://api.waifu.im"
-const WAIFU_PICS_API_BASE_URL = "https://api.waifu.pics"
-const NEKOS_BEST_API_BASE_URL = "https://nekos.best/api/v2"
 const WALLHAVEN_API_BASE_URL = "https://wallhaven.cc/api/v1"
 const FEMBOYFINDER_API_BASE_URL = "https://femboyfinder.firestreaker2.gq"
 
@@ -139,66 +138,14 @@ export async function fetchImagesFromWaifuIm(
   settings?: Settings,
 ): Promise<WaifuImage[]> {
   const requestKey = createRequestKey("waifu.im", { category, limit, isNsfw, sortBy, page, minWidth, minHeight })
-
   return requestDeduplicator.deduplicate(requestKey, async () => {
-    try {
-      const params = new URLSearchParams({
-        included_tags: category,
-        is_nsfw: String(isNsfw),
-        order_by: sortBy,
-        many: "true",
-        page: String(page),
-      })
-
-      if (limit > 0) {
-        params.append("limit", String(limit))
-      }
-
-      if (minWidth) {
-        params.append("width", `>=${minWidth}`)
-      }
-      if (minHeight) {
-        params.append("height", `>=${minHeight}`)
-      }
-
-      const headers: HeadersInit = {
-        Accept: "application/json",
-        "User-Agent": "WaifuDownloader/2.0",
-        "Content-Type": "application/json",
-      }
-
-      if (settings?.waifuImApiKey) {
-        headers["Authorization"] = `Bearer ${settings.waifuImApiKey}`
-      }
-
-      const url = `${WAIFU_IM_API_BASE_URL}/search?${params}`
-
-      const response = await fetchWithRetry(url, {
-        method: "GET",
-        headers,
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!data.images || !Array.isArray(data.images)) {
-        return []
-      }
-
-      return data.images.map((image: any) => ({
-        ...image,
-        isFavorite: false,
-        fetchedFrom: "waifu.im" as ApiSource,
-        lastModified: new Date().toISOString(),
-      }))
-    } catch (error) {
-      const apiError = parseApiError(error, "waifu.im")
-      logApiError(apiError, { category, limit, isNsfw })
-      return []
+    const result = await fetchWaifuImImages(
+      category, limit, isNsfw, sortBy, page, minWidth, minHeight, settings?.waifuImApiKey,
+    )
+    if (!result.success) {
+      logApiError(parseApiError(new Error(result.error), "waifu.im"), { category, limit, isNsfw })
     }
+    return result.images
   })
 }
 
@@ -209,50 +156,12 @@ export async function fetchImagesFromWaifuPics(
   limit = 30,
 ): Promise<WaifuImage[]> {
   const requestKey = createRequestKey("waifu.pics", { category, isNsfw, limit })
-
   return requestDeduplicator.deduplicate(requestKey, async () => {
-    try {
-      const type = isNsfw ? "nsfw" : "sfw"
-      const url = `${WAIFU_PICS_API_BASE_URL}/many/${type}/${category}`
-
-      const response = await fetchWithRetry(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "WaifuDownloader/2.0",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({}),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!data.files || !Array.isArray(data.files)) {
-        return []
-      }
-
-      return data.files.slice(0, limit).map((url: string, index: number) => ({
-        image_id: Date.now() + index,
-        url,
-        preview_url: url,
-        width: 0,
-        height: 0,
-        tags: [{ name: category }],
-        source: "waifu.pics",
-        uploaded_at: new Date().toISOString(),
-        isFavorite: false,
-        fetchedFrom: "waifu.pics" as ApiSource,
-        lastModified: new Date().toISOString(),
-      }))
-    } catch (error) {
-      const apiError = parseApiError(error, "waifu.pics")
-      logApiError(apiError, { category, isNsfw, limit })
-      return []
+    const result = await fetchWaifuPicsImages(category, isNsfw, limit)
+    if (!result.success) {
+      logApiError(parseApiError(new Error(result.error), "waifu.pics"), { category, isNsfw, limit })
     }
+    return result.images
   })
 }
 
@@ -262,47 +171,12 @@ export async function fetchImagesFromNekosBest(
   limit = 30,
 ): Promise<WaifuImage[]> {
   const requestKey = createRequestKey("nekos.best", { category, limit })
-
   return requestDeduplicator.deduplicate(requestKey, async () => {
-    try {
-      const url = `${NEKOS_BEST_API_BASE_URL}/${category}?amount=${Math.min(limit, 20)}`
-
-      const response = await fetchWithRetry(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "WaifuDownloader/2.0",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!data.results || !Array.isArray(data.results)) {
-        return []
-      }
-
-      return data.results.map((item: any, index: number) => ({
-        image_id: Date.now() + index,
-        url: item.url,
-        preview_url: item.url,
-        width: 0,
-        height: 0,
-        tags: [{ name: category }],
-        source: "nekos.best",
-        uploaded_at: new Date().toISOString(),
-        isFavorite: false,
-        fetchedFrom: "nekos.best" as ApiSource,
-        lastModified: new Date().toISOString(),
-      }))
-    } catch (error) {
-      const apiError = parseApiError(error, "nekos.best")
-      logApiError(apiError, { category, limit })
-      return []
+    const result = await fetchNekosBestImages(category, limit)
+    if (!result.success) {
+      logApiError(parseApiError(new Error(result.error), "nekos.best"), { category, limit })
     }
+    return result.images
   })
 }
 
