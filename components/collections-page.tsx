@@ -223,9 +223,8 @@ export function CollectionsPage() {
             {filteredCollections.map((collection, index) => {
               const collectionImages = getCollectionImages(collection)
               const thumbnail = collectionImages[0]?.preview_url || collectionImages[0]?.url
-              const createdLabel = collection.created_at
-                ? new Date(collection.created_at).toLocaleDateString()
-                : ""
+              const rawDate = collection.createdAt || collection.created_at
+              const createdLabel = rawDate ? new Date(rawDate).toLocaleDateString() : ""
 
               return (
                 <motion.div

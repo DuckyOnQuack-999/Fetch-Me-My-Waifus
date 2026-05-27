@@ -242,8 +242,12 @@ export interface Collection {
   name: string
   description?: string
   imageIds: string[]
-  created_at: string
-  updated_at: string
+  /** ISO timestamp — stored as camelCase by LocalStorageManager */
+  createdAt: string
+  updatedAt: string
+  /** Alias kept for backwards-compat display only */
+  created_at?: string
+  updated_at?: string
   tags?: string[]
 }
 

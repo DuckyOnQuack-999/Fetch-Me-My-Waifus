@@ -39,7 +39,7 @@ export async function fetchWallhavenImages(
       q: query,
       categories: "111",
       purity: isNsfw ? "111" : "100",
-      sorting: sortBy === "RANDOM" ? "random" : "date_added",
+      sorting: sortBy.toUpperCase() === "RANDOM" ? "random" : "date_added",
       order: "desc",
       page: String(page),
       atleast: minWidth && minHeight ? `${minWidth}x${minHeight}` : "1920x1080",

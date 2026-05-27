@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import type { WaifuImage, Collections } from "@/types/waifu"
 import { storage } from "@/utils/localStorage"
+import { authService } from "@/lib/auth"
 
 interface StorageContextType {
   images: WaifuImage[]
@@ -49,6 +50,10 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     const loadData = async () => {
       try {
         setError(null)
+
+        // Sync current auth user into storage manager so user-scoped keys resolve correctly
+        const currentUser = authService.getCurrentUser()
+        storage.setCurrentUser(currentUser?.id ?? null)
 
         if (storage && typeof storage.migrateFromOldVersion === "function") {
           try {
@@ -156,16 +161,18 @@ export function StorageProvider({ children }: { children: ReactNode }) {
 
   const toggleFavorite = useCallback((imageId: string | number): boolean => {
     try {
-      const success = storage.toggleFavorite(imageId)
-      if (success) {
-        const newFavorites = storage.getFavorites()
-        setFavorites(newFavorites)
-        // Sync the isFavorite flag on the image object so UI reflects correctly
-        const nowFavorited = newFavorites.includes(imageId.toString())
-        storage.updateImage(imageId, { isFavorite: nowFavorited })
-        setImages(storage.getImages())
-      }
-      return success
+      // toggleFavorite in storage always succeeds (add or remove from the ID list)
+      storage.toggleFavorite(imageId)
+      const newFavorites = storage.getFavorites()
+      setFavorites(newFavorites)
+
+      // Best-effort: sync isFavorite flag on the persisted image object.
+      // updateImage may return false for transient/preview images not yet in storage — that is fine.
+      const nowFavorited = newFavorites.includes(imageId.toString())
+      storage.updateImage(imageId, { isFavorite: nowFavorited })
+      setImages(storage.getImages())
+
+      return true
     } catch (err) {
       console.error("Failed to toggle favorite:", err)
       return false
