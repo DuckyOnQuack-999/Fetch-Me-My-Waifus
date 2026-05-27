@@ -36,6 +36,7 @@ export function SimpleDownloadTab() {
   const [isLoading, setIsLoading] = useState(false)
   const [previewImages, setPreviewImages] = useState<WaifuImage[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const categories: ImageCategory[] = [
     "waifu",
@@ -87,10 +88,11 @@ export function SimpleDownloadTab() {
 
   const handlePreview = async () => {
     setIsLoading(true)
+    setFetchError(null)
     try {
       const images = await fetchImagesFromMultipleSources(
         downloadConfig.category,
-        Math.min(downloadConfig.count, 6), // Limit preview to 6 images
+        Math.min(downloadConfig.count, 6),
         downloadConfig.isNsfw,
         "RANDOM",
         1,
@@ -100,11 +102,18 @@ export function SimpleDownloadTab() {
         downloadConfig.apiSource,
       )
 
+      if (images.length === 0) {
+        setFetchError("No images returned. The selected API sources may be temporarily unavailable.")
+        toast.error("No images found — sources may be unavailable")
+        return
+      }
+
       setPreviewImages(images)
       setShowPreview(true)
       toast.success(`Found ${images.length} images for preview`)
     } catch (error) {
-      console.error("Preview failed:", error)
+      const msg = error instanceof Error ? error.message : "Unknown error"
+      setFetchError(msg)
       toast.error("Failed to load preview images")
     } finally {
       setIsLoading(false)
@@ -113,6 +122,7 @@ export function SimpleDownloadTab() {
 
   const handleStartDownload = async () => {
     setIsLoading(true)
+    setFetchError(null)
     try {
       const images = await fetchImagesFromMultipleSources(
         downloadConfig.category,
@@ -127,7 +137,8 @@ export function SimpleDownloadTab() {
       )
 
       if (images.length === 0) {
-        toast.error("No images found with the current settings")
+        setFetchError("No images returned. The selected API sources may be temporarily unavailable.")
+        toast.error("No images found — sources may be unavailable")
         return
       }
 
@@ -375,6 +386,30 @@ export function SimpleDownloadTab() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error state */}
+      <AnimatePresence>
+        {fetchError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Card className="border-destructive/40 bg-destructive/5">
+              <CardContent className="flex items-start gap-3 pt-4">
+                <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-destructive">Could not fetch images</p>
+                  <p className="text-xs text-muted-foreground">{fetchError}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Try selecting a different API source or check back later.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

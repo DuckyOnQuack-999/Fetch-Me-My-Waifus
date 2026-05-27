@@ -277,103 +277,51 @@ export async function fetchImagesFromMultipleSources(
   apiSource: ApiSource = "all",
 ): Promise<WaifuImage[]> {
   try {
-    let combinedImages: WaifuImage[] = []
+    // Build query params for the /api/images route handler which runs purely server-side,
+    // bypassing all Cloudflare browser challenges on external APIs.
+    const params = new URLSearchParams({
+      category,
+      source: apiSource,
+      limit: String(limit),
+      nsfw: String(isNsfw),
+      sort: sortBy,
+      page: String(page),
+    })
+    if (minWidth) params.set("minWidth", String(minWidth))
+    if (minHeight) params.set("minHeight", String(minHeight))
+    if (settings?.waifuImApiKey) params.set("waifuKey", settings.waifuImApiKey)
 
-    const categoryMappings = {
-      "nekos.best": {
-        waifu: "waifu",
-        neko: "neko",
-        husbando: "husbando",
-        kitsune: "kitsune",
-      },
-      "waifu.pics": {
-        waifu: "waifu",
-        neko: "neko",
-        shinobu: "shinobu",
-        megumin: "megumin",
-        bully: "bully",
-        cuddle: "cuddle",
-        cry: "cry",
-        hug: "hug",
-        awoo: "awoo",
-        kiss: "kiss",
-        lick: "lick",
-        pat: "pat",
-        smug: "smug",
-        bonk: "bonk",
-        yeet: "yeet",
-        blush: "blush",
-        smile: "smile",
-        wave: "wave",
-        highfive: "highfive",
-        handhold: "handhold",
-        nom: "nom",
-        bite: "bite",
-        glomp: "glomp",
-        slap: "slap",
-        kill: "kill",
-        kick: "kick",
-        happy: "happy",
-        wink: "wink",
-        poke: "poke",
-        dance: "dance",
-        cringe: "cringe",
-      },
-    }
+    // Use relative URL so it works in both browser and SSR contexts
+    const baseUrl = typeof window === "undefined"
+      ? (process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000")
+      : ""
 
-    const activeSources = []
-    if (apiSource === "all" || apiSource === "waifu.im") activeSources.push("waifu.im")
-    if (apiSource === "all" || apiSource === "waifu.pics") activeSources.push("waifu.pics")
-    if (apiSource === "all" || apiSource === "nekos.best") activeSources.push("nekos.best")
-    if (apiSource === "all" || apiSource === "wallhaven") activeSources.push("wallhaven")
-    if (apiSource === "all" || apiSource === "femboyfinder") activeSources.push("femboyfinder")
+    const res = await fetch(`${baseUrl}/api/images?${params}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    })
 
-    const limitPerSource = Math.max(1, Math.floor(limit / Math.max(1, activeSources.length)))
-
-    const fetchPromises = []
-
-    if (apiSource === "all" || apiSource === "waifu.im") {
-      fetchPromises.push(
-        fetchImagesFromWaifuIm(category, limitPerSource, isNsfw, sortBy, page, minWidth, minHeight, settings).catch(
-          () => [],
-        ),
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }))
+      logApiError(
+        parseApiError(new Error(err.message ?? res.statusText), "multiple-sources"),
+        { category, limit, isNsfw, apiSource },
       )
+      return []
     }
 
-    if (apiSource === "all" || apiSource === "waifu.pics") {
-      const validCategory =
-        categoryMappings["waifu.pics"][category as keyof (typeof categoryMappings)["waifu.pics"]] || "waifu"
-      fetchPromises.push(fetchImagesFromWaifuPics(validCategory, isNsfw, settings, limitPerSource).catch(() => []))
+    const data = await res.json()
+
+    if (data.errors?.length) {
+      for (const e of data.errors) {
+        console.warn("[waifuApi] partial source failure:", e)
+      }
     }
 
-    if (apiSource === "all" || apiSource === "nekos.best") {
-      const validCategory =
-        categoryMappings["nekos.best"][category as keyof (typeof categoryMappings)["nekos.best"]] || "waifu"
-      fetchPromises.push(fetchImagesFromNekosBest(validCategory, settings, limitPerSource).catch(() => []))
-    }
-
-    if (apiSource === "all" || apiSource === "wallhaven") {
-      fetchPromises.push(
-        fetchImagesFromWallhaven(category, limitPerSource, isNsfw, sortBy, page, minWidth, minHeight, settings).catch(
-          () => [],
-        ),
-      )
-    }
-
-    if (apiSource === "all" || apiSource === "femboyfinder") {
-      const femboyPromises = Array(limitPerSource)
-        .fill(null)
-        .map(() => fetchImageFromFemboyFinder(category, settings).catch(() => null))
-
-      fetchPromises.push(
-        Promise.all(femboyPromises).then((results) => results.filter((img): img is WaifuImage => img !== null)),
-      )
-    }
-
-    const results = await Promise.all(fetchPromises)
-    combinedImages = results.flat()
-
-    return combinedImages
+    return data.images ?? []
   } catch (error) {
     const apiError = parseApiError(error, "multiple-sources")
     logApiError(apiError, { category, limit, isNsfw, apiSource })
