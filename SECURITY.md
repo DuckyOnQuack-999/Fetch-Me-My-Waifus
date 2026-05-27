@@ -16,11 +16,11 @@ export async function fetchData() {
 
 ### Incorrect: Client-Side Exposure
 
-```typescript
+\`\`\`typescript
 // Don't do this!
 // Never use the NEXT_PUBLIC_ prefix for sensitive API keys
 // as it exposes them to the browser bundle.
-```
+\`\`\`
 
 ## Environment Variables
 

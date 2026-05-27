@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Download, Heart, ImageIcon, Activity, Zap, Clock, HardDrive } from "lucide-react"
+import { Download, Heart, ImageIcon, Activity, Zap, Clock, HardDrive, Folder } from "lucide-react"
 import { motion } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
 import { useDownload } from "@/context/downloadContext"
 import { useSettings } from "@/context/settingsContext"
+import { useActivity } from "@/context/activityContext"
 
 interface StorageStats {
   usage: {
@@ -27,9 +28,10 @@ interface StorageStats {
 }
 
 export function HomeDashboard() {
-  const { images, favorites, getStorageStats } = useStorage()
+  const { images, favorites, collections, downloadHistory, getStorageStats } = useStorage()
   const { downloads, activeDownloads, completedDownloads, totalProgress } = useDownload()
   const { settings } = useSettings()
+  const { activities } = useActivity()
   const [storageStats, setStorageStats] = useState<StorageStats | null>(null)
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function HomeDashboard() {
     {
       title: "Total Images",
       value: images?.length || 0,
-      change: "+12%",
+      change: `${Object.keys(collections ?? {}).length} collections`,
       icon: ImageIcon,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10",
@@ -64,15 +66,15 @@ export function HomeDashboard() {
     {
       title: "Favorites",
       value: favorites?.length || 0,
-      change: "+8%",
+      change: favorites?.length > 0 ? "Saved" : "None yet",
       icon: Heart,
       color: "text-red-500",
       bgColor: "bg-red-500/10",
     },
     {
-      title: "Downloads",
-      value: completedDownloads?.length || 0,
-      change: "+23%",
+      title: "Downloaded",
+      value: (completedDownloads?.length || 0) + (downloadHistory?.length || 0),
+      change: completedDownloads?.length > 0 ? "This session" : "All time",
       icon: Download,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
@@ -80,33 +82,61 @@ export function HomeDashboard() {
     {
       title: "Active",
       value: activeDownloads?.length || 0,
-      change: "Live",
+      change: activeDownloads?.length > 0 ? "In progress" : "Idle",
       icon: Activity,
       color: "text-orange-500",
       bgColor: "bg-orange-500/10",
     },
   ]
 
-  const recentActivity = [
-    { action: "Downloaded", item: "anime_girl_001.jpg", time: "2 minutes ago", type: "download" },
-    { action: "Added to favorites", item: "waifu_collection_42.png", time: "5 minutes ago", type: "favorite" },
-    { action: "Created collection", item: "Summer Waifus", time: "10 minutes ago", type: "collection" },
-    { action: "Downloaded", item: "neko_art_15.jpg", time: "15 minutes ago", type: "download" },
-    { action: "Updated settings", item: "API Configuration", time: "1 hour ago", type: "settings" },
-  ]
+  // Build activity feed from real sources: context activities + download history
+  const recentActivity = useMemo(() => {
+    const items: { action: string; item: string; time: string; type: string }[] = []
+
+    // From activity context (WebSocket / local storage)
+    for (const a of activities.slice(0, 10)) {
+      items.push({
+        action: a.action ?? "Activity",
+        item: a.target ?? "",
+        time: a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : "",
+        type: a.type ?? "activity",
+      })
+    }
+
+    // From download history when no activities
+    if (items.length === 0) {
+      for (const h of (downloadHistory ?? []).slice(0, 5)) {
+        items.push({
+          action: "Downloaded",
+          item: h.filename ?? h.url?.split("/").pop() ?? "file",
+          time: h.timestamp ? new Date(h.timestamp).toLocaleTimeString() : "",
+          type: "download",
+        })
+      }
+    }
+
+    // From current session downloads
+    for (const d of completedDownloads.slice(0, 5)) {
+      if (!items.find((i) => i.item === d.filename)) {
+        items.push({
+          action: "Downloaded",
+          item: d.filename,
+          time: d.endTime ? new Date(d.endTime).toLocaleTimeString() : "Just now",
+          type: "download",
+        })
+      }
+    }
+
+    return items.slice(0, 8)
+  }, [activities, downloadHistory, completedDownloads])
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "download":
-        return <Download className="h-4 w-4 text-green-500" />
-      case "favorite":
-        return <Heart className="h-4 w-4 text-red-500" />
-      case "collection":
-        return <ImageIcon className="h-4 w-4 text-blue-500" />
-      case "settings":
-        return <Zap className="h-4 w-4 text-purple-500" />
-      default:
-        return <Activity className="h-4 w-4 text-gray-500" />
+      case "download": return <Download className="h-4 w-4 text-green-500" />
+      case "favorite": return <Heart className="h-4 w-4 text-red-500" />
+      case "collection": return <Folder className="h-4 w-4 text-blue-500" />
+      case "settings": return <Zap className="h-4 w-4 text-purple-500" />
+      default: return <Activity className="h-4 w-4 text-gray-500" />
     }
   }
 
@@ -279,23 +309,30 @@ export function HomeDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                {getActivityIcon(activity.type)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {activity.action} <span className="text-muted-foreground">"{activity.item}"</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
-              </motion.div>
-            ))}
+            {recentActivity.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No recent activity yet. Start downloading images!</p>
+              </div>
+            ) : (
+              recentActivity.map((activity, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  {getActivityIcon(activity.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      {activity.action}{activity.item ? <span className="text-muted-foreground"> &quot;{activity.item}&quot;</span> : null}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

@@ -64,7 +64,14 @@ export function StorageProvider({ children }: { children: ReactNode }) {
         const loadedCollections = typeof storage?.getCollections?.() === "object" ? storage.getCollections() : {}
         const loadedHistory = Array.isArray(storage?.getDownloadHistory?.()) ? storage.getDownloadHistory() : []
 
-        setImages(loadedImages)
+        // Sync isFavorite flag on each image from the favorites list
+        const favSet = new Set(loadedFavorites.map(String))
+        const syncedImages = loadedImages.map((img) => ({
+          ...img,
+          isFavorite: favSet.has(String(img.image_id)),
+        }))
+
+        setImages(syncedImages)
         setFavorites(loadedFavorites)
         setCollections(loadedCollections)
         setDownloadHistory(loadedHistory)
@@ -151,7 +158,12 @@ export function StorageProvider({ children }: { children: ReactNode }) {
     try {
       const success = storage.toggleFavorite(imageId)
       if (success) {
-        setFavorites(storage.getFavorites())
+        const newFavorites = storage.getFavorites()
+        setFavorites(newFavorites)
+        // Sync the isFavorite flag on the image object so UI reflects correctly
+        const nowFavorited = newFavorites.includes(imageId.toString())
+        storage.updateImage(imageId, { isFavorite: nowFavorited })
+        setImages(storage.getImages())
       }
       return success
     } catch (err) {

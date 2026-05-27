@@ -8,77 +8,97 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { FolderPlus, Folder, Search, Grid3X3, List, Eye, Edit, Trash2, ImageIcon } from "lucide-react"
+import { FolderPlus, Folder, Search, Grid3X3, List, Eye, Edit, Trash2, ImageIcon, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useStorage } from "@/context/storageContext"
 import { toast } from "sonner"
-
-interface Collection {
-  id: string
-  name: string
-  description: string
-  imageIds: string[]
-  createdAt: Date
-  updatedAt: Date
-}
+import type { Collection } from "@/types/waifu"
 
 export function CollectionsPage() {
-  const { images } = useStorage()
-  const [collections, setCollections] = useState<Collection[]>([])
+  const {
+    images,
+    collections,
+    createCollection,
+    deleteCollection,
+    updateCollection,
+  } = useStorage()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [newCollection, setNewCollection] = useState({
-    name: "",
-    description: "",
-  })
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [form, setForm] = useState({ name: "", description: "" })
+
+  const collectionList = useMemo(() => Object.values(collections), [collections])
 
   const filteredCollections = useMemo(() => {
-    return collections.filter(
-      (collection) =>
-        searchTerm === "" ||
-        collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        collection.description.toLowerCase().includes(searchTerm.toLowerCase()),
+    if (!searchTerm) return collectionList
+    const lower = searchTerm.toLowerCase()
+    return collectionList.filter(
+      (c) =>
+        c.name.toLowerCase().includes(lower) ||
+        (c.description ?? "").toLowerCase().includes(lower),
     )
-  }, [collections, searchTerm])
+  }, [collectionList, searchTerm])
 
-  const handleCreateCollection = () => {
-    if (!newCollection.name.trim()) {
+  const getCollectionImages = (collection: Collection) => {
+    const idSet = new Set(collection.imageIds.map(String))
+    return images.filter((img) => idSet.has(String(img.image_id)))
+  }
+
+  const handleCreate = () => {
+    if (!form.name.trim()) {
       toast.error("Collection name is required")
       return
     }
-
-    const collection: Collection = {
-      id: `collection_${Date.now()}`,
-      name: newCollection.name.trim(),
-      description: newCollection.description.trim(),
-      imageIds: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const id = createCollection(form.name.trim(), form.description.trim())
+    if (id) {
+      toast.success("Collection created")
+      setForm({ name: "", description: "" })
+      setIsCreateDialogOpen(false)
+    } else {
+      toast.error("Failed to create collection")
     }
-
-    setCollections((prev) => [...prev, collection])
-    setNewCollection({ name: "", description: "" })
-    setIsCreateDialogOpen(false)
-    toast.success("Collection created successfully!")
   }
 
-  const handleDeleteCollection = (collectionId: string) => {
-    if (!confirm("Are you sure you want to delete this collection?")) {
+  const handleUpdate = () => {
+    if (!editingCollection) return
+    if (!form.name.trim()) {
+      toast.error("Collection name is required")
       return
     }
-
-    setCollections((prev) => prev.filter((c) => c.id !== collectionId))
-    toast.success("Collection deleted successfully!")
+    const ok = updateCollection(editingCollection.id, {
+      name: form.name.trim(),
+      description: form.description.trim(),
+    })
+    if (ok) {
+      toast.success("Collection updated")
+      setEditingCollection(null)
+      setForm({ name: "", description: "" })
+    } else {
+      toast.error("Failed to update collection")
+    }
   }
 
-  const getCollectionImages = (collection: Collection) => {
-    return images.filter((img) => collection.imageIds.includes(img.image_id))
+  const handleDelete = (collectionId: string) => {
+    if (!confirm("Delete this collection? Images will not be removed.")) return
+    const ok = deleteCollection(collectionId)
+    if (ok) {
+      toast.success("Collection deleted")
+    } else {
+      toast.error("Failed to delete collection")
+    }
   }
 
-  const getCollectionThumbnail = (collection: Collection) => {
-    const collectionImages = getCollectionImages(collection)
-    return collectionImages[0]?.url || "/placeholder.svg?height=200&width=200"
+  const openEdit = (collection: Collection) => {
+    setEditingCollection(collection)
+    setForm({ name: collection.name, description: collection.description ?? "" })
+  }
+
+  const closeDialogs = () => {
+    setIsCreateDialogOpen(false)
+    setEditingCollection(null)
+    setForm({ name: "", description: "" })
   }
 
   return (
@@ -90,66 +110,26 @@ export function CollectionsPage() {
             <CardTitle className="flex items-center gap-2">
               <Folder className="h-6 w-6 text-primary" />
               Collections
-              <Badge variant="secondary">{collections.length} collections</Badge>
+              <Badge variant="secondary">{collectionList.length} collections</Badge>
             </CardTitle>
 
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <FolderPlus className="h-4 w-4" />
-                  New Collection
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Collection</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="collection-name">Name</Label>
-                    <Input
-                      id="collection-name"
-                      placeholder="Enter collection name"
-                      value={newCollection.name}
-                      onChange={(e) => setNewCollection((prev) => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="collection-description">Description</Label>
-                    <Textarea
-                      id="collection-description"
-                      placeholder="Enter collection description (optional)"
-                      value={newCollection.description}
-                      onChange={(e) => setNewCollection((prev) => ({ ...prev, description: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateCollection}>Create Collection</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button className="gap-2" onClick={() => { setForm({ name: "", description: "" }); setIsCreateDialogOpen(true) }}>
+              <FolderPlus className="h-4 w-4" />
+              New Collection
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search collections..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search collections..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-
             <div className="flex border rounded-md">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
@@ -172,20 +152,55 @@ export function CollectionsPage() {
         </CardContent>
       </Card>
 
-      {/* Collections Grid/List */}
-      {filteredCollections.length === 0 ? (
+      {/* Create / Edit Dialog */}
+      <Dialog open={isCreateDialogOpen || !!editingCollection} onOpenChange={(open) => { if (!open) closeDialogs() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCollection ? "Edit Collection" : "Create New Collection"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="col-name">Name *</Label>
+              <Input
+                id="col-name"
+                placeholder="Enter collection name"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="col-desc">Description</Label>
+              <Textarea
+                id="col-desc"
+                placeholder="Optional description"
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeDialogs}>Cancel</Button>
+              <Button onClick={editingCollection ? handleUpdate : handleCreate}>
+                {editingCollection ? "Save Changes" : "Create Collection"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Empty State */}
+      {filteredCollections.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <Folder className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              {collections.length === 0 ? "No collections yet" : "No matching collections"}
+              {collectionList.length === 0 ? "No collections yet" : "No matching collections"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {collections.length === 0
-                ? "Create your first collection to organize your images!"
-                : "Try adjusting your search criteria."}
+              {collectionList.length === 0
+                ? "Create a collection to organise your images."
+                : "Try adjusting your search."}
             </p>
-            {collections.length === 0 && (
+            {collectionList.length === 0 && (
               <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
                 <FolderPlus className="h-4 w-4" />
                 Create Collection
@@ -193,16 +208,24 @@ export function CollectionsPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* Grid / List */}
+      {filteredCollections.length > 0 && (
         <div
           className={
-            viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : "space-y-4"
+            viewMode === "grid"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+              : "space-y-4"
           }
         >
           <AnimatePresence>
             {filteredCollections.map((collection, index) => {
               const collectionImages = getCollectionImages(collection)
-              const thumbnail = getCollectionThumbnail(collection)
+              const thumbnail = collectionImages[0]?.preview_url || collectionImages[0]?.url
+              const createdLabel = collection.created_at
+                ? new Date(collection.created_at).toLocaleDateString()
+                : ""
 
               return (
                 <motion.div
@@ -216,75 +239,68 @@ export function CollectionsPage() {
                     <Card className="group cursor-pointer transition-all hover:shadow-lg">
                       <CardContent className="p-0">
                         <div className="relative aspect-square overflow-hidden rounded-t-lg bg-muted">
-                          {collectionImages.length > 0 ? (
+                          {thumbnail ? (
                             <img
-                              src={thumbnail || "/placeholder.svg"}
+                              src={thumbnail}
                               alt={collection.name}
                               className="w-full h-full object-cover transition-transform group-hover:scale-105"
                               loading="lazy"
+                              crossOrigin="anonymous"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <ImageIcon className="h-12 w-12 text-muted-foreground" />
                             </div>
                           )}
-
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors">
-                            <div className="absolute top-2 right-2 flex gap-1">
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors">
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // Handle edit
-                                }}
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => { e.stopPropagation(); openEdit(collection) }}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteCollection(collection.id)
-                                }}
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(collection.id) }}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
                         </div>
-
                         <div className="p-4">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-1">
                             <h4 className="font-semibold truncate">{collection.name}</h4>
                             <Badge variant="secondary">{collectionImages.length}</Badge>
                           </div>
-
                           {collection.description && (
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{collection.description}</p>
+                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                              {collection.description}
+                            </p>
                           )}
-
-                          <div className="text-xs text-muted-foreground">
-                            Created {collection.createdAt.toLocaleDateString()}
-                          </div>
+                          {createdLabel && (
+                            <div className="text-xs text-muted-foreground">Created {createdLabel}</div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card className="group cursor-pointer transition-all hover:shadow-md">
+                    <Card className="group hover:shadow-md transition-all">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-                            {collectionImages.length > 0 ? (
+                            {thumbnail ? (
                               <img
-                                src={thumbnail || "/placeholder.svg"}
+                                src={thumbnail}
                                 alt={collection.name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
+                                crossOrigin="anonymous"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
@@ -292,38 +308,25 @@ export function CollectionsPage() {
                               </div>
                             )}
                           </div>
-
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-semibold truncate">{collection.name}</h4>
                               <Badge variant="secondary">{collectionImages.length} images</Badge>
                             </div>
-
                             {collection.description && (
-                              <p className="text-sm text-muted-foreground mb-1 line-clamp-1">
+                              <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
                                 {collection.description}
                               </p>
                             )}
-
-                            <div className="text-xs text-muted-foreground">
-                              Created {collection.createdAt.toLocaleDateString()}
-                            </div>
+                            {createdLabel && (
+                              <div className="text-xs text-muted-foreground">Created {createdLabel}</div>
+                            )}
                           </div>
-
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" onClick={() => openEdit(collection)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteCollection(collection.id)}
-                            >
+                            <Button size="sm" variant="destructive" onClick={() => handleDelete(collection.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

@@ -1,6 +1,7 @@
 import type { ImageCategory, WaifuImage, SortOption, Settings, ApiSource } from "../types/waifu"
 import { requestDeduplicator, createRequestKey } from "@/utils/requestDeduplication"
 import { parseApiError, logApiError } from "@/utils/apiErrorHandler"
+import { fetchWallhavenImages } from "@/app/actions/wallhaven"
 
 const WAIFU_IM_API_BASE_URL = "https://api.waifu.im"
 const WAIFU_PICS_API_BASE_URL = "https://api.waifu.pics"
@@ -89,25 +90,37 @@ async function handleApiResponse<T>(response: Response): Promise<T> {
   return response.json()
 }
 
+function buildProxyUrl(targetUrl: string, method: "GET" | "POST" = "GET"): string {
+  // In SSR / server actions, call the external API directly (no CORS restriction)
+  // In the browser, route through our proxy route handler
+  if (typeof window === "undefined") return targetUrl
+  return `/api/proxy?url=${encodeURIComponent(targetUrl)}`
+}
+
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  const proxied = buildProxyUrl(url, (options.method as "GET" | "POST") ?? "GET")
+
   for (let i = 0; i < retries; i++) {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-      const response = await fetch(url, {
+      const fetchOptions: RequestInit = {
         ...options,
         signal: controller.signal,
-        mode: "cors",
-        credentials: "omit",
-      })
+      }
 
+      // Only add CORS headers for direct (SSR) calls
+      if (proxied === url) {
+        fetchOptions.mode = "cors"
+        fetchOptions.credentials = "omit"
+      }
+
+      const response = await fetch(proxied, fetchOptions)
       clearTimeout(timeoutId)
       return response
     } catch (error) {
-      if (i === retries - 1) {
-        throw error
-      }
+      if (i === retries - 1) throw error
       await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000))
     }
   }
@@ -307,65 +320,27 @@ export async function fetchImagesFromWallhaven(
 
   return requestDeduplicator.deduplicate(requestKey, async () => {
     try {
-      if (!settings.wallhavenApiKey) {
-        return []
-      }
+      // Use the server action so the API key stays server-side
+      const result = await fetchWallhavenImages(
+        query,
+        limit,
+        isNsfw,
+        sortBy === "RANDOM" ? "random" : "date_added",
+        page,
+        minWidth,
+        minHeight,
+      )
 
-      const params = new URLSearchParams({
-        q: query,
-        categories: "010",
-        purity: isNsfw ? "011" : "100",
-        sorting: sortBy === "RANDOM" ? "random" : "favorites",
-        order: "desc",
-        page: String(page),
-        apikey: settings.wallhavenApiKey,
-      })
+      if (!result.success) return []
 
-      if (limit > 0 && limit <= 100) {
-        params.append("limit", String(limit))
-      }
-
-      if (minWidth && minHeight) {
-        params.append("atleast", `${minWidth}x${minHeight}`)
-      }
-
-      const url = `${WALLHAVEN_API_BASE_URL}/search?${params}`
-
-      const response = await fetchWithRetry(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "WaifuDownloader/2.0",
-        },
-      })
-
-      const data = await handleApiResponse<any>(response)
-
-      if (!data.data || !Array.isArray(data.data)) {
-        return []
-      }
-
-      return data.data.map((image: any) => ({
-        image_id: image.id,
-        url: image.path,
-        preview_url: image.thumbs.large,
-        extension: image.file_type.split("/")[1],
-        width: image.dimension_x,
-        height: image.dimension_y,
-        signature: "",
-        favorites: image.favorites,
-        dominant_color: image.colors[0] || "#000000",
-        source: image.source || "",
-        uploaded_at: image.created_at,
-        is_nsfw: image.purity !== "sfw",
-        tags: image.tags.map((tag: any) => ({
-          name: tag.name,
-          description: tag.category,
-          is_nsfw: tag.purity !== "sfw",
-        })),
+      return result.images.map((image) => ({
+        ...image,
+        tags: Array.isArray(image.tags)
+          ? image.tags.map((t: string | { name: string }) =>
+              typeof t === "string" ? { name: t } : t,
+            )
+          : [],
         isFavorite: false,
-        fetchedFrom: "wallhaven" as ApiSource,
-        lastModified: new Date().toISOString(),
       }))
     } catch (error) {
       const apiError = parseApiError(error, "wallhaven")
@@ -524,49 +499,11 @@ export async function fetchImagesFromMultipleSources(
     const results = await Promise.all(fetchPromises)
     combinedImages = results.flat()
 
-    if (combinedImages.length === 0) {
-      try {
-        const fallbackImages = await fetchImagesFromWaifuPics("waifu", false, settings, limit)
-        combinedImages = fallbackImages
-      } catch (fallbackError) {
-        combinedImages = [
-          {
-            image_id: "mock-1",
-            url: "/placeholder.svg?height=400&width=300&text=No+Images+Available",
-            preview_url: "/placeholder.svg?height=200&width=150&text=No+Preview",
-            width: 300,
-            height: 400,
-            tags: [{ name: "placeholder" }],
-            source: "placeholder",
-            uploaded_at: new Date().toISOString(),
-            isFavorite: false,
-            fetchedFrom: "placeholder" as ApiSource,
-            lastModified: new Date().toISOString(),
-          },
-        ]
-      }
-    }
-
     return combinedImages
   } catch (error) {
     const apiError = parseApiError(error, "multiple-sources")
     logApiError(apiError, { category, limit, isNsfw, apiSource })
-
-    return [
-      {
-        image_id: "error-1",
-        url: "/placeholder.svg?height=400&width=300&text=Error+Loading+Images",
-        preview_url: "/placeholder.svg?height=200&width=150&text=Error",
-        width: 300,
-        height: 400,
-        tags: [{ name: "error" }],
-        source: "error",
-        uploaded_at: new Date().toISOString(),
-        isFavorite: false,
-        fetchedFrom: "error" as ApiSource,
-        lastModified: new Date().toISOString(),
-      },
-    ]
+    return []
   }
 }
 
@@ -632,19 +569,7 @@ export async function fetchRandomImage(settings: Settings): Promise<WaifuImage> 
         break
     }
 
-    return {
-      image_id: "fallback-1",
-      url: "/placeholder.svg?height=400&width=300&text=Random+Image+Unavailable",
-      preview_url: "/placeholder.svg?height=200&width=150&text=Unavailable",
-      width: 300,
-      height: 400,
-      tags: [{ name: "fallback" }],
-      source: "fallback",
-      uploaded_at: new Date().toISOString(),
-      isFavorite: false,
-      fetchedFrom: "fallback" as ApiSource,
-      lastModified: new Date().toISOString(),
-    }
+    throw new Error("No images available from any source")
   } catch (error) {
     throw error
   }
